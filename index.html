@@ -13,55 +13,36 @@ html,body{background:#0a0a0f;color:#f0f0f5;font-family:'Nunito',sans-serif;min-h
 input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-
 .app{max-width:480px;margin:0 auto;display:flex;flex-direction:column;min-height:100vh}
-
-/* Header */
 .header{background:#0d0d15;border-bottom:1px solid #1a1a2e;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}
 .header-title{font-weight:900;font-size:15px;color:#f7931a}
 .header-sub{font-size:10px;color:#3a3a58;letter-spacing:.1em;font-weight:700}
 .header-badge{background:#1a1a2e;border-radius:12px;padding:7px 14px;font-size:13px;font-weight:800;color:#f7931a;border:1px solid #2a2a40}
 .back-btn{background:#1e1e30;border:none;color:#f0f0f5;border-radius:12px;width:36px;height:36px;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;margin-right:10px}
-
-/* Body */
 .body{flex:1;overflow-y:auto;padding-bottom:100px}
-
-/* Section */
 .sec{margin:14px 14px 0;background:#12121a;border-radius:18px;overflow:hidden;border:1px solid #1e1e2e}
 .sec-head{padding:12px 16px 10px;font-size:10px;font-weight:800;color:#f7931a;letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid #1e1e2e}
 .sec-head.purple{color:#9775fa}
 .sec-head.blue{color:#4dabf7}
-
-/* Row */
 .row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #0f0f1e}
 .row:last-child{border-bottom:none}
 .row-label{font-size:14px;color:#9090a8}
 .row-sub{font-size:11px;color:#3a3a58;margin-top:2px}
-
-/* Chip */
 .chips{display:flex;gap:8px;padding:10px 14px;flex-wrap:wrap}
 .chip{padding:8px 14px;border-radius:50px;font-size:13px;font-weight:700;border:2px solid #1e1e2e;background:#0a0a0f;color:#5a5a78;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .15s}
 .chip.active{border-color:#f7931a;background:#f7931a22;color:#f7931a}
 .chip.active-purple{border-color:#9775fa;background:#9775fa22;color:#9775fa}
-
-/* Stepper */
 .stepper{display:flex;align-items:center;gap:6px}
 .stepper-btn{width:36px;height:36px;border-radius:10px;background:#1e1e2e;border:none;color:#f0f0f5;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif}
 .stepper-input{background:#0a0a0f;border:1px solid #2a2a3e;border-radius:10px;color:#f0f0f5;font-size:14px;font-weight:700;padding:7px 4px;width:84px;text-align:center;font-family:'Nunito',sans-serif;outline:none}
 .stepper-input:focus{border-color:#f7931a}
-
-/* FAB */
 .fab-wrap{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;padding:16px 16px 28px;background:linear-gradient(to top,#0a0a0f 70%,transparent);z-index:20}
 .fab{width:100%;background:linear-gradient(135deg,#f7931a,#d4780d);color:#000;font-weight:900;font-size:16px;border:none;border-radius:18px;padding:18px;cursor:pointer;font-family:'Nunito',sans-serif;box-shadow:0 8px 28px rgba(247,147,26,.4)}
 .fab:disabled{background:#1e1e30;color:#5a5a78;box-shadow:none;cursor:not-allowed}
-
-/* Stats grid */
 .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px}
 .stat-card{background:#0a0a0f;border-radius:16px;padding:14px}
 .stat-val{font-size:20px;font-weight:900;line-height:1;margin-bottom:5px}
 .stat-lbl{font-size:10px;color:#4a4a68;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
-
-/* Hero */
 .hero{margin:14px 14px 0;background:linear-gradient(140deg,#1a1208,#081a0c);border-radius:22px;padding:20px 18px;border:1px solid #f7931a33;text-align:center}
 .hero-pct{font-size:44px;font-weight:900;line-height:1}
 .hero-usd{font-size:20px;font-weight:700;margin-top:6px;opacity:.85}
@@ -69,22 +50,13 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .hero-item{flex:1;background:#0a0a0f88;border-radius:12px;padding:9px 6px}
 .hero-iv{font-size:14px;font-weight:800}
 .hero-il{font-size:10px;color:#4a4a68;margin-top:2px}
-
-/* Tabs */
 .tabs{display:flex;gap:5px;padding:14px 14px 0}
 .tab-btn{flex:1;padding:10px 0;font-size:11px;font-weight:800;border:none;background:transparent;color:#5a5a78;border-radius:12px;cursor:pointer;font-family:'Nunito',sans-serif}
 .tab-btn.active{background:#f7931a;color:#000}
-
-/* Tab panels */
 .tab-panel{display:none}
 .tab-panel.active{display:block}
-
-/* Chart container */
 .chart-box{margin:14px 14px 0;background:#12121a;border-radius:18px;padding:16px 12px 12px;border:1px solid #1e1e2e}
 .chart-lbl{font-size:10px;color:#3a3a58;margin-bottom:12px;font-weight:700;letter-spacing:.08em}
-.chart-legend{display:flex;gap:18px;justify-content:center;margin-top:10px;font-size:11px;color:#5a5a78;font-weight:700}
-
-/* Deal cards */
 .deals-list{padding:14px;display:flex;flex-direction:column;gap:10px}
 .deal-card{background:#12121a;border-radius:16px;padding:14px 15px;animation:fadeUp .22s ease both}
 .deal-top{display:flex;justify-content:space-between;margin-bottom:10px}
@@ -96,66 +68,48 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .deal-cell{flex:1;background:#0a0a0f;border-radius:10px;padding:7px 8px}
 .deal-cell-l{font-size:10px;color:#3a3a58;font-weight:700}
 .deal-cell-v{font-size:12px;color:#c0c0d8;font-weight:700;margin-top:2px}
-
-/* Start cond toggle */
 .cond-btn{width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px;background:transparent;border:none;cursor:pointer;border-bottom:1px solid #0f0f1e;font-family:'Nunito',sans-serif}
 .cond-title{font-size:15px;font-weight:800}
 .cond-sub{font-size:11px;color:#3a3a58;margin-top:3px}
 .cond-radio{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#000}
-
-/* RSI badge */
 .rsi-badge{display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px}
 .rsi-val{font-size:32px;font-weight:900;min-width:56px;text-align:center}
-
-/* Info bar */
 .info-bar{padding:10px 16px;display:flex;gap:8px;align-items:center;font-size:12px;font-weight:700}
 .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-
-/* Loading spinner */
 .spinner{width:18px;height:18px;border:3px solid #5a5a7855;border-top:3px solid #9090a8;border-radius:50%;display:inline-block;animation:spin .7s linear infinite}
-
-/* RSI sub section */
 .rsi-sub{background:#0d0d18;padding:0}
-.rsi-dir-row{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid #0f0f1e}
 .rsi-dir-btn{flex:1;padding:10px;border-radius:12px;font-size:14px;font-weight:800;border:2px solid #1e1e2e;background:#0a0a0f;color:#5a5a78;cursor:pointer;font-family:'Nunito',sans-serif}
 .rsi-dir-btn.active{border-color:#9775fa;background:#9775fa22;color:#9775fa}
 .rsi-summary{margin:12px 14px;background:#12121a;border-radius:12px;padding:11px 14px;border:1px solid #9775fa33;font-size:12px;color:#9090a8;line-height:1.5}
 .hidden{display:none}
 .start-badge{margin-top:12px;display:inline-flex;align-items:center;gap:6px;border-radius:50px;padding:5px 14px;font-size:11px;font-weight:800}
+/* API kaynak bilgisi */
+.src-bar{font-size:10px;color:#3a3a58;text-align:center;padding:6px;margin:8px 14px 0;background:#12121a;border-radius:8px;border:1px solid #1e1e2e}
 </style>
 </head>
 <body>
 <div class="app">
-  <!-- HEADER -->
   <div class="header" id="header">
     <div style="display:flex;align-items:center">
       <button class="back-btn hidden" id="backBtn" onclick="showSettings()">‹</button>
       <div>
         <div class="header-title">OKX DCA BOT</div>
-        <div class="header-sub">BACKTEST SİMÜLATÖRÜ</div>
+        <div class="header-sub" id="headerSub">BACKTEST SİMÜLATÖRÜ</div>
       </div>
     </div>
     <div class="header-badge" id="headerBadge">₿ BTC · 1Y</div>
   </div>
 
   <div class="body" id="body">
-
-    <!-- ═══ SETTINGS ═══ -->
     <div id="settingsPanel">
-
-      <!-- İşlem Çifti -->
       <div class="sec">
         <div class="sec-head">🪙 İşlem Çifti</div>
         <div class="chips" id="coinChips"></div>
       </div>
-
-      <!-- Periyot -->
       <div class="sec">
         <div class="sec-head">📅 Backtest Periyodu</div>
         <div class="chips" id="periodChips"></div>
       </div>
-
-      <!-- Sermaye -->
       <div class="sec">
         <div class="sec-head">💰 Sermaye</div>
         <div class="row">
@@ -167,8 +121,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
           <div id="capText"></div>
         </div>
       </div>
-
-      <!-- Bot Parametreleri -->
       <div class="sec">
         <div class="sec-head">⚙️ Bot Parametreleri</div>
         <div class="row"><div><div class="row-label">İlk alım miktarı ($)</div><div class="row-sub">Her döngünün ilk alım emri büyüklüğü</div></div><div class="stepper" data-key="initialAmt" data-step="10" data-min="1"></div></div>
@@ -181,82 +133,43 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div class="row"><div><div class="row-label">Zarar durdur (%)</div><div class="row-sub">İlk giriş fiyatından SL seviyesi (0 = kapalı)</div></div><div class="stepper" data-key="slPct" data-step="0.5" data-min="0" data-dec="1"></div></div>
         <div class="row"><div><div class="row-label">Döngüler arası bekleme (gün)</div><div class="row-sub">TP/SL sonrası sonraki döngü gecikmesi</div></div><div class="stepper" data-key="cooldown" data-step="1" data-min="0"></div></div>
       </div>
-
-      <!-- RSI Gösterge -->
       <div class="sec" style="border-color:#9775fa44">
         <div class="sec-head purple">📉 RSI Göstergesi</div>
-        <div class="row">
-          <div><div class="row-label" style="color:#9090a8">RSI Periyodu</div><div class="row-sub">Backtest grafiğinde gösterilecek RSI</div></div>
-          <div class="stepper" data-key="rsiPeriod" data-step="1" data-min="2" data-max="50"></div>
-        </div>
-        <div class="row" style="border-bottom:none">
-          <div><div class="row-label" style="color:#f85149">Aşırı Alım</div></div>
-          <div class="stepper" data-key="rsiOB" data-step="1" data-min="51" data-max="99"></div>
-        </div>
-        <div class="row" style="border-bottom:none">
-          <div><div class="row-label" style="color:#69db7c">Aşırı Satım</div></div>
-          <div class="stepper" data-key="rsiOS" data-step="1" data-min="1" data-max="49"></div>
-        </div>
+        <div class="row"><div><div class="row-label" style="color:#9090a8">RSI Periyodu</div></div><div class="stepper" data-key="rsiPeriod" data-step="1" data-min="2" data-max="50"></div></div>
+        <div class="row"><div><div class="row-label" style="color:#f85149">Aşırı Alım</div></div><div class="stepper" data-key="rsiOB" data-step="1" data-min="51" data-max="99"></div></div>
+        <div class="row"><div><div class="row-label" style="color:#69db7c">Aşırı Satım</div></div><div class="stepper" data-key="rsiOS" data-step="1" data-min="1" data-max="49"></div></div>
       </div>
-
-      <!-- Başlatma Koşulu -->
       <div class="sec" style="border-color:#4dabf744;margin-bottom:0">
         <div class="sec-head blue">🚀 Başlatma Koşulu</div>
-
         <button class="cond-btn" onclick="setStartCond('instant')" id="condInstantBtn">
-          <div style="text-align:left">
-            <div class="cond-title" id="condInstantTitle">⚡ Anında</div>
-            <div class="cond-sub">Döngü başlayınca hemen gir</div>
-          </div>
+          <div style="text-align:left"><div class="cond-title" id="condInstantTitle">⚡ Anında</div><div class="cond-sub">Döngü başlayınca hemen gir</div></div>
           <div class="cond-radio" id="condInstantRadio"></div>
         </button>
-
         <button class="cond-btn" onclick="setStartCond('rsi')" id="condRsiBtn" style="border-bottom:none">
-          <div style="text-align:left">
-            <div class="cond-title" id="condRsiTitle">📉 RSI Sinyali</div>
-            <div class="cond-sub">RSI koşulu sağlanınca gir</div>
-          </div>
+          <div style="text-align:left"><div class="cond-title" id="condRsiTitle">📉 RSI Sinyali</div><div class="cond-sub">RSI koşulu sağlanınca gir</div></div>
           <div class="cond-radio" id="condRsiRadio"></div>
         </button>
-
-        <!-- RSI detay -->
         <div class="rsi-sub hidden" id="rsiSubPanel">
-          <div class="row" style="background:#0d0d18">
-            <div><div class="row-label" style="color:#9090a8">RSI Periyodu</div></div>
-            <div class="stepper" data-key="rsiTrigPeriod" data-step="1" data-min="2" data-max="50"></div>
-          </div>
-
-          <!-- Zaman dilimi -->
+          <div class="row" style="background:#0d0d18"><div><div class="row-label" style="color:#9090a8">RSI Periyodu</div></div><div class="stepper" data-key="rsiTrigPeriod" data-step="1" data-min="2" data-max="50"></div></div>
           <div style="padding:12px 16px;border-bottom:1px solid #0f0f1e;background:#0d0d18">
             <div style="font-size:12px;color:#5a5a78;margin-bottom:10px;font-weight:700">ZAMAN DİLİMİ</div>
             <div class="chips" id="tfChips" style="padding:0;gap:8px;flex-wrap:wrap"></div>
           </div>
-
-          <!-- Yön -->
           <div style="padding:12px 16px;border-bottom:1px solid #0f0f1e;background:#0d0d18">
             <div style="font-size:12px;color:#5a5a78;margin-bottom:10px;font-weight:700">KOŞUL</div>
-            <div class="rsi-dir-row" style="padding:0;border:none">
+            <div style="display:flex;gap:8px">
               <button class="rsi-dir-btn" id="dirLtBtn" onclick="setRsiDir('lt')">RSI &lt;</button>
               <button class="rsi-dir-btn" id="dirGtBtn" onclick="setRsiDir('gt')">RSI &gt;</button>
             </div>
           </div>
-
-          <!-- Eşik -->
-          <div class="row" style="background:#0d0d18">
-            <div><div class="row-label" style="color:#9090a8">Eşik Değeri</div></div>
-            <div class="stepper" data-key="rsiThreshold" data-step="1" data-min="1" data-max="99"></div>
-          </div>
-
+          <div class="row" style="background:#0d0d18"><div><div class="row-label" style="color:#9090a8">Eşik Değeri</div></div><div class="stepper" data-key="rsiThreshold" data-step="1" data-min="1" data-max="99"></div></div>
           <div class="rsi-summary" id="rsiSummary"></div>
         </div>
       </div>
-
       <div id="errBox" class="hidden" style="margin:14px 14px 0;background:#1a0808;border:1px solid #f85149;border-radius:14px;padding:14px;font-size:13px;color:#f85149;line-height:1.6"></div>
     </div>
 
-    <!-- ═══ RESULT ═══ -->
     <div id="resultPanel" class="hidden">
-      <!-- Hero -->
       <div class="hero">
         <div style="font-size:11px;color:#5a5a78;letter-spacing:.1em;margin-bottom:8px;font-weight:700" id="heroMeta"></div>
         <div class="hero-pct" id="heroPct"></div>
@@ -268,255 +181,164 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         </div>
         <div class="start-badge" id="startBadge"></div>
       </div>
-
-      <!-- Tabs -->
+      <div class="src-bar" id="srcBar"></div>
       <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('stats')">📊 Stats</button>
         <button class="tab-btn" onclick="switchTab('chart')">📈 Grafik</button>
         <button class="tab-btn" onclick="switchTab('rsi')">📉 RSI</button>
         <button class="tab-btn" onclick="switchTab('deals')">📋 Döngüler</button>
       </div>
-
-      <!-- Stats tab -->
-      <div class="tab-panel active" id="tab-stats">
-        <div class="stats-grid" id="statsGrid"></div>
-      </div>
-
-      <!-- Chart tab -->
+      <div class="tab-panel active" id="tab-stats"><div class="stats-grid" id="statsGrid"></div></div>
       <div class="tab-panel" id="tab-chart">
-        <div class="chart-box">
-          <div class="chart-lbl">PORTFÖY & FİYAT</div>
-          <canvas id="priceChart" height="220"></canvas>
-          <div class="chart-legend"><span>🟠 Portföy</span><span>🔵 Fiyat</span></div>
-        </div>
+        <div class="chart-box"><div class="chart-lbl">PORTFÖY & FİYAT</div><canvas id="priceChart" height="220"></canvas><div style="display:flex;gap:18px;justify-content:center;margin-top:10px;font-size:11px;color:#5a5a78;font-weight:700"><span>🟠 Portföy</span><span>🔵 Fiyat</span></div></div>
       </div>
-
-      <!-- RSI tab -->
       <div class="tab-panel" id="tab-rsi">
         <div style="padding:14px;display:flex;flex-direction:column;gap:12px">
           <div class="rsi-badge" id="rsiBadge"></div>
-          <div class="chart-box">
-            <div class="chart-lbl" id="rsiChartLbl">RSI (14)</div>
-            <canvas id="rsiChart" height="200"></canvas>
-          </div>
+          <div class="chart-box"><div class="chart-lbl" id="rsiChartLbl">RSI (14)</div><canvas id="rsiChart" height="200"></canvas></div>
         </div>
       </div>
-
-      <!-- Deals tab -->
-      <div class="tab-panel" id="tab-deals">
-        <div class="deals-list" id="dealsList"></div>
-      </div>
+      <div class="tab-panel" id="tab-deals"><div class="deals-list" id="dealsList"></div></div>
     </div>
+  </div>
 
-  </div><!-- /body -->
-
-  <!-- FAB -->
   <div class="fab-wrap" id="fabWrap">
     <button class="fab" id="fabBtn" onclick="runBacktest()">▶ BACKTEST BAŞLAT</button>
   </div>
 </div>
 
 <script>
-/* ═══════════════════════════════════════════════════════════
-   STATE
-═══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════
+   COINS / PERIODS / TFS
+══════════════════════════════════════ */
 const COINS=[
-  {symbol:"BTCUSDT",label:"BTC",emoji:"₿"},
-  {symbol:"ETHUSDT",label:"ETH",emoji:"Ξ"},
-  {symbol:"SOLUSDT",label:"SOL",emoji:"◎"},
-  {symbol:"BNBUSDT",label:"BNB",emoji:"⬡"},
-  {symbol:"XRPUSDT",label:"XRP",emoji:"✕"},
-  {symbol:"ADAUSDT",label:"ADA",emoji:"₳"},
-  {symbol:"DOGEUSDT",label:"DOGE",emoji:"Ð"},
-  {symbol:"AVAXUSDT",label:"AVAX",emoji:"▲"},
+  {symbol:"BTCUSDT",okx:"BTC-USDT",cc:"BTC",label:"BTC",emoji:"₿"},
+  {symbol:"ETHUSDT",okx:"ETH-USDT",cc:"ETH",label:"ETH",emoji:"Ξ"},
+  {symbol:"SOLUSDT",okx:"SOL-USDT",cc:"SOL",label:"SOL",emoji:"◎"},
+  {symbol:"BNBUSDT",okx:"BNB-USDT",cc:"BNB",label:"BNB",emoji:"⬡"},
+  {symbol:"XRPUSDT",okx:"XRP-USDT",cc:"XRP",label:"XRP",emoji:"✕"},
+  {symbol:"ADAUSDT",okx:"ADA-USDT",cc:"ADA",label:"ADA",emoji:"₳"},
+  {symbol:"DOGEUSDT",okx:"DOGE-USDT",cc:"DOGE",label:"DOGE",emoji:"Ð"},
+  {symbol:"AVAXUSDT",okx:"AVAX-USDT",cc:"AVAX",label:"AVAX",emoji:"▲"},
 ];
 const PERIODS=[{label:"3A",days:90},{label:"6A",days:180},{label:"1Y",days:365},{label:"2Y",days:730}];
 const TFS=[{label:"15d",v:"15m"},{label:"30d",v:"30m"},{label:"1s",v:"1h"},{label:"4s",v:"4h"},{label:"1G",v:"1d"}];
 
-const state={
-  coin:"BTCUSDT", days:365,
-  startCapital:10000, initialAmt:100, safetyAmt:100,
-  priceStep:1.0, stepMult:1.0, amtMult:1.0,
-  maxSafetyOrders:10, tpPct:1.5, slPct:0, cooldown:0,
-  rsiPeriod:14, rsiOB:70, rsiOS:30,
+/* ══════════════════════════════════════
+   STATE
+══════════════════════════════════════ */
+const S={
+  coin:"BTCUSDT",days:365,
+  startCapital:10000,initialAmt:100,safetyAmt:100,
+  priceStep:1.0,stepMult:1.0,amtMult:1.0,
+  maxSafetyOrders:10,tpPct:1.5,slPct:0,cooldown:0,
+  rsiPeriod:14,rsiOB:70,rsiOS:30,
   startCond:"instant",
-  rsiTrigPeriod:14, rsiTf:"1h", rsiDir:"lt", rsiThreshold:30,
+  rsiTrigPeriod:14,rsiTf:"1h",rsiDir:"lt",rsiThreshold:30,
 };
-
 let charts={price:null,rsi:null};
-let lastResult=null;
-let activeTab="stats";
 
-/* ═══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════
    HELPERS
-═══════════════════════════════════════════════════════════ */
+══════════════════════════════════════ */
 const fmt=(n,d=2)=>(n??0).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
 const fmtUSD=n=>Math.abs(n)>=1000?"$"+fmt(n/1000,1)+"k":"$"+fmt(n,2);
 const fmtPct=n=>(n>=0?"+":"")+fmt(n,1)+"%";
-const fmtN=n=>parseFloat(fmt(n,4));
 
-/* ═══════════════════════════════════════════════════════════
-   CHIPS
-═══════════════════════════════════════════════════════════ */
-function buildChips(){
-  // Coins
-  const cc=document.getElementById("coinChips");
-  COINS.forEach(c=>{
-    const b=document.createElement("button");
-    b.className="chip"+(c.symbol===state.coin?" active":"");
-    b.textContent=c.emoji+" "+c.label;
-    b.onclick=()=>{state.coin=c.symbol;renderChips();updateBadge();};
-    cc.appendChild(b);
-  });
-  // Periods
-  const pc=document.getElementById("periodChips");
-  PERIODS.forEach(p=>{
-    const b=document.createElement("button");
-    b.className="chip"+(p.days===state.days?" active":"");
-    b.textContent=p.label;
-    b.onclick=()=>{state.days=p.days;renderChips();updateBadge();};
-    pc.appendChild(b);
-  });
-  // Timeframes
-  const tc=document.getElementById("tfChips");
-  TFS.forEach(t=>{
-    const b=document.createElement("button");
-    b.className="chip"+(t.v===state.rsiTf?" active-purple":"");
-    b.textContent=t.label;
-    b.style.padding="8px 14px";
-    b.onclick=()=>{state.rsiTf=t.v;renderChips();updateRsiSummary();};
-    tc.appendChild(b);
-  });
+/* ══════════════════════════════════════
+   DATA FETCH — 3 kaynak dene
+══════════════════════════════════════ */
+
+/* 1️⃣ OKX — günlük mum, 300/istek, sayfalama ile */
+async function fetchOKX(coinObj,days){
+  const instId=coinObj.okx;
+  let all=[];
+  let after=""; // en eski mum zamanı (ms), sonraki sayfayı çekmek için
+  const limit=300;
+  const needed=days+5;
+
+  while(all.length<needed){
+    let url=`https://www.okx.com/api/v5/market/history-candles?instId=${instId}&bar=1D&limit=${limit}`;
+    if(after) url+=`&after=${after}`;
+    const r=await fetch(url,{signal:AbortSignal.timeout(8000)});
+    if(!r.ok) throw new Error("OKX "+r.status);
+    const j=await r.json();
+    if(!j.data||!j.data.length) break;
+    all=all.concat(j.data);
+    after=j.data[j.data.length-1][0]; // en eski zamanı al
+    if(j.data.length<limit) break;    // artık veri yok
+  }
+
+  if(!all.length) throw new Error("OKX veri boş");
+
+  // OKX: [timestamp, open, high, low, close, vol, volCcy, volCcyQuote, confirm]
+  // En yeni → en eski sırada geliyor, tersine çevir
+  return all
+    .slice(0,days)
+    .reverse()
+    .map(k=>({
+      date:new Date(parseInt(k[0])).toLocaleDateString("tr-TR",{month:"numeric",day:"numeric"}),
+      price:parseFloat(k[4]),
+    }));
 }
 
-function renderChips(){
-  // Coin chips
-  document.querySelectorAll("#coinChips .chip").forEach((b,i)=>{b.className="chip"+(COINS[i].symbol===state.coin?" active":"");});
-  document.querySelectorAll("#periodChips .chip").forEach((b,i)=>{b.className="chip"+(PERIODS[i].days===state.days?" active":"");});
-  document.querySelectorAll("#tfChips .chip").forEach((b,i)=>{b.className="chip"+(TFS[i].v===state.rsiTf?" active-purple":"");});
+/* 2️⃣ CryptoCompare — günlük kapanış, limit 2000 */
+async function fetchCC(coinObj,days){
+  const fsym=coinObj.cc;
+  const url=`https://min-api.cryptocompare.com/data/v2/histoday?fsym=${fsym}&tsym=USDT&limit=${days}&toTs=-1`;
+  const r=await fetch(url,{signal:AbortSignal.timeout(8000)});
+  if(!r.ok) throw new Error("CryptoCompare "+r.status);
+  const j=await r.json();
+  if(j.Response==="Error"||!j.Data?.Data?.length) throw new Error("CC veri boş");
+  return j.Data.Data.map(k=>({
+    date:new Date(k.time*1000).toLocaleDateString("tr-TR",{month:"numeric",day:"numeric"}),
+    price:k.close,
+  })).filter(k=>k.price>0);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   STEPPERS
-═══════════════════════════════════════════════════════════ */
-function buildSteppers(){
-  document.querySelectorAll(".stepper[data-key]").forEach(el=>{
-    const key=el.dataset.key;
-    const step=parseFloat(el.dataset.step)||1;
-    const min=parseFloat(el.dataset.min)||0;
-    const max=parseFloat(el.dataset.max)||999999;
-    const dec=parseInt(el.dataset.dec)||0;
-
-    const decBtn=document.createElement("button");
-    decBtn.className="stepper-btn";decBtn.textContent="−";
-
-    const inp=document.createElement("input");
-    inp.type="number";inp.className="stepper-input";
-    inp.value=state[key];
-
-    const incBtn=document.createElement("button");
-    incBtn.className="stepper-btn";incBtn.textContent="+";
-
-    const update=v=>{
-      let val=Math.min(max,Math.max(min,parseFloat(v)||0));
-      if(dec)val=parseFloat(val.toFixed(dec));else val=Math.round(val);
-      state[key]=val;inp.value=val;
-      updateCapInfo();updateRsiSummary();
-    };
-
-    decBtn.onclick=()=>update(state[key]-step);
-    incBtn.onclick=()=>update(state[key]+step);
-    inp.onchange=()=>update(inp.value);
-    inp.oninput=()=>update(inp.value);
-
-    el.appendChild(decBtn);el.appendChild(inp);el.appendChild(incBtn);
-  });
-}
-
-function syncSteppers(){
-  document.querySelectorAll(".stepper[data-key]").forEach(el=>{
-    const inp=el.querySelector("input");
-    if(inp) inp.value=state[el.dataset.key];
-  });
-}
-
-/* ═══════════════════════════════════════════════════════════
-   CAP INFO
-═══════════════════════════════════════════════════════════ */
-function maxCycleInv(){
-  let t=state.initialAmt,a=state.safetyAmt;
-  for(let i=0;i<state.maxSafetyOrders;i++){t+=a;a*=state.amtMult;}
-  return t;
-}
-function updateCapInfo(){
-  const mc=maxCycleInv();
-  const ok=mc<=state.startCapital;
-  document.getElementById("capDot").style.background=ok?"#69db7c":"#f85149";
-  document.getElementById("capText").style.color=ok?"#69db7c":"#f85149";
-  document.getElementById("capText").textContent=ok?`✓ Yeterli — $${Math.ceil(mc)} gerekli`:`⚠ Tek döngü maks: $${Math.ceil(mc)} — yetersiz`;
-  document.getElementById("fabBtn").disabled=!ok;
-  if(!ok)document.getElementById("fabBtn").textContent="⚠ Sermaye Yetersiz";
-  else document.getElementById("fabBtn").textContent="▶ BACKTEST BAŞLAT";
-}
-
-/* ═══════════════════════════════════════════════════════════
-   START CONDITION
-═══════════════════════════════════════════════════════════ */
-function setStartCond(type){
-  state.startCond=type;
-  const isRsi=type==="rsi";
-  document.getElementById("condInstantRadio").style.background=isRsi?"transparent":"#f7931a";
-  document.getElementById("condInstantRadio").style.border=isRsi?"2px solid #3a3a58":"2px solid #f7931a";
-  document.getElementById("condInstantRadio").textContent=isRsi?"":"✓";
-  document.getElementById("condInstantTitle").style.color=isRsi?"#5a5a78":"#f0f0f5";
-  document.getElementById("condRsiRadio").style.background=isRsi?"#9775fa":"transparent";
-  document.getElementById("condRsiRadio").style.border=isRsi?"2px solid #9775fa":"2px solid #3a3a58";
-  document.getElementById("condRsiRadio").textContent=isRsi?"✓":"";
-  document.getElementById("condRsiTitle").style.color=isRsi?"#9775fa":"#5a5a78";
-  document.getElementById("condRsiBtn").style.borderBottom=isRsi?"1px solid #9775fa33":"none";
-  document.getElementById("rsiSubPanel").classList.toggle("hidden",!isRsi);
-}
-
-function setRsiDir(dir){
-  state.rsiDir=dir;
-  document.getElementById("dirLtBtn").className="rsi-dir-btn"+(dir==="lt"?" active":"");
-  document.getElementById("dirGtBtn").className="rsi-dir-btn"+(dir==="gt"?" active":"");
-  updateRsiSummary();
-}
-
-function updateRsiSummary(){
-  const tf=TFS.find(t=>t.v===state.rsiTf);
-  const dirStr=state.rsiDir==="lt"?`< ${state.rsiThreshold}`:`> ${state.rsiThreshold}`;
-  document.getElementById("rsiSummary").innerHTML=
-    `RSI(${state.rsiTrigPeriod}) · ${tf?tf.label:state.rsiTf} grafiğinde <strong style="color:#9775fa">${dirStr}</strong> olunca deal aç`;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   BADGE
-═══════════════════════════════════════════════════════════ */
-function updateBadge(){
-  const c=COINS.find(x=>x.symbol===state.coin);
-  const p=PERIODS.find(x=>x.days===state.days);
-  document.getElementById("headerBadge").textContent=`${c.emoji} ${c.label} · ${p.label}`;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   API
-═══════════════════════════════════════════════════════════ */
-async function fetchCandles(symbol,interval,limit){
-  const url=`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-  const r=await fetch(url);
-  if(!r.ok)throw new Error("Binance API hatası: "+r.status);
-  const d=await r.json();
-  return d.map(k=>({
-    date:new Date(k[0]).toLocaleDateString("tr-TR",{month:"numeric",day:"numeric"}),
-    price:parseFloat(k[4])
+/* 3️⃣ Bybit — günlük mum, 200/istek */
+async function fetchBybit(coinObj,days){
+  const symbol=coinObj.symbol;
+  const url=`https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=D&limit=${Math.min(days,200)}`;
+  const r=await fetch(url,{signal:AbortSignal.timeout(8000)});
+  if(!r.ok) throw new Error("Bybit "+r.status);
+  const j=await r.json();
+  if(j.retCode!==0||!j.result?.list?.length) throw new Error("Bybit veri boş");
+  // [startTime, open, high, low, close, vol, turnover] — yeni→eski, tersine çevir
+  return j.result.list.slice(0,days).reverse().map(k=>({
+    date:new Date(parseInt(k[0])).toLocaleDateString("tr-TR",{month:"numeric",day:"numeric"}),
+    price:parseFloat(k[4]),
   }));
 }
 
-/* ═══════════════════════════════════════════════════════════
+async function fetchPrices(coinObj,days){
+  // OKX dene
+  try{
+    const d=await fetchOKX(coinObj,days);
+    console.log("✅ OKX",d.length,"mum");
+    return{prices:d,source:"OKX"};
+  }catch(e){console.warn("OKX hata:",e.message);}
+
+  // CryptoCompare dene
+  try{
+    const d=await fetchCC(coinObj,days);
+    console.log("✅ CryptoCompare",d.length,"mum");
+    return{prices:d,source:"CryptoCompare"};
+  }catch(e){console.warn("CC hata:",e.message);}
+
+  // Bybit dene
+  try{
+    const d=await fetchBybit(coinObj,days);
+    console.log("✅ Bybit",d.length,"mum");
+    return{prices:d,source:"Bybit"};
+  }catch(e){console.warn("Bybit hata:",e.message);}
+
+  throw new Error("Tüm veri kaynakları başarısız oldu. İnternet bağlantınızı kontrol edin.");
+}
+
+/* ══════════════════════════════════════
    RSI
-═══════════════════════════════════════════════════════════ */
+══════════════════════════════════════ */
 function calcRSI(prices,period){
   const out=new Array(prices.length).fill(null);
   if(prices.length<period+1)return out;
@@ -530,67 +352,59 @@ function calcRSI(prices,period){
   return out;
 }
 
-/* ═══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════
    BACKTEST (OKX mantığı)
-═══════════════════════════════════════════════════════════ */
+══════════════════════════════════════ */
 function backtestEngine(prices){
-  const s=state;
-  const dailyRSI=calcRSI(prices,s.rsiPeriod);
-  const trigRSI=s.startCond==="rsi"?calcRSI(prices,s.rsiTrigPeriod):null;
-
+  const dailyRSI=calcRSI(prices,S.rsiPeriod);
+  const trigRSI=S.startCond==="rsi"?calcRSI(prices,S.rsiTrigPeriod):null;
   const deals=[],equity=[];
-  let cash=s.startCapital,inDeal=false,deal=null,cdLeft=0;
-  let waitRSI=(s.startCond==="rsi");
+  let cash=S.startCapital,inDeal=false,deal=null,cdLeft=0;
+  let waitRSI=(S.startCond==="rsi");
 
   for(let i=0;i<prices.length;i++){
     const {price,date}=prices[i];
 
-    // RSI başlatma koşulu
     if(waitRSI&&!inDeal&&cdLeft===0){
       const rv=trigRSI?trigRSI[i]:null;
       if(rv==null){equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;}
-      const triggered=s.rsiDir==="lt"?rv<s.rsiThreshold:rv>s.rsiThreshold;
+      const triggered=S.rsiDir==="lt"?rv<S.rsiThreshold:rv>S.rsiThreshold;
       if(!triggered){equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;}
       waitRSI=false;
     }
 
     if(!inDeal){
-      if(cdLeft>0){cdLeft--;if(s.startCond==="rsi")waitRSI=true;equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;}
-      if(cash<s.initialAmt){equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;}
-      cash-=s.initialAmt;
+      if(cdLeft>0){cdLeft--;if(S.startCond==="rsi")waitRSI=true;equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;}
+      if(cash<S.initialAmt){equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;}
+      cash-=S.initialAmt;
 
-      // Safety order seviyeleri (OKX: ilk fiyata göre)
       const soLevels=[];
-      let stepNow=s.priceStep,lvlPrice=price*(1-s.priceStep/100);
-      for(let n=0;n<s.maxSafetyOrders;n++){
-        soLevels.push({price:lvlPrice,amt:s.safetyAmt*Math.pow(s.amtMult,n),filled:false});
-        stepNow=stepNow*s.stepMult;
+      let stepNow=S.priceStep,lvlPrice=price*(1-S.priceStep/100);
+      for(let n=0;n<S.maxSafetyOrders;n++){
+        soLevels.push({price:lvlPrice,amt:S.safetyAmt*Math.pow(S.amtMult,n),filled:false});
+        stepNow=stepNow*S.stepMult;
         lvlPrice=lvlPrice*(1-stepNow/100);
       }
-
-      deal={startDate:date,initPrice:price,orders:[{date,price,size:s.initialAmt,qty:s.initialAmt/price}],
-            totalCost:s.initialAmt,totalQty:s.initialAmt/price,avgCost:price,safetyCount:0,soLevels};
+      deal={startDate:date,initPrice:price,orders:[{date,price,size:S.initialAmt,qty:S.initialAmt/price}],
+            totalCost:S.initialAmt,totalQty:S.initialAmt/price,avgCost:price,safetyCount:0,soLevels};
       inDeal=true;
     } else {
-      // TP
-      if(price>=deal.avgCost*(1+s.tpPct/100)){
+      if(price>=deal.avgCost*(1+S.tpPct/100)){
         const profit=deal.totalQty*price-deal.totalCost;
         cash+=deal.totalQty*price;
         deals.push({...deal,endDate:date,exitPrice:price,profit,profitPct:profit/deal.totalCost*100,exitReason:"TP"});
-        inDeal=false;deal=null;cdLeft=s.cooldown;
-        if(s.startCond==="rsi")waitRSI=true;
+        inDeal=false;deal=null;cdLeft=S.cooldown;
+        if(S.startCond==="rsi")waitRSI=true;
         equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;
       }
-      // SL
-      if(s.slPct>0&&price<=deal.initPrice*(1-s.slPct/100)){
+      if(S.slPct>0&&price<=deal.initPrice*(1-S.slPct/100)){
         const profit=deal.totalQty*price-deal.totalCost;
         cash+=deal.totalQty*price;
         deals.push({...deal,endDate:date,exitPrice:price,profit,profitPct:profit/deal.totalCost*100,exitReason:"SL"});
-        inDeal=false;deal=null;cdLeft=s.cooldown;
-        if(s.startCond==="rsi")waitRSI=true;
+        inDeal=false;deal=null;cdLeft=S.cooldown;
+        if(S.startCond==="rsi")waitRSI=true;
         equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;
       }
-      // Safety orders
       for(let n=0;n<deal.soLevels.length;n++){
         const lvl=deal.soLevels[n];
         if(!lvl.filled&&price<=lvl.price){
@@ -615,20 +429,20 @@ function backtestEngine(prices){
   for(const e of equity){if(e.value>peak)peak=e.value;const dd=(peak-e.value)/peak*100;if(dd>maxDD)maxDD=dd;}
   const tp=deals.reduce((s,d)=>s+d.profit,0);
   const wins=deals.filter(d=>d.profit>0).length;
-  const slHits=deals.filter(d=>d.exitReason==="SL").length;
 
   return{deals,equity,stats:{
-    totalDeals:deals.length,wins,losses:deals.length-wins,slHits,
+    totalDeals:deals.length,wins,losses:deals.length-wins,
+    slHits:deals.filter(d=>d.exitReason==="SL").length,
     winRate:deals.length?wins/deals.length*100:0,
-    totalProfit:tp,totalProfitPct:tp/s.startCapital*100,
+    totalProfit:tp,totalProfitPct:tp/S.startCapital*100,
     maxDrawdown:maxDD,
     avgSafetyOrders:deals.length?deals.reduce((s,d)=>s+d.safetyCount,0)/deals.length:0,
   }};
 }
 
-/* ═══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════
    RUN
-═══════════════════════════════════════════════════════════ */
+══════════════════════════════════════ */
 async function runBacktest(){
   const btn=document.getElementById("fabBtn");
   btn.disabled=true;
@@ -636,10 +450,13 @@ async function runBacktest(){
   document.getElementById("errBox").classList.add("hidden");
 
   try{
-    const prices=await fetchCandles(state.coin,"1d",state.days);
+    const coinObj=COINS.find(c=>c.symbol===S.coin);
+    const {prices,source}=await fetchPrices(coinObj,S.days);
+
+    if(prices.length<10) throw new Error(`Yeterli veri gelmedi (${prices.length} mum). Daha kısa periyot deneyin.`);
+
     const result=backtestEngine(prices);
-    lastResult=result;
-    renderResult(result);
+    renderResult(result,source,prices.length);
     showResult();
   }catch(e){
     const eb=document.getElementById("errBox");
@@ -650,16 +467,15 @@ async function runBacktest(){
   }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   RENDER RESULT
-═══════════════════════════════════════════════════════════ */
-function renderResult(r){
+/* ══════════════════════════════════════
+   RENDER
+══════════════════════════════════════ */
+function renderResult(r,source,mumCount){
   const {stats,equity,deals}=r;
   const pc=stats.totalProfit>=0?"#69db7c":"#f85149";
-  const c=COINS.find(x=>x.symbol===state.coin);
-  const p=PERIODS.find(x=>x.days===state.days);
+  const c=COINS.find(x=>x.symbol===S.coin);
+  const p=PERIODS.find(x=>x.days===S.days);
 
-  // Hero
   document.getElementById("heroMeta").textContent=`${c.label} · ${p.label} · ${stats.totalDeals} DÖNGÜ`;
   document.getElementById("heroPct").textContent=fmtPct(stats.totalProfitPct);
   document.getElementById("heroPct").style.color=pc;
@@ -670,90 +486,56 @@ function renderResult(r){
   document.getElementById("heroDD").textContent=fmtPct(-stats.maxDrawdown);
   document.getElementById("heroSafety").textContent=fmt(stats.avgSafetyOrders,1);
 
-  // Start badge
-  const sb=document.getElementById("startBadge");
-  if(state.startCond==="instant"){
-    sb.textContent="⚡ Anında";sb.style.background="#f7931a22";sb.style.color="#f7931a";sb.style.border="1px solid #f7931a44";
-  } else {
-    const tf=TFS.find(t=>t.v===state.rsiTf);
-    sb.textContent=`📉 RSI(${state.rsiTrigPeriod}) ${state.rsiDir==="lt"?"<":">"} ${state.rsiThreshold} · ${tf?tf.label:state.rsiTf}`;
-    sb.style.background="#9775fa22";sb.style.color="#9775fa";sb.style.border="1px solid #9775fa44";
-  }
+  // Kaynak bilgisi
+  document.getElementById("srcBar").textContent=`📡 Veri: ${source} · ${mumCount} günlük mum`;
 
-  // Stats grid
+  const sb=document.getElementById("startBadge");
+  if(S.startCond==="instant"){sb.textContent="⚡ Anında";sb.style.cssText="margin-top:12px;display:inline-flex;align-items:center;gap:6px;border-radius:50px;padding:5px 14px;font-size:11px;font-weight:800;background:#f7931a22;color:#f7931a;border:1px solid #f7931a44";}
+  else{const tf=TFS.find(t=>t.v===S.rsiTf);sb.textContent=`📉 RSI(${S.rsiTrigPeriod}) ${S.rsiDir==="lt"?"<":">"} ${S.rsiThreshold} · ${tf?tf.label:S.rsiTf}`;sb.style.cssText="margin-top:12px;display:inline-flex;align-items:center;gap:6px;border-radius:50px;padding:5px 14px;font-size:11px;font-weight:800;background:#9775fa22;color:#9775fa;border:1px solid #9775fa44";}
+
+  // Stats
   const sg=document.getElementById("statsGrid");sg.innerHTML="";
-  [
-    {label:"Toplam Kâr",value:fmtUSD(stats.totalProfit),color:pc},
-    {label:"ROI",value:fmtPct(stats.totalProfitPct),color:pc},
-    {label:"Win Rate",value:fmtPct(stats.winRate),color:stats.winRate>=50?"#69db7c":"#f85149"},
-    {label:"Max Drawdown",value:fmtPct(-stats.maxDrawdown),color:"#f85149"},
-    {label:"Toplam Döngü",value:stats.totalDeals,color:"#4dabf7"},
-    {label:"Kazanan / Kaybeden",value:`${stats.wins}W / ${stats.losses}L`,color:"#f0f0f5"},
-    {label:"Stop Loss İsabeti",value:stats.slHits,color:stats.slHits>0?"#f85149":"#5a5a78"},
-    {label:"Ort. Safety Emri",value:fmt(stats.avgSafetyOrders,1),color:"#fcc419"},
+  [{label:"Toplam Kâr",value:fmtUSD(stats.totalProfit),color:pc},{label:"ROI",value:fmtPct(stats.totalProfitPct),color:pc},
+   {label:"Win Rate",value:fmtPct(stats.winRate),color:stats.winRate>=50?"#69db7c":"#f85149"},{label:"Max Drawdown",value:fmtPct(-stats.maxDrawdown),color:"#f85149"},
+   {label:"Toplam Döngü",value:stats.totalDeals,color:"#4dabf7"},{label:"Kazan / Kaybet",value:`${stats.wins}W/${stats.losses}L`,color:"#f0f0f5"},
+   {label:"SL İsabeti",value:stats.slHits,color:stats.slHits>0?"#f85149":"#5a5a78"},{label:"Ort. Safety",value:fmt(stats.avgSafetyOrders,1),color:"#fcc419"},
   ].forEach(({label,value,color})=>{
-    sg.innerHTML+=`<div class="stat-card" style="border:1px solid ${color}33">
-      <div class="stat-val" style="color:${color}">${value}</div>
-      <div class="stat-lbl">${label}</div>
-    </div>`;
+    sg.innerHTML+=`<div class="stat-card" style="border:1px solid ${color}33"><div class="stat-val" style="color:${color}">${value}</div><div class="stat-lbl">${label}</div></div>`;
   });
 
-  // Charts - destroy old
+  // Charts
   if(charts.price){charts.price.destroy();charts.price=null;}
   if(charts.rsi){charts.rsi.destroy();charts.rsi=null;}
-
-  // Subsample for performance
   const step=Math.max(1,Math.floor(equity.length/120));
-  const eqSub=equity.filter((_,i)=>i%step===0||i===equity.length-1);
+  const eq=equity.filter((_,i)=>i%step===0||i===equity.length-1);
 
-  // Price chart
   setTimeout(()=>{
-    const ctx=document.getElementById("priceChart").getContext("2d");
-    charts.price=new Chart(ctx,{
+    charts.price=new Chart(document.getElementById("priceChart").getContext("2d"),{
       type:"line",
-      data:{
-        labels:eqSub.map(e=>e.date),
-        datasets:[
-          {label:"Portföy",data:eqSub.map(e=>e.value),borderColor:"#f7931a",backgroundColor:"#f7931a18",fill:true,tension:.3,pointRadius:0,borderWidth:2,yAxisID:"y"},
-          {label:"Fiyat",data:eqSub.map(e=>e.price),borderColor:"#4dabf7",backgroundColor:"transparent",fill:false,tension:.3,pointRadius:0,borderWidth:1.5,borderDash:[5,3],yAxisID:"y1"},
-        ]
-      },
-      options:{
-        responsive:true,maintainAspectRatio:false,
-        animation:{duration:0},
+      data:{labels:eq.map(e=>e.date),datasets:[
+        {label:"Portföy",data:eq.map(e=>e.value),borderColor:"#f7931a",backgroundColor:"#f7931a18",fill:true,tension:.3,pointRadius:0,borderWidth:2,yAxisID:"y"},
+        {label:"Fiyat",data:eq.map(e=>e.price),borderColor:"#4dabf7",fill:false,tension:.3,pointRadius:0,borderWidth:1.5,borderDash:[5,3],yAxisID:"y1"},
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,animation:{duration:0},
         plugins:{legend:{display:false},tooltip:{mode:"index",intersect:false,backgroundColor:"#12121a",borderColor:"#2a2a3e",borderWidth:1,titleColor:"#5a5a78",bodyColor:"#f0f0f5"}},
         scales:{
           x:{ticks:{color:"#3a3a58",font:{size:9},maxTicksLimit:7},grid:{color:"#1a1a28"}},
           y:{position:"left",ticks:{color:"#3a3a58",font:{size:9},callback:v=>v>=1000?"$"+(v/1000).toFixed(1)+"k":"$"+v.toFixed(0)},grid:{color:"#1a1a28"}},
           y1:{position:"right",ticks:{color:"#3a3a58",font:{size:9},callback:v=>v>=1000?"$"+(v/1000).toFixed(0)+"k":"$"+v.toFixed(0)},grid:{display:false}},
-        }
-      }
+        }}
     });
 
-    // RSI chart
-    document.getElementById("rsiChartLbl").textContent=`RSI (${state.rsiPeriod})`;
-    const rsiCtx=document.getElementById("rsiChart").getContext("2d");
-    charts.rsi=new Chart(rsiCtx,{
+    document.getElementById("rsiChartLbl").textContent=`RSI (${S.rsiPeriod})`;
+    charts.rsi=new Chart(document.getElementById("rsiChart").getContext("2d"),{
       type:"line",
-      data:{
-        labels:eqSub.map(e=>e.date),
-        datasets:[{label:"RSI",data:eqSub.map(e=>e.rsi),borderColor:"#9775fa",backgroundColor:"transparent",tension:.3,pointRadius:0,borderWidth:2,spanGaps:false}]
-      },
-      options:{
-        responsive:true,maintainAspectRatio:false,
-        animation:{duration:0},
-        plugins:{legend:{display:false},
-          tooltip:{backgroundColor:"#12121a",borderColor:"#2a2a3e",borderWidth:1,titleColor:"#5a5a78",bodyColor:"#9775fa"},
-          annotation:{annotations:{ob:{type:"line",yMin:state.rsiOB,yMax:state.rsiOB,borderColor:"#f8514988",borderWidth:1,borderDash:[4,3]},
-            os:{type:"line",yMin:state.rsiOS,yMax:state.rsiOS,borderColor:"#69db7c88",borderWidth:1,borderDash:[4,3]},
-            mid:{type:"line",yMin:50,yMax:50,borderColor:"#2a2a3e",borderWidth:1,borderDash:[2,4]}
-          }}
-        },
-        scales:{
-          x:{ticks:{color:"#3a3a58",font:{size:9},maxTicksLimit:7},grid:{color:"#1a1a28"}},
-          y:{min:0,max:100,ticks:{color:"#3a3a58",font:{size:9},stepSize:10},grid:{color:"#1a1a28"}},
-        }
-      }
+      data:{labels:eq.map(e=>e.date),datasets:[
+        {label:"RSI",data:eq.map(e=>e.rsi),borderColor:"#9775fa",fill:false,tension:.3,pointRadius:0,borderWidth:2,spanGaps:false},
+        {label:"OB",data:eq.map(()=>S.rsiOB),borderColor:"#f8514955",borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false},
+        {label:"OS",data:eq.map(()=>S.rsiOS),borderColor:"#69db7c55",borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false},
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,animation:{duration:0},
+        plugins:{legend:{display:false},tooltip:{backgroundColor:"#12121a",borderColor:"#2a2a3e",borderWidth:1,titleColor:"#5a5a78",bodyColor:"#9775fa",filter:item=>item.datasetIndex===0}},
+        scales:{x:{ticks:{color:"#3a3a58",font:{size:9},maxTicksLimit:7},grid:{color:"#1a1a28"}},y:{min:0,max:100,ticks:{color:"#3a3a58",font:{size:9},stepSize:10},grid:{color:"#1a1a28"}}}}
     });
   },50);
 
@@ -761,23 +543,20 @@ function renderResult(r){
   const lastRSI=equity.length?equity[equity.length-1].rsi:null;
   const rb=document.getElementById("rsiBadge");
   if(lastRSI!=null){
-    const zone=lastRSI>=state.rsiOB?{label:"AŞIRI ALIM",color:"#f85149",bg:"#2a0a08"}:lastRSI<=state.rsiOS?{label:"AŞIRI SATIM",color:"#69db7c",bg:"#082a0a"}:{label:"NÖTR",color:"#fcc419",bg:"#2a1f00"};
-    rb.style.background=zone.bg;rb.style.border=`1px solid ${zone.color}44`;
-    rb.innerHTML=`<div class="rsi-val" style="color:${zone.color}">${lastRSI}</div>
-      <div><div style="font-size:13px;color:${zone.color};font-weight:800">RSI(${state.rsiPeriod}) · ${zone.label}</div>
-      <div style="font-size:11px;color:#5a5a78;margin-top:3px">AL &lt;${state.rsiOS} · SAT &gt;${state.rsiOB}</div></div>`;
-  } else {rb.innerHTML="<div style='color:#5a5a78;font-size:13px'>RSI verisi yok</div>";}
+    const zone=lastRSI>=S.rsiOB?{label:"AŞIRI ALIM",color:"#f85149",bg:"#2a0a08"}:lastRSI<=S.rsiOS?{label:"AŞIRI SATIM",color:"#69db7c",bg:"#082a0a"}:{label:"NÖTR",color:"#fcc419",bg:"#2a1f00"};
+    rb.style.cssText=`display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;background:${zone.bg};border:1px solid ${zone.color}44`;
+    rb.innerHTML=`<div class="rsi-val" style="color:${zone.color}">${lastRSI}</div><div><div style="font-size:13px;color:${zone.color};font-weight:800">RSI(${S.rsiPeriod}) · ${zone.label}</div><div style="font-size:11px;color:#5a5a78;margin-top:3px">AL &lt;${S.rsiOS} · SAT &gt;${S.rsiOB}</div></div>`;
+  }
 
   // Deals
   const dl=document.getElementById("dealsList");dl.innerHTML="";
   deals.forEach((d,i)=>{
     const isSL=d.exitReason==="SL",isOpen=d.exitReason==="OPEN";
-    const bc=isSL?"#f85149":d.profit>=0?"#69db7c33":"#f8514933";
     const pc2=d.profit>=0?"#69db7c":"#f85149";
-    dl.innerHTML+=`<div class="deal-card" style="border:1px solid ${bc};animation-delay:${i*.03}s">
+    dl.innerHTML+=`<div class="deal-card" style="border:1px solid ${isSL?"#f85149":d.profit>=0?"#69db7c33":"#f8514933"};animation-delay:${i*.03}s">
       <div class="deal-top">
         <div>
-          <div class="deal-meta">#${i+1} · ${d.startDate} → ${d.endDate}${isSL?' <span style="color:#f85149;font-size:10px">🛑 SL</span>':""}${isOpen?' <span style="color:#fcc419;font-size:10px">⏳ AÇIK</span>':""}</div>
+          <div class="deal-meta">#${i+1} · ${d.startDate} → ${d.endDate}${isSL?' <span style="color:#f85149;font-size:10px">🛑 SL</span>':""}${isOpen?' <span style="color:#fcc419;font-size:10px">⏳</span>':""}</div>
           <div class="deal-sub">Safety: <span style="color:#fcc419;font-weight:800">${d.safetyCount}</span> · Ort: <span style="color:#c0c0d8;font-weight:700">${fmtUSD(d.avgCost)}</span></div>
         </div>
         <div style="text-align:right">
@@ -786,16 +565,15 @@ function renderResult(r){
         </div>
       </div>
       <div class="deal-row3">
-        ${[["İlk Giriş",d.initPrice],["Çıkış",d.exitPrice],["Top. Yatırım",d.totalCost]].map(([l,v])=>`
-          <div class="deal-cell"><div class="deal-cell-l">${l}</div><div class="deal-cell-v">${fmtUSD(v)}</div></div>`).join("")}
+        ${[["İlk Giriş",d.initPrice],["Çıkış",d.exitPrice],["Top. Yatırım",d.totalCost]].map(([l,v])=>`<div class="deal-cell"><div class="deal-cell-l">${l}</div><div class="deal-cell-v">${fmtUSD(v)}</div></div>`).join("")}
       </div>
     </div>`;
   });
 }
 
-/* ═══════════════════════════════════════════════════════════
-   SCREEN SWITCH
-═══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════
+   SCREEN / TAB
+══════════════════════════════════════ */
 function showResult(){
   document.getElementById("settingsPanel").classList.add("hidden");
   document.getElementById("resultPanel").classList.remove("hidden");
@@ -803,37 +581,83 @@ function showResult(){
   document.getElementById("backBtn").classList.remove("hidden");
   switchTab("stats");
 }
-
 function showSettings(){
   document.getElementById("resultPanel").classList.add("hidden");
   document.getElementById("settingsPanel").classList.remove("hidden");
   document.getElementById("fabWrap").classList.remove("hidden");
   document.getElementById("backBtn").classList.add("hidden");
-  const btn=document.getElementById("fabBtn");
-  btn.disabled=false;btn.textContent="▶ BACKTEST BAŞLAT";
+  const btn=document.getElementById("fabBtn");btn.disabled=false;btn.textContent="▶ BACKTEST BAŞLAT";
   updateCapInfo();
 }
-
 function switchTab(name){
-  activeTab=name;
-  document.querySelectorAll(".tab-btn").forEach((b,i)=>{
-    const tabs=["stats","chart","rsi","deals"];
-    b.className="tab-btn"+(tabs[i]===name?" active":"");
-  });
+  document.querySelectorAll(".tab-btn").forEach((b,i)=>{b.className="tab-btn"+(["stats","chart","rsi","deals"][i]===name?" active":"");});
   document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
   document.getElementById("tab-"+name).classList.add("active");
 }
 
-/* ═══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════
+   UI BUILDERS
+══════════════════════════════════════ */
+function buildChips(){
+  const cc=document.getElementById("coinChips");
+  COINS.forEach(c=>{const b=document.createElement("button");b.className="chip"+(c.symbol===S.coin?" active":"");b.textContent=c.emoji+" "+c.label;b.onclick=()=>{S.coin=c.symbol;renderChips();updateBadge();};cc.appendChild(b);});
+  const pc=document.getElementById("periodChips");
+  PERIODS.forEach(p=>{const b=document.createElement("button");b.className="chip"+(p.days===S.days?" active":"");b.textContent=p.label;b.onclick=()=>{S.days=p.days;renderChips();updateBadge();};pc.appendChild(b);});
+  const tc=document.getElementById("tfChips");
+  TFS.forEach(t=>{const b=document.createElement("button");b.className="chip"+(t.v===S.rsiTf?" active-purple":"");b.style.padding="8px 14px";b.textContent=t.label;b.onclick=()=>{S.rsiTf=t.v;renderChips();updateRsiSummary();};tc.appendChild(b);});
+}
+function renderChips(){
+  document.querySelectorAll("#coinChips .chip").forEach((b,i)=>{b.className="chip"+(COINS[i].symbol===S.coin?" active":"");});
+  document.querySelectorAll("#periodChips .chip").forEach((b,i)=>{b.className="chip"+(PERIODS[i].days===S.days?" active":"");});
+  document.querySelectorAll("#tfChips .chip").forEach((b,i)=>{b.className="chip"+(TFS[i].v===S.rsiTf?" active-purple":"");});
+}
+function buildSteppers(){
+  document.querySelectorAll(".stepper[data-key]").forEach(el=>{
+    const key=el.dataset.key,step=parseFloat(el.dataset.step)||1,min=parseFloat(el.dataset.min)||0,max=parseFloat(el.dataset.max)||999999,dec=parseInt(el.dataset.dec)||0;
+    const dBtn=document.createElement("button");dBtn.className="stepper-btn";dBtn.textContent="−";
+    const inp=document.createElement("input");inp.type="number";inp.className="stepper-input";inp.value=S[key];
+    const iBtn=document.createElement("button");iBtn.className="stepper-btn";iBtn.textContent="+";
+    const upd=v=>{let val=Math.min(max,Math.max(min,parseFloat(v)||0));val=dec?parseFloat(val.toFixed(dec)):Math.round(val);S[key]=val;inp.value=val;updateCapInfo();updateRsiSummary();};
+    dBtn.onclick=()=>upd(S[key]-step);iBtn.onclick=()=>upd(S[key]+step);inp.onchange=()=>upd(inp.value);
+    el.appendChild(dBtn);el.appendChild(inp);el.appendChild(iBtn);
+  });
+}
+function maxCycleInv(){let t=S.initialAmt,a=S.safetyAmt;for(let i=0;i<S.maxSafetyOrders;i++){t+=a;a*=S.amtMult;}return t;}
+function updateCapInfo(){
+  const mc=maxCycleInv(),ok=mc<=S.startCapital;
+  document.getElementById("capDot").style.background=ok?"#69db7c":"#f85149";
+  document.getElementById("capText").style.color=ok?"#69db7c":"#f85149";
+  document.getElementById("capText").textContent=ok?`✓ Yeterli — $${Math.ceil(mc)} gerekli`:`⚠ Tek döngü maks: $${Math.ceil(mc)} — yetersiz`;
+  const btn=document.getElementById("fabBtn");
+  btn.disabled=!ok;btn.textContent=ok?"▶ BACKTEST BAŞLAT":"⚠ Sermaye Yetersiz";
+}
+function setStartCond(type){
+  S.startCond=type;const isRsi=type==="rsi";
+  document.getElementById("condInstantRadio").style.cssText=`width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#000;background:${isRsi?"transparent":"#f7931a"};border:${isRsi?"2px solid #3a3a58":"2px solid #f7931a"}`;
+  document.getElementById("condInstantRadio").textContent=isRsi?"":"✓";
+  document.getElementById("condInstantTitle").style.color=isRsi?"#5a5a78":"#f0f0f5";
+  document.getElementById("condRsiRadio").style.cssText=`width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#000;background:${isRsi?"#9775fa":"transparent"};border:${isRsi?"2px solid #9775fa":"2px solid #3a3a58"}`;
+  document.getElementById("condRsiRadio").textContent=isRsi?"✓":"";
+  document.getElementById("condRsiTitle").style.color=isRsi?"#9775fa":"#5a5a78";
+  document.getElementById("condRsiBtn").style.borderBottom=isRsi?"1px solid #9775fa33":"none";
+  document.getElementById("rsiSubPanel").classList.toggle("hidden",!isRsi);
+}
+function setRsiDir(dir){
+  S.rsiDir=dir;
+  document.getElementById("dirLtBtn").className="rsi-dir-btn"+(dir==="lt"?" active":"");
+  document.getElementById("dirGtBtn").className="rsi-dir-btn"+(dir==="gt"?" active":"");
+  updateRsiSummary();
+}
+function updateRsiSummary(){
+  const tf=TFS.find(t=>t.v===S.rsiTf);
+  document.getElementById("rsiSummary").innerHTML=`RSI(${S.rsiTrigPeriod}) · ${tf?tf.label:S.rsiTf} grafiğinde <strong style="color:#9775fa">${S.rsiDir==="lt"?"<":">"} ${S.rsiThreshold}</strong> olunca deal aç`;
+}
+function updateBadge(){const c=COINS.find(x=>x.symbol===S.coin),p=PERIODS.find(x=>x.days===S.days);document.getElementById("headerBadge").textContent=`${c.emoji} ${c.label} · ${p.label}`;}
+
+/* ══════════════════════════════════════
    INIT
-═══════════════════════════════════════════════════════════ */
-buildChips();
-buildSteppers();
-setStartCond("instant");
-setRsiDir("lt");
-updateBadge();
-updateCapInfo();
-updateRsiSummary();
+══════════════════════════════════════ */
+buildChips();buildSteppers();setStartCond("instant");setRsiDir("lt");updateBadge();updateCapInfo();updateRsiSummary();
 </script>
 </body>
 </html>
