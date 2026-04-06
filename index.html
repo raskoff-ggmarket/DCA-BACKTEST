@@ -1,36 +1,325 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>OKX DCA Bot Backtest</title>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
-  <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html,body{background:#0a0a0f;color:#f0f0f5;font-family:'Nunito',sans-serif;min-height:100vh}
-    input[type=number]::-webkit-inner-spin-button,
-    input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
-    input:focus{border-color:#f7931a!important;outline:none;box-shadow:0 0 0 2px #f7931a22}
-    select:focus{border-color:#f7931a!important;outline:none}
-    ::-webkit-scrollbar{width:0;height:0}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-    .fc{animation:fadeUp .22s ease both}
-    button,select{font-family:'Nunito',sans-serif}
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>OKX DCA Bot Backtest</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#0a0a0f;color:#f0f0f5;font-family:'Nunito',sans-serif;min-height:100vh}
+::-webkit-scrollbar{width:0}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.app{max-width:480px;margin:0 auto;display:flex;flex-direction:column;min-height:100vh}
+
+/* Header */
+.header{background:#0d0d15;border-bottom:1px solid #1a1a2e;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}
+.header-title{font-weight:900;font-size:15px;color:#f7931a}
+.header-sub{font-size:10px;color:#3a3a58;letter-spacing:.1em;font-weight:700}
+.header-badge{background:#1a1a2e;border-radius:12px;padding:7px 14px;font-size:13px;font-weight:800;color:#f7931a;border:1px solid #2a2a40}
+.back-btn{background:#1e1e30;border:none;color:#f0f0f5;border-radius:12px;width:36px;height:36px;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;margin-right:10px}
+
+/* Body */
+.body{flex:1;overflow-y:auto;padding-bottom:100px}
+
+/* Section */
+.sec{margin:14px 14px 0;background:#12121a;border-radius:18px;overflow:hidden;border:1px solid #1e1e2e}
+.sec-head{padding:12px 16px 10px;font-size:10px;font-weight:800;color:#f7931a;letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid #1e1e2e}
+.sec-head.purple{color:#9775fa}
+.sec-head.blue{color:#4dabf7}
+
+/* Row */
+.row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #0f0f1e}
+.row:last-child{border-bottom:none}
+.row-label{font-size:14px;color:#9090a8}
+.row-sub{font-size:11px;color:#3a3a58;margin-top:2px}
+
+/* Chip */
+.chips{display:flex;gap:8px;padding:10px 14px;flex-wrap:wrap}
+.chip{padding:8px 14px;border-radius:50px;font-size:13px;font-weight:700;border:2px solid #1e1e2e;background:#0a0a0f;color:#5a5a78;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .15s}
+.chip.active{border-color:#f7931a;background:#f7931a22;color:#f7931a}
+.chip.active-purple{border-color:#9775fa;background:#9775fa22;color:#9775fa}
+
+/* Stepper */
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper-btn{width:36px;height:36px;border-radius:10px;background:#1e1e2e;border:none;color:#f0f0f5;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif}
+.stepper-input{background:#0a0a0f;border:1px solid #2a2a3e;border-radius:10px;color:#f0f0f5;font-size:14px;font-weight:700;padding:7px 4px;width:84px;text-align:center;font-family:'Nunito',sans-serif;outline:none}
+.stepper-input:focus{border-color:#f7931a}
+
+/* FAB */
+.fab-wrap{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;padding:16px 16px 28px;background:linear-gradient(to top,#0a0a0f 70%,transparent);z-index:20}
+.fab{width:100%;background:linear-gradient(135deg,#f7931a,#d4780d);color:#000;font-weight:900;font-size:16px;border:none;border-radius:18px;padding:18px;cursor:pointer;font-family:'Nunito',sans-serif;box-shadow:0 8px 28px rgba(247,147,26,.4)}
+.fab:disabled{background:#1e1e30;color:#5a5a78;box-shadow:none;cursor:not-allowed}
+
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px}
+.stat-card{background:#0a0a0f;border-radius:16px;padding:14px}
+.stat-val{font-size:20px;font-weight:900;line-height:1;margin-bottom:5px}
+.stat-lbl{font-size:10px;color:#4a4a68;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+
+/* Hero */
+.hero{margin:14px 14px 0;background:linear-gradient(140deg,#1a1208,#081a0c);border-radius:22px;padding:20px 18px;border:1px solid #f7931a33;text-align:center}
+.hero-pct{font-size:44px;font-weight:900;line-height:1}
+.hero-usd{font-size:20px;font-weight:700;margin-top:6px;opacity:.85}
+.hero-row{display:flex;gap:8px;justify-content:center;margin-top:14px}
+.hero-item{flex:1;background:#0a0a0f88;border-radius:12px;padding:9px 6px}
+.hero-iv{font-size:14px;font-weight:800}
+.hero-il{font-size:10px;color:#4a4a68;margin-top:2px}
+
+/* Tabs */
+.tabs{display:flex;gap:5px;padding:14px 14px 0}
+.tab-btn{flex:1;padding:10px 0;font-size:11px;font-weight:800;border:none;background:transparent;color:#5a5a78;border-radius:12px;cursor:pointer;font-family:'Nunito',sans-serif}
+.tab-btn.active{background:#f7931a;color:#000}
+
+/* Tab panels */
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* Chart container */
+.chart-box{margin:14px 14px 0;background:#12121a;border-radius:18px;padding:16px 12px 12px;border:1px solid #1e1e2e}
+.chart-lbl{font-size:10px;color:#3a3a58;margin-bottom:12px;font-weight:700;letter-spacing:.08em}
+.chart-legend{display:flex;gap:18px;justify-content:center;margin-top:10px;font-size:11px;color:#5a5a78;font-weight:700}
+
+/* Deal cards */
+.deals-list{padding:14px;display:flex;flex-direction:column;gap:10px}
+.deal-card{background:#12121a;border-radius:16px;padding:14px 15px;animation:fadeUp .22s ease both}
+.deal-top{display:flex;justify-content:space-between;margin-bottom:10px}
+.deal-meta{font-size:11px;color:#3a3a58;font-weight:700}
+.deal-sub{font-size:12px;color:#6a6a88;margin-top:3px}
+.deal-pct{font-size:18px;font-weight:900;line-height:1}
+.deal-usd{font-size:12px;font-weight:700;margin-top:3px}
+.deal-row3{display:flex;gap:8px}
+.deal-cell{flex:1;background:#0a0a0f;border-radius:10px;padding:7px 8px}
+.deal-cell-l{font-size:10px;color:#3a3a58;font-weight:700}
+.deal-cell-v{font-size:12px;color:#c0c0d8;font-weight:700;margin-top:2px}
+
+/* Start cond toggle */
+.cond-btn{width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px;background:transparent;border:none;cursor:pointer;border-bottom:1px solid #0f0f1e;font-family:'Nunito',sans-serif}
+.cond-title{font-size:15px;font-weight:800}
+.cond-sub{font-size:11px;color:#3a3a58;margin-top:3px}
+.cond-radio{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#000}
+
+/* RSI badge */
+.rsi-badge{display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px}
+.rsi-val{font-size:32px;font-weight:900;min-width:56px;text-align:center}
+
+/* Info bar */
+.info-bar{padding:10px 16px;display:flex;gap:8px;align-items:center;font-size:12px;font-weight:700}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* Loading spinner */
+.spinner{width:18px;height:18px;border:3px solid #5a5a7855;border-top:3px solid #9090a8;border-radius:50%;display:inline-block;animation:spin .7s linear infinite}
+
+/* RSI sub section */
+.rsi-sub{background:#0d0d18;padding:0}
+.rsi-dir-row{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid #0f0f1e}
+.rsi-dir-btn{flex:1;padding:10px;border-radius:12px;font-size:14px;font-weight:800;border:2px solid #1e1e2e;background:#0a0a0f;color:#5a5a78;cursor:pointer;font-family:'Nunito',sans-serif}
+.rsi-dir-btn.active{border-color:#9775fa;background:#9775fa22;color:#9775fa}
+.rsi-summary{margin:12px 14px;background:#12121a;border-radius:12px;padding:11px 14px;border:1px solid #9775fa33;font-size:12px;color:#9090a8;line-height:1.5}
+.hidden{display:none}
+.start-badge{margin-top:12px;display:inline-flex;align-items:center;gap:6px;border-radius:50px;padding:5px 14px;font-size:11px;font-weight:800}
+</style>
 </head>
 <body>
-<div id="root"></div>
-<script type="text/babel">
-const {useState,useCallback,useMemo}=React;
-const {ComposedChart,Line,XAxis,YAxis,Tooltip,CartesianGrid,
-       ResponsiveContainer,Area,ReferenceLine}=Recharts;
+<div class="app">
+  <!-- HEADER -->
+  <div class="header" id="header">
+    <div style="display:flex;align-items:center">
+      <button class="back-btn hidden" id="backBtn" onclick="showSettings()">‹</button>
+      <div>
+        <div class="header-title">OKX DCA BOT</div>
+        <div class="header-sub">BACKTEST SİMÜLATÖRÜ</div>
+      </div>
+    </div>
+    <div class="header-badge" id="headerBadge">₿ BTC · 1Y</div>
+  </div>
 
-/* ── Sabitler ─────────────────────────────────────────────── */
+  <div class="body" id="body">
+
+    <!-- ═══ SETTINGS ═══ -->
+    <div id="settingsPanel">
+
+      <!-- İşlem Çifti -->
+      <div class="sec">
+        <div class="sec-head">🪙 İşlem Çifti</div>
+        <div class="chips" id="coinChips"></div>
+      </div>
+
+      <!-- Periyot -->
+      <div class="sec">
+        <div class="sec-head">📅 Backtest Periyodu</div>
+        <div class="chips" id="periodChips"></div>
+      </div>
+
+      <!-- Sermaye -->
+      <div class="sec">
+        <div class="sec-head">💰 Sermaye</div>
+        <div class="row">
+          <div><div class="row-label">Başlangıç Sermayesi ($)</div><div class="row-sub">Botun kullanacağı toplam bakiye</div></div>
+          <div class="stepper" data-key="startCapital" data-step="500" data-min="100"></div>
+        </div>
+        <div class="info-bar" id="capInfo">
+          <div class="dot" id="capDot"></div>
+          <div id="capText"></div>
+        </div>
+      </div>
+
+      <!-- Bot Parametreleri -->
+      <div class="sec">
+        <div class="sec-head">⚙️ Bot Parametreleri</div>
+        <div class="row"><div><div class="row-label">İlk alım miktarı ($)</div><div class="row-sub">Her döngünün ilk alım emri büyüklüğü</div></div><div class="stepper" data-key="initialAmt" data-step="10" data-min="1"></div></div>
+        <div class="row"><div><div class="row-label">Güvenlik emri miktarı ($)</div><div class="row-sub">Her güvenlik emrinin başlangıç büyüklüğü</div></div><div class="stepper" data-key="safetyAmt" data-step="10" data-min="1"></div></div>
+        <div class="row"><div><div class="row-label">Fiyat adımı (%)</div><div class="row-sub">Güvenlik emrinin tetikleneceği fiyat düşüşü</div></div><div class="stepper" data-key="priceStep" data-step="0.1" data-min="0.1" data-dec="1"></div></div>
+        <div class="row"><div><div class="row-label">Fiyat adımı katsayısı ×</div><div class="row-sub">Her adımda fiyat adımını büyütme oranı</div></div><div class="stepper" data-key="stepMult" data-step="0.1" data-min="1" data-dec="1"></div></div>
+        <div class="row"><div><div class="row-label">Güvenlik emri katsayısı ×</div><div class="row-sub">Her güvenlik emrinde miktar büyütme oranı</div></div><div class="stepper" data-key="amtMult" data-step="0.1" data-min="1" data-dec="1"></div></div>
+        <div class="row"><div><div class="row-label">Maks güvenlik emri</div><div class="row-sub">Döngü başına açılabilecek maks emir sayısı</div></div><div class="stepper" data-key="maxSafetyOrders" data-step="1" data-min="1" data-max="100"></div></div>
+        <div class="row"><div><div class="row-label">Döngü kârı (%)</div><div class="row-sub">Ortalama maliyetten TP tetikleme oranı</div></div><div class="stepper" data-key="tpPct" data-step="0.1" data-min="0.1" data-dec="1"></div></div>
+        <div class="row"><div><div class="row-label">Zarar durdur (%)</div><div class="row-sub">İlk giriş fiyatından SL seviyesi (0 = kapalı)</div></div><div class="stepper" data-key="slPct" data-step="0.5" data-min="0" data-dec="1"></div></div>
+        <div class="row"><div><div class="row-label">Döngüler arası bekleme (gün)</div><div class="row-sub">TP/SL sonrası sonraki döngü gecikmesi</div></div><div class="stepper" data-key="cooldown" data-step="1" data-min="0"></div></div>
+      </div>
+
+      <!-- RSI Gösterge -->
+      <div class="sec" style="border-color:#9775fa44">
+        <div class="sec-head purple">📉 RSI Göstergesi</div>
+        <div class="row">
+          <div><div class="row-label" style="color:#9090a8">RSI Periyodu</div><div class="row-sub">Backtest grafiğinde gösterilecek RSI</div></div>
+          <div class="stepper" data-key="rsiPeriod" data-step="1" data-min="2" data-max="50"></div>
+        </div>
+        <div class="row" style="border-bottom:none">
+          <div><div class="row-label" style="color:#f85149">Aşırı Alım</div></div>
+          <div class="stepper" data-key="rsiOB" data-step="1" data-min="51" data-max="99"></div>
+        </div>
+        <div class="row" style="border-bottom:none">
+          <div><div class="row-label" style="color:#69db7c">Aşırı Satım</div></div>
+          <div class="stepper" data-key="rsiOS" data-step="1" data-min="1" data-max="49"></div>
+        </div>
+      </div>
+
+      <!-- Başlatma Koşulu -->
+      <div class="sec" style="border-color:#4dabf744;margin-bottom:0">
+        <div class="sec-head blue">🚀 Başlatma Koşulu</div>
+
+        <button class="cond-btn" onclick="setStartCond('instant')" id="condInstantBtn">
+          <div style="text-align:left">
+            <div class="cond-title" id="condInstantTitle">⚡ Anında</div>
+            <div class="cond-sub">Döngü başlayınca hemen gir</div>
+          </div>
+          <div class="cond-radio" id="condInstantRadio"></div>
+        </button>
+
+        <button class="cond-btn" onclick="setStartCond('rsi')" id="condRsiBtn" style="border-bottom:none">
+          <div style="text-align:left">
+            <div class="cond-title" id="condRsiTitle">📉 RSI Sinyali</div>
+            <div class="cond-sub">RSI koşulu sağlanınca gir</div>
+          </div>
+          <div class="cond-radio" id="condRsiRadio"></div>
+        </button>
+
+        <!-- RSI detay -->
+        <div class="rsi-sub hidden" id="rsiSubPanel">
+          <div class="row" style="background:#0d0d18">
+            <div><div class="row-label" style="color:#9090a8">RSI Periyodu</div></div>
+            <div class="stepper" data-key="rsiTrigPeriod" data-step="1" data-min="2" data-max="50"></div>
+          </div>
+
+          <!-- Zaman dilimi -->
+          <div style="padding:12px 16px;border-bottom:1px solid #0f0f1e;background:#0d0d18">
+            <div style="font-size:12px;color:#5a5a78;margin-bottom:10px;font-weight:700">ZAMAN DİLİMİ</div>
+            <div class="chips" id="tfChips" style="padding:0;gap:8px;flex-wrap:wrap"></div>
+          </div>
+
+          <!-- Yön -->
+          <div style="padding:12px 16px;border-bottom:1px solid #0f0f1e;background:#0d0d18">
+            <div style="font-size:12px;color:#5a5a78;margin-bottom:10px;font-weight:700">KOŞUL</div>
+            <div class="rsi-dir-row" style="padding:0;border:none">
+              <button class="rsi-dir-btn" id="dirLtBtn" onclick="setRsiDir('lt')">RSI &lt;</button>
+              <button class="rsi-dir-btn" id="dirGtBtn" onclick="setRsiDir('gt')">RSI &gt;</button>
+            </div>
+          </div>
+
+          <!-- Eşik -->
+          <div class="row" style="background:#0d0d18">
+            <div><div class="row-label" style="color:#9090a8">Eşik Değeri</div></div>
+            <div class="stepper" data-key="rsiThreshold" data-step="1" data-min="1" data-max="99"></div>
+          </div>
+
+          <div class="rsi-summary" id="rsiSummary"></div>
+        </div>
+      </div>
+
+      <div id="errBox" class="hidden" style="margin:14px 14px 0;background:#1a0808;border:1px solid #f85149;border-radius:14px;padding:14px;font-size:13px;color:#f85149;line-height:1.6"></div>
+    </div>
+
+    <!-- ═══ RESULT ═══ -->
+    <div id="resultPanel" class="hidden">
+      <!-- Hero -->
+      <div class="hero">
+        <div style="font-size:11px;color:#5a5a78;letter-spacing:.1em;margin-bottom:8px;font-weight:700" id="heroMeta"></div>
+        <div class="hero-pct" id="heroPct"></div>
+        <div class="hero-usd" id="heroUsd"></div>
+        <div class="hero-row">
+          <div class="hero-item"><div class="hero-iv" id="heroWR"></div><div class="hero-il">Win Rate</div></div>
+          <div class="hero-item"><div class="hero-iv" id="heroDD" style="color:#f85149"></div><div class="hero-il">Max DD</div></div>
+          <div class="hero-item"><div class="hero-iv" id="heroSafety" style="color:#fcc419"></div><div class="hero-il">Ort. Safety</div></div>
+        </div>
+        <div class="start-badge" id="startBadge"></div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('stats')">📊 Stats</button>
+        <button class="tab-btn" onclick="switchTab('chart')">📈 Grafik</button>
+        <button class="tab-btn" onclick="switchTab('rsi')">📉 RSI</button>
+        <button class="tab-btn" onclick="switchTab('deals')">📋 Döngüler</button>
+      </div>
+
+      <!-- Stats tab -->
+      <div class="tab-panel active" id="tab-stats">
+        <div class="stats-grid" id="statsGrid"></div>
+      </div>
+
+      <!-- Chart tab -->
+      <div class="tab-panel" id="tab-chart">
+        <div class="chart-box">
+          <div class="chart-lbl">PORTFÖY & FİYAT</div>
+          <canvas id="priceChart" height="220"></canvas>
+          <div class="chart-legend"><span>🟠 Portföy</span><span>🔵 Fiyat</span></div>
+        </div>
+      </div>
+
+      <!-- RSI tab -->
+      <div class="tab-panel" id="tab-rsi">
+        <div style="padding:14px;display:flex;flex-direction:column;gap:12px">
+          <div class="rsi-badge" id="rsiBadge"></div>
+          <div class="chart-box">
+            <div class="chart-lbl" id="rsiChartLbl">RSI (14)</div>
+            <canvas id="rsiChart" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deals tab -->
+      <div class="tab-panel" id="tab-deals">
+        <div class="deals-list" id="dealsList"></div>
+      </div>
+    </div>
+
+  </div><!-- /body -->
+
+  <!-- FAB -->
+  <div class="fab-wrap" id="fabWrap">
+    <button class="fab" id="fabBtn" onclick="runBacktest()">▶ BACKTEST BAŞLAT</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════ */
 const COINS=[
   {symbol:"BTCUSDT",label:"BTC",emoji:"₿"},
   {symbol:"ETHUSDT",label:"ETH",emoji:"Ξ"},
@@ -41,41 +330,196 @@ const COINS=[
   {symbol:"DOGEUSDT",label:"DOGE",emoji:"Ð"},
   {symbol:"AVAXUSDT",label:"AVAX",emoji:"▲"},
 ];
-const PERIODS=[
-  {label:"3A",days:90},
-  {label:"6A",days:180},
-  {label:"1Y",days:365},
-  {label:"2Y",days:730},
-];
-const TF_OPTIONS=[
-  {label:"3d",value:"3m"},
-  {label:"15d",value:"15m"},
-  {label:"1s",value:"1h"},
-  {label:"4s",value:"4h"},
-  {label:"1G",value:"1d"},
-];
+const PERIODS=[{label:"3A",days:90},{label:"6A",days:180},{label:"1Y",days:365},{label:"2Y",days:730}];
+const TFS=[{label:"15d",v:"15m"},{label:"30d",v:"30m"},{label:"1s",v:"1h"},{label:"4s",v:"4h"},{label:"1G",v:"1d"}];
 
+const state={
+  coin:"BTCUSDT", days:365,
+  startCapital:10000, initialAmt:100, safetyAmt:100,
+  priceStep:1.0, stepMult:1.0, amtMult:1.0,
+  maxSafetyOrders:10, tpPct:1.5, slPct:0, cooldown:0,
+  rsiPeriod:14, rsiOB:70, rsiOS:30,
+  startCond:"instant",
+  rsiTrigPeriod:14, rsiTf:"1h", rsiDir:"lt", rsiThreshold:30,
+};
+
+let charts={price:null,rsi:null};
+let lastResult=null;
+let activeTab="stats";
+
+/* ═══════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════ */
 const fmt=(n,d=2)=>(n??0).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
 const fmtUSD=n=>Math.abs(n)>=1000?"$"+fmt(n/1000,1)+"k":"$"+fmt(n,2);
 const fmtPct=n=>(n>=0?"+":"")+fmt(n,1)+"%";
+const fmtN=n=>parseFloat(fmt(n,4));
 
-/* ── Binance API ──────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   CHIPS
+═══════════════════════════════════════════════════════════ */
+function buildChips(){
+  // Coins
+  const cc=document.getElementById("coinChips");
+  COINS.forEach(c=>{
+    const b=document.createElement("button");
+    b.className="chip"+(c.symbol===state.coin?" active":"");
+    b.textContent=c.emoji+" "+c.label;
+    b.onclick=()=>{state.coin=c.symbol;renderChips();updateBadge();};
+    cc.appendChild(b);
+  });
+  // Periods
+  const pc=document.getElementById("periodChips");
+  PERIODS.forEach(p=>{
+    const b=document.createElement("button");
+    b.className="chip"+(p.days===state.days?" active":"");
+    b.textContent=p.label;
+    b.onclick=()=>{state.days=p.days;renderChips();updateBadge();};
+    pc.appendChild(b);
+  });
+  // Timeframes
+  const tc=document.getElementById("tfChips");
+  TFS.forEach(t=>{
+    const b=document.createElement("button");
+    b.className="chip"+(t.v===state.rsiTf?" active-purple":"");
+    b.textContent=t.label;
+    b.style.padding="8px 14px";
+    b.onclick=()=>{state.rsiTf=t.v;renderChips();updateRsiSummary();};
+    tc.appendChild(b);
+  });
+}
+
+function renderChips(){
+  // Coin chips
+  document.querySelectorAll("#coinChips .chip").forEach((b,i)=>{b.className="chip"+(COINS[i].symbol===state.coin?" active":"");});
+  document.querySelectorAll("#periodChips .chip").forEach((b,i)=>{b.className="chip"+(PERIODS[i].days===state.days?" active":"");});
+  document.querySelectorAll("#tfChips .chip").forEach((b,i)=>{b.className="chip"+(TFS[i].v===state.rsiTf?" active-purple":"");});
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STEPPERS
+═══════════════════════════════════════════════════════════ */
+function buildSteppers(){
+  document.querySelectorAll(".stepper[data-key]").forEach(el=>{
+    const key=el.dataset.key;
+    const step=parseFloat(el.dataset.step)||1;
+    const min=parseFloat(el.dataset.min)||0;
+    const max=parseFloat(el.dataset.max)||999999;
+    const dec=parseInt(el.dataset.dec)||0;
+
+    const decBtn=document.createElement("button");
+    decBtn.className="stepper-btn";decBtn.textContent="−";
+
+    const inp=document.createElement("input");
+    inp.type="number";inp.className="stepper-input";
+    inp.value=state[key];
+
+    const incBtn=document.createElement("button");
+    incBtn.className="stepper-btn";incBtn.textContent="+";
+
+    const update=v=>{
+      let val=Math.min(max,Math.max(min,parseFloat(v)||0));
+      if(dec)val=parseFloat(val.toFixed(dec));else val=Math.round(val);
+      state[key]=val;inp.value=val;
+      updateCapInfo();updateRsiSummary();
+    };
+
+    decBtn.onclick=()=>update(state[key]-step);
+    incBtn.onclick=()=>update(state[key]+step);
+    inp.onchange=()=>update(inp.value);
+    inp.oninput=()=>update(inp.value);
+
+    el.appendChild(decBtn);el.appendChild(inp);el.appendChild(incBtn);
+  });
+}
+
+function syncSteppers(){
+  document.querySelectorAll(".stepper[data-key]").forEach(el=>{
+    const inp=el.querySelector("input");
+    if(inp) inp.value=state[el.dataset.key];
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CAP INFO
+═══════════════════════════════════════════════════════════ */
+function maxCycleInv(){
+  let t=state.initialAmt,a=state.safetyAmt;
+  for(let i=0;i<state.maxSafetyOrders;i++){t+=a;a*=state.amtMult;}
+  return t;
+}
+function updateCapInfo(){
+  const mc=maxCycleInv();
+  const ok=mc<=state.startCapital;
+  document.getElementById("capDot").style.background=ok?"#69db7c":"#f85149";
+  document.getElementById("capText").style.color=ok?"#69db7c":"#f85149";
+  document.getElementById("capText").textContent=ok?`✓ Yeterli — $${Math.ceil(mc)} gerekli`:`⚠ Tek döngü maks: $${Math.ceil(mc)} — yetersiz`;
+  document.getElementById("fabBtn").disabled=!ok;
+  if(!ok)document.getElementById("fabBtn").textContent="⚠ Sermaye Yetersiz";
+  else document.getElementById("fabBtn").textContent="▶ BACKTEST BAŞLAT";
+}
+
+/* ═══════════════════════════════════════════════════════════
+   START CONDITION
+═══════════════════════════════════════════════════════════ */
+function setStartCond(type){
+  state.startCond=type;
+  const isRsi=type==="rsi";
+  document.getElementById("condInstantRadio").style.background=isRsi?"transparent":"#f7931a";
+  document.getElementById("condInstantRadio").style.border=isRsi?"2px solid #3a3a58":"2px solid #f7931a";
+  document.getElementById("condInstantRadio").textContent=isRsi?"":"✓";
+  document.getElementById("condInstantTitle").style.color=isRsi?"#5a5a78":"#f0f0f5";
+  document.getElementById("condRsiRadio").style.background=isRsi?"#9775fa":"transparent";
+  document.getElementById("condRsiRadio").style.border=isRsi?"2px solid #9775fa":"2px solid #3a3a58";
+  document.getElementById("condRsiRadio").textContent=isRsi?"✓":"";
+  document.getElementById("condRsiTitle").style.color=isRsi?"#9775fa":"#5a5a78";
+  document.getElementById("condRsiBtn").style.borderBottom=isRsi?"1px solid #9775fa33":"none";
+  document.getElementById("rsiSubPanel").classList.toggle("hidden",!isRsi);
+}
+
+function setRsiDir(dir){
+  state.rsiDir=dir;
+  document.getElementById("dirLtBtn").className="rsi-dir-btn"+(dir==="lt"?" active":"");
+  document.getElementById("dirGtBtn").className="rsi-dir-btn"+(dir==="gt"?" active":"");
+  updateRsiSummary();
+}
+
+function updateRsiSummary(){
+  const tf=TFS.find(t=>t.v===state.rsiTf);
+  const dirStr=state.rsiDir==="lt"?`< ${state.rsiThreshold}`:`> ${state.rsiThreshold}`;
+  document.getElementById("rsiSummary").innerHTML=
+    `RSI(${state.rsiTrigPeriod}) · ${tf?tf.label:state.rsiTf} grafiğinde <strong style="color:#9775fa">${dirStr}</strong> olunca deal aç`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BADGE
+═══════════════════════════════════════════════════════════ */
+function updateBadge(){
+  const c=COINS.find(x=>x.symbol===state.coin);
+  const p=PERIODS.find(x=>x.days===state.days);
+  document.getElementById("headerBadge").textContent=`${c.emoji} ${c.label} · ${p.label}`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   API
+═══════════════════════════════════════════════════════════ */
 async function fetchCandles(symbol,interval,limit){
   const url=`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
   const r=await fetch(url);
-  if(!r.ok) throw new Error("Binance hatası: "+r.status);
+  if(!r.ok)throw new Error("Binance API hatası: "+r.status);
   const d=await r.json();
-  if(!Array.isArray(d)||!d.length) throw new Error("Veri boş.");
   return d.map(k=>({
     date:new Date(k[0]).toLocaleDateString("tr-TR",{month:"numeric",day:"numeric"}),
-    price:parseFloat(k[4]),
+    price:parseFloat(k[4])
   }));
 }
 
-/* ── RSI ──────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   RSI
+═══════════════════════════════════════════════════════════ */
 function calcRSI(prices,period){
   const out=new Array(prices.length).fill(null);
-  if(prices.length<period+1) return out;
+  if(prices.length<period+1)return out;
   let ag=0,al=0;
   for(let i=1;i<=period;i++){const d=prices[i].price-prices[i-1].price;if(d>0)ag+=d;else al-=d;}
   ag/=period;al/=period;
@@ -86,126 +530,83 @@ function calcRSI(prices,period){
   return out;
 }
 
-/* ── OKX DCA Backtest Motoru ──────────────────────────────── */
-/*
-  OKX mantığı:
-  - Price steps → ilk alım fiyatına (initial price) göre hesaplanır
-  - SO1 fiyatı = initial_price × (1 - step/100)
-  - SO2 fiyatı = SO1_fiyatı   × (1 - step × stepMult / 100)
-  - SO3 fiyatı = SO2_fiyatı   × (1 - step × stepMult² / 100)
-  - SO miktarı  = safetyAmt × amtMult^(n-1)
-  - TP → ortalama maliyete göre (avg cost)
-  - Stop Loss → ilk alım fiyatına göre (initial price)
-  - RSI başlatma → günlük RSI < eşik ise deal aç
-*/
-function runBacktest(prices,cfg,startCond,rsiCfg){
-  const {
-    initialAmt,safetyAmt,priceStep,stepMult,amtMult,
-    maxSafetyOrders,tpPct,slPct,startCapital,cooldown
-  }=cfg;
-
-  const dailyRSI=calcRSI(prices,rsiCfg.period);
+/* ═══════════════════════════════════════════════════════════
+   BACKTEST (OKX mantığı)
+═══════════════════════════════════════════════════════════ */
+function backtestEngine(prices){
+  const s=state;
+  const dailyRSI=calcRSI(prices,s.rsiPeriod);
+  const trigRSI=s.startCond==="rsi"?calcRSI(prices,s.rsiTrigPeriod):null;
 
   const deals=[],equity=[];
-  let cash=startCapital,inDeal=false,deal=null,cdLeft=0;
-  let waitRSI=(startCond.type==="rsi");
+  let cash=s.startCapital,inDeal=false,deal=null,cdLeft=0;
+  let waitRSI=(s.startCond==="rsi");
 
   for(let i=0;i<prices.length;i++){
     const {price,date}=prices[i];
 
     // RSI başlatma koşulu
     if(waitRSI&&!inDeal&&cdLeft===0){
-      const rsiNow=dailyRSI[i];
-      if(rsiNow==null){equity.push({date,value:cash,price,rsi:rsiNow});continue;}
-      const triggered=startCond.rsiDir==="lt"?rsiNow<rsiCfg.threshold:rsiNow>rsiCfg.threshold;
-      if(!triggered){equity.push({date,value:cash,price,rsi:rsiNow});continue;}
-      waitRSI=false; // tetiklendi, devam et
+      const rv=trigRSI?trigRSI[i]:null;
+      if(rv==null){equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;}
+      const triggered=s.rsiDir==="lt"?rv<s.rsiThreshold:rv>s.rsiThreshold;
+      if(!triggered){equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;}
+      waitRSI=false;
     }
 
     if(!inDeal){
-      if(cdLeft>0){
-        cdLeft--;
-        if(startCond.type==="rsi") waitRSI=true;
-        equity.push({date,value:cash,price,rsi:dailyRSI[i]});
-        continue;
-      }
-      // Deal aç
-      if(cash<initialAmt){equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;}
-      cash-=initialAmt;
+      if(cdLeft>0){cdLeft--;if(s.startCond==="rsi")waitRSI=true;equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;}
+      if(cash<s.initialAmt){equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;}
+      cash-=s.initialAmt;
 
-      // OKX: güvenlik emri fiyatlarını önceden hesapla
+      // Safety order seviyeleri (OKX: ilk fiyata göre)
       const soLevels=[];
-      let stepAcc=priceStep, levelPrice=price*(1-priceStep/100);
-      for(let n=0;n<maxSafetyOrders;n++){
-        let soAmt=safetyAmt*Math.pow(amtMult,n);
-        soLevels.push({price:levelPrice,amt:soAmt,filled:false});
-        const nextStep=stepAcc*stepMult;
-        levelPrice=levelPrice*(1-nextStep/100);
-        stepAcc=nextStep;
+      let stepNow=s.priceStep,lvlPrice=price*(1-s.priceStep/100);
+      for(let n=0;n<s.maxSafetyOrders;n++){
+        soLevels.push({price:lvlPrice,amt:s.safetyAmt*Math.pow(s.amtMult,n),filled:false});
+        stepNow=stepNow*s.stepMult;
+        lvlPrice=lvlPrice*(1-stepNow/100);
       }
 
-      deal={
-        startDate:date,
-        initPrice:price,
-        orders:[{date,price,size:initialAmt,qty:initialAmt/price}],
-        totalCost:initialAmt,
-        totalQty:initialAmt/price,
-        avgCost:price,
-        safetyCount:0,
-        soLevels,
-      };
+      deal={startDate:date,initPrice:price,orders:[{date,price,size:s.initialAmt,qty:s.initialAmt/price}],
+            totalCost:s.initialAmt,totalQty:s.initialAmt/price,avgCost:price,safetyCount:0,soLevels};
       inDeal=true;
     } else {
-      // TP kontrolü (avg cost'a göre)
-      const tpPrice=deal.avgCost*(1+tpPct/100);
-      if(price>=tpPrice){
+      // TP
+      if(price>=deal.avgCost*(1+s.tpPct/100)){
         const profit=deal.totalQty*price-deal.totalCost;
         cash+=deal.totalQty*price;
         deals.push({...deal,endDate:date,exitPrice:price,profit,profitPct:profit/deal.totalCost*100,exitReason:"TP"});
-        inDeal=false;deal=null;cdLeft=cooldown;
-        if(startCond.type==="rsi") waitRSI=true;
-        equity.push({date,value:cash,price,rsi:dailyRSI[i]});
-        continue;
+        inDeal=false;deal=null;cdLeft=s.cooldown;
+        if(s.startCond==="rsi")waitRSI=true;
+        equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;
       }
-
-      // Stop Loss kontrolü (ilk fiyata göre)
-      if(slPct>0){
-        const slPrice=deal.initPrice*(1-slPct/100);
-        if(price<=slPrice){
-          const profit=deal.totalQty*price-deal.totalCost;
-          cash+=deal.totalQty*price;
-          deals.push({...deal,endDate:date,exitPrice:price,profit,profitPct:profit/deal.totalCost*100,exitReason:"SL"});
-          inDeal=false;deal=null;cdLeft=cooldown;
-          if(startCond.type==="rsi") waitRSI=true;
-          equity.push({date,value:cash,price,rsi:dailyRSI[i]});
-          continue;
-        }
+      // SL
+      if(s.slPct>0&&price<=deal.initPrice*(1-s.slPct/100)){
+        const profit=deal.totalQty*price-deal.totalCost;
+        cash+=deal.totalQty*price;
+        deals.push({...deal,endDate:date,exitPrice:price,profit,profitPct:profit/deal.totalCost*100,exitReason:"SL"});
+        inDeal=false;deal=null;cdLeft=s.cooldown;
+        if(s.startCond==="rsi")waitRSI=true;
+        equity.push({date,value:cash,price,rsi:dailyRSI[i]});continue;
       }
-
-      // Güvenlik emirleri (OKX: ilk fiyata göre seviyeler)
+      // Safety orders
       for(let n=0;n<deal.soLevels.length;n++){
         const lvl=deal.soLevels[n];
         if(!lvl.filled&&price<=lvl.price){
-          if(cash<lvl.amt) break; // yetersiz bakiye
+          if(cash<lvl.amt)break;
           cash-=lvl.amt;
-          const qty=lvl.amt/price;
-          deal.orders.push({date,price,size:lvl.amt,qty,isSafety:true});
-          deal.totalCost+=lvl.amt;
-          deal.totalQty+=qty;
-          deal.avgCost=deal.totalCost/deal.totalQty;
-          deal.safetyCount++;
-          lvl.filled=true;
+          deal.orders.push({date,price,size:lvl.amt,qty:lvl.amt/price,isSafety:true});
+          deal.totalCost+=lvl.amt;deal.totalQty+=lvl.amt/price;
+          deal.avgCost=deal.totalCost/deal.totalQty;deal.safetyCount++;lvl.filled=true;
         }
       }
     }
-
     equity.push({date,value:inDeal?cash+deal.totalQty*price:cash,price,rsi:dailyRSI[i]});
   }
 
-  // Açık deal'i kapat
   if(inDeal&&deal){
-    const lp=prices[prices.length-1].price;
-    const profit=deal.totalQty*lp-deal.totalCost;
+    const lp=prices[prices.length-1].price,profit=deal.totalQty*lp-deal.totalCost;
     cash+=deal.totalQty*lp;
     deals.push({...deal,endDate:prices[prices.length-1].date,exitPrice:lp,profit,profitPct:profit/deal.totalCost*100,exitReason:"OPEN"});
   }
@@ -216,501 +617,223 @@ function runBacktest(prices,cfg,startCond,rsiCfg){
   const wins=deals.filter(d=>d.profit>0).length;
   const slHits=deals.filter(d=>d.exitReason==="SL").length;
 
-  return{
-    deals,equity,
-    stats:{
-      totalDeals:deals.length,wins,losses:deals.length-wins,slHits,
-      winRate:deals.length?wins/deals.length*100:0,
-      totalProfit:tp,totalProfitPct:tp/startCapital*100,
-      maxDrawdown:maxDD,
-      avgSafetyOrders:deals.length?deals.reduce((s,d)=>s+d.safetyCount,0)/deals.length:0,
-    }
-  };
+  return{deals,equity,stats:{
+    totalDeals:deals.length,wins,losses:deals.length-wins,slHits,
+    winRate:deals.length?wins/deals.length*100:0,
+    totalProfit:tp,totalProfitPct:tp/s.startCapital*100,
+    maxDrawdown:maxDD,
+    avgSafetyOrders:deals.length?deals.reduce((s,d)=>s+d.safetyCount,0)/deals.length:0,
+  }};
 }
 
-/* ── Bileşenler ───────────────────────────────────────────── */
-function Stepper({value,onChange,step=1,min=0,max=99999,decimals=false}){
-  const dec=()=>onChange(Math.max(min,parseFloat((value-step).toFixed(decimals?4:0))));
-  const inc=()=>onChange(Math.min(max,parseFloat((value+step).toFixed(decimals?4:0))));
-  return(
-    <div style={{display:"flex",alignItems:"center",gap:6}}>
-      <button onClick={dec} style={{width:36,height:36,borderRadius:10,background:"#1e1e2e",border:"none",color:"#f0f0f5",fontSize:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-      <input type="number" value={value} onChange={e=>onChange(Math.min(max,Math.max(min,parseFloat(e.target.value)||0)))}
-        style={{background:"#0a0a0f",border:"1px solid #2a2a3e",borderRadius:10,color:"#f0f0f5",fontSize:14,fontWeight:700,padding:"7px 4px",width:84,textAlign:"center",fontFamily:"Nunito,sans-serif"}}/>
-      <button onClick={inc} style={{width:36,height:36,borderRadius:10,background:"#1e1e2e",border:"none",color:"#f0f0f5",fontSize:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
-    </div>
-  );
+/* ═══════════════════════════════════════════════════════════
+   RUN
+═══════════════════════════════════════════════════════════ */
+async function runBacktest(){
+  const btn=document.getElementById("fabBtn");
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span> Veri çekiliyor...';
+  document.getElementById("errBox").classList.add("hidden");
+
+  try{
+    const prices=await fetchCandles(state.coin,"1d",state.days);
+    const result=backtestEngine(prices);
+    lastResult=result;
+    renderResult(result);
+    showResult();
+  }catch(e){
+    const eb=document.getElementById("errBox");
+    eb.textContent="⚠ "+e.message;
+    eb.classList.remove("hidden");
+    btn.disabled=false;
+    btn.textContent="▶ BACKTEST BAŞLAT";
+  }
 }
 
-function ChipRow({items,value,onChange,getLabel,getValue}){
-  return(
-    <div style={{display:"flex",gap:8,padding:"10px 14px",flexWrap:"wrap"}}>
-      {items.map(item=>{
-        const v=getValue(item),active=v===value;
-        return <button key={v} onClick={()=>onChange(v)} style={{padding:"8px 14px",borderRadius:50,fontSize:13,fontWeight:700,border:active?"2px solid #f7931a":"2px solid #1e1e2e",background:active?"#f7931a22":"#0a0a0f",color:active?"#f7931a":"#5a5a78",cursor:"pointer"}}>{getLabel(item)}</button>;
-      })}
-    </div>
-  );
-}
+/* ═══════════════════════════════════════════════════════════
+   RENDER RESULT
+═══════════════════════════════════════════════════════════ */
+function renderResult(r){
+  const {stats,equity,deals}=r;
+  const pc=stats.totalProfit>=0?"#69db7c":"#f85149";
+  const c=COINS.find(x=>x.symbol===state.coin);
+  const p=PERIODS.find(x=>x.days===state.days);
 
-function Row({label,sub,right,last}){
-  return(
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px",borderBottom:last?"none":"1px solid #0f0f1e"}}>
-      <div>
-        <div style={{fontSize:14,color:"#9090a8"}}>{label}</div>
-        {sub&&<div style={{fontSize:11,color:"#3a3a58",marginTop:2}}>{sub}</div>}
-      </div>
-      {right}
-    </div>
-  );
-}
+  // Hero
+  document.getElementById("heroMeta").textContent=`${c.label} · ${p.label} · ${stats.totalDeals} DÖNGÜ`;
+  document.getElementById("heroPct").textContent=fmtPct(stats.totalProfitPct);
+  document.getElementById("heroPct").style.color=pc;
+  document.getElementById("heroUsd").textContent=(stats.totalProfit>=0?"+":"")+fmtUSD(stats.totalProfit);
+  document.getElementById("heroUsd").style.color=pc;
+  document.getElementById("heroWR").textContent=fmtPct(stats.winRate);
+  document.getElementById("heroWR").style.color=stats.winRate>=50?"#69db7c":"#f85149";
+  document.getElementById("heroDD").textContent=fmtPct(-stats.maxDrawdown);
+  document.getElementById("heroSafety").textContent=fmt(stats.avgSafetyOrders,1);
 
-function PriceTip({active,payload}){
-  if(!active||!payload?.length)return null;
-  const d=payload[0]?.payload;
-  return<div style={{background:"#12121a",border:"1px solid #2a2a3e",borderRadius:10,padding:"8px 12px",fontSize:11}}>
-    <div style={{color:"#5a5a78",marginBottom:3}}>{d?.date}</div>
-    <div style={{color:"#f7931a",fontWeight:700}}>💼 {fmtUSD(d?.value)}</div>
-    <div style={{color:"#4dabf7"}}>💲 {fmtUSD(d?.price)}</div>
-    {d?.rsi!=null&&<div style={{color:"#9775fa",marginTop:2}}>RSI: {d.rsi}</div>}
-  </div>;
-}
+  // Start badge
+  const sb=document.getElementById("startBadge");
+  if(state.startCond==="instant"){
+    sb.textContent="⚡ Anında";sb.style.background="#f7931a22";sb.style.color="#f7931a";sb.style.border="1px solid #f7931a44";
+  } else {
+    const tf=TFS.find(t=>t.v===state.rsiTf);
+    sb.textContent=`📉 RSI(${state.rsiTrigPeriod}) ${state.rsiDir==="lt"?"<":">"} ${state.rsiThreshold} · ${tf?tf.label:state.rsiTf}`;
+    sb.style.background="#9775fa22";sb.style.color="#9775fa";sb.style.border="1px solid #9775fa44";
+  }
 
-function RSITip({active,payload,threshold,dir}){
-  if(!active||!payload?.length)return null;
-  const d=payload[0]?.payload,rsi=d?.rsi;
-  const color=dir==="lt"?(rsi<threshold?"#69db7c":"#9775fa"):(rsi>threshold?"#f85149":"#9775fa");
-  return<div style={{background:"#12121a",border:"1px solid #2a2a3e",borderRadius:10,padding:"8px 12px",fontSize:11}}>
-    <div style={{color:"#5a5a78",marginBottom:3}}>{d?.date}</div>
-    <div style={{color,fontWeight:700}}>RSI: {rsi??'—'}</div>
-    <div style={{color:"#9090a8",marginTop:2}}>💲 {fmtUSD(d?.price)}</div>
-  </div>;
-}
-
-/* ── Ana App ──────────────────────────────────────────────── */
-function App(){
-  const [coin,setCoin]=useState("BTCUSDT");
-  const [days,setDays]=useState(365);
-  const [screen,setScreen]=useState("settings");
-  const [tab,setTab]=useState("stats");
-
-  // OKX parametreleri
-  const [cfg,setCfg]=useState({
-    startCapital:10000,
-    initialAmt:100,       // İlk alım miktarı
-    safetyAmt:100,        // Güvenlik emri miktarı
-    priceStep:1.0,        // Fiyat adımı (%)
-    stepMult:1.0,         // Fiyat adımı katsayısı
-    amtMult:1.0,          // Güvenlik emri katsayısı
-    maxSafetyOrders:10,   // Maks güvenlik emri
-    tpPct:1.5,            // Döngü kârı (%)
-    slPct:0,              // Zarar durdur (%, 0=kapalı)
-    cooldown:0,           // Sonraki döngü bekleme (gün)
+  // Stats grid
+  const sg=document.getElementById("statsGrid");sg.innerHTML="";
+  [
+    {label:"Toplam Kâr",value:fmtUSD(stats.totalProfit),color:pc},
+    {label:"ROI",value:fmtPct(stats.totalProfitPct),color:pc},
+    {label:"Win Rate",value:fmtPct(stats.winRate),color:stats.winRate>=50?"#69db7c":"#f85149"},
+    {label:"Max Drawdown",value:fmtPct(-stats.maxDrawdown),color:"#f85149"},
+    {label:"Toplam Döngü",value:stats.totalDeals,color:"#4dabf7"},
+    {label:"Kazanan / Kaybeden",value:`${stats.wins}W / ${stats.losses}L`,color:"#f0f0f5"},
+    {label:"Stop Loss İsabeti",value:stats.slHits,color:stats.slHits>0?"#f85149":"#5a5a78"},
+    {label:"Ort. Safety Emri",value:fmt(stats.avgSafetyOrders,1),color:"#fcc419"},
+  ].forEach(({label,value,color})=>{
+    sg.innerHTML+=`<div class="stat-card" style="border:1px solid ${color}33">
+      <div class="stat-val" style="color:${color}">${value}</div>
+      <div class="stat-lbl">${label}</div>
+    </div>`;
   });
 
-  // RSI / Başlatma
-  const [startCond,setStartCond]=useState({type:"instant"});
-  const [rsiCfg,setRsiCfg]=useState({
-    period:14,
-    timeframe:"1h",
-    threshold:30,
-    rsiDir:"lt",  // lt = RSI < threshold, gt = RSI > threshold
+  // Charts - destroy old
+  if(charts.price){charts.price.destroy();charts.price=null;}
+  if(charts.rsi){charts.rsi.destroy();charts.rsi=null;}
+
+  // Subsample for performance
+  const step=Math.max(1,Math.floor(equity.length/120));
+  const eqSub=equity.filter((_,i)=>i%step===0||i===equity.length-1);
+
+  // Price chart
+  setTimeout(()=>{
+    const ctx=document.getElementById("priceChart").getContext("2d");
+    charts.price=new Chart(ctx,{
+      type:"line",
+      data:{
+        labels:eqSub.map(e=>e.date),
+        datasets:[
+          {label:"Portföy",data:eqSub.map(e=>e.value),borderColor:"#f7931a",backgroundColor:"#f7931a18",fill:true,tension:.3,pointRadius:0,borderWidth:2,yAxisID:"y"},
+          {label:"Fiyat",data:eqSub.map(e=>e.price),borderColor:"#4dabf7",backgroundColor:"transparent",fill:false,tension:.3,pointRadius:0,borderWidth:1.5,borderDash:[5,3],yAxisID:"y1"},
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        animation:{duration:0},
+        plugins:{legend:{display:false},tooltip:{mode:"index",intersect:false,backgroundColor:"#12121a",borderColor:"#2a2a3e",borderWidth:1,titleColor:"#5a5a78",bodyColor:"#f0f0f5"}},
+        scales:{
+          x:{ticks:{color:"#3a3a58",font:{size:9},maxTicksLimit:7},grid:{color:"#1a1a28"}},
+          y:{position:"left",ticks:{color:"#3a3a58",font:{size:9},callback:v=>v>=1000?"$"+(v/1000).toFixed(1)+"k":"$"+v.toFixed(0)},grid:{color:"#1a1a28"}},
+          y1:{position:"right",ticks:{color:"#3a3a58",font:{size:9},callback:v=>v>=1000?"$"+(v/1000).toFixed(0)+"k":"$"+v.toFixed(0)},grid:{display:false}},
+        }
+      }
+    });
+
+    // RSI chart
+    document.getElementById("rsiChartLbl").textContent=`RSI (${state.rsiPeriod})`;
+    const rsiCtx=document.getElementById("rsiChart").getContext("2d");
+    charts.rsi=new Chart(rsiCtx,{
+      type:"line",
+      data:{
+        labels:eqSub.map(e=>e.date),
+        datasets:[{label:"RSI",data:eqSub.map(e=>e.rsi),borderColor:"#9775fa",backgroundColor:"transparent",tension:.3,pointRadius:0,borderWidth:2,spanGaps:false}]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        animation:{duration:0},
+        plugins:{legend:{display:false},
+          tooltip:{backgroundColor:"#12121a",borderColor:"#2a2a3e",borderWidth:1,titleColor:"#5a5a78",bodyColor:"#9775fa"},
+          annotation:{annotations:{ob:{type:"line",yMin:state.rsiOB,yMax:state.rsiOB,borderColor:"#f8514988",borderWidth:1,borderDash:[4,3]},
+            os:{type:"line",yMin:state.rsiOS,yMax:state.rsiOS,borderColor:"#69db7c88",borderWidth:1,borderDash:[4,3]},
+            mid:{type:"line",yMin:50,yMax:50,borderColor:"#2a2a3e",borderWidth:1,borderDash:[2,4]}
+          }}
+        },
+        scales:{
+          x:{ticks:{color:"#3a3a58",font:{size:9},maxTicksLimit:7},grid:{color:"#1a1a28"}},
+          y:{min:0,max:100,ticks:{color:"#3a3a58",font:{size:9},stepSize:10},grid:{color:"#1a1a28"}},
+        }
+      }
+    });
+  },50);
+
+  // RSI badge
+  const lastRSI=equity.length?equity[equity.length-1].rsi:null;
+  const rb=document.getElementById("rsiBadge");
+  if(lastRSI!=null){
+    const zone=lastRSI>=state.rsiOB?{label:"AŞIRI ALIM",color:"#f85149",bg:"#2a0a08"}:lastRSI<=state.rsiOS?{label:"AŞIRI SATIM",color:"#69db7c",bg:"#082a0a"}:{label:"NÖTR",color:"#fcc419",bg:"#2a1f00"};
+    rb.style.background=zone.bg;rb.style.border=`1px solid ${zone.color}44`;
+    rb.innerHTML=`<div class="rsi-val" style="color:${zone.color}">${lastRSI}</div>
+      <div><div style="font-size:13px;color:${zone.color};font-weight:800">RSI(${state.rsiPeriod}) · ${zone.label}</div>
+      <div style="font-size:11px;color:#5a5a78;margin-top:3px">AL &lt;${state.rsiOS} · SAT &gt;${state.rsiOB}</div></div>`;
+  } else {rb.innerHTML="<div style='color:#5a5a78;font-size:13px'>RSI verisi yok</div>";}
+
+  // Deals
+  const dl=document.getElementById("dealsList");dl.innerHTML="";
+  deals.forEach((d,i)=>{
+    const isSL=d.exitReason==="SL",isOpen=d.exitReason==="OPEN";
+    const bc=isSL?"#f85149":d.profit>=0?"#69db7c33":"#f8514933";
+    const pc2=d.profit>=0?"#69db7c":"#f85149";
+    dl.innerHTML+=`<div class="deal-card" style="border:1px solid ${bc};animation-delay:${i*.03}s">
+      <div class="deal-top">
+        <div>
+          <div class="deal-meta">#${i+1} · ${d.startDate} → ${d.endDate}${isSL?' <span style="color:#f85149;font-size:10px">🛑 SL</span>':""}${isOpen?' <span style="color:#fcc419;font-size:10px">⏳ AÇIK</span>':""}</div>
+          <div class="deal-sub">Safety: <span style="color:#fcc419;font-weight:800">${d.safetyCount}</span> · Ort: <span style="color:#c0c0d8;font-weight:700">${fmtUSD(d.avgCost)}</span></div>
+        </div>
+        <div style="text-align:right">
+          <div class="deal-pct" style="color:${pc2}">${fmtPct(d.profitPct)}</div>
+          <div class="deal-usd" style="color:${d.profit>=0?"#69db7c99":"#f8514999"}">${d.profit>=0?"+":""}${fmtUSD(d.profit)}</div>
+        </div>
+      </div>
+      <div class="deal-row3">
+        ${[["İlk Giriş",d.initPrice],["Çıkış",d.exitPrice],["Top. Yatırım",d.totalCost]].map(([l,v])=>`
+          <div class="deal-cell"><div class="deal-cell-l">${l}</div><div class="deal-cell-v">${fmtUSD(v)}</div></div>`).join("")}
+      </div>
+    </div>`;
   });
-
-  const [result,setResult]=useState(null);
-  const [loading,setLoading]=useState(false);
-  const [error,setError]=useState(null);
-
-  const upd=k=>v=>setCfg(p=>({...p,[k]:parseFloat(v)||0}));
-  const updR=k=>v=>setRsiCfg(p=>({...p,[k]:isNaN(parseFloat(v))?v:parseFloat(v)}));
-
-  // Min sermaye hesabı (OKX mantığı)
-  const minCap=useMemo(()=>{
-    let total=cfg.initialAmt,amt=cfg.safetyAmt;
-    for(let i=0;i<cfg.maxSafetyOrders;i++){total+=amt;amt*=cfg.amtMult;}
-    return total;
-  },[cfg]);
-
-  // Tek döngü maks yatırım
-  const maxCycleInv=useMemo(()=>{
-    let total=cfg.initialAmt,amt=cfg.safetyAmt;
-    for(let i=0;i<cfg.maxSafetyOrders;i++){total+=amt;amt*=cfg.amtMult;}
-    return total;
-  },[cfg]);
-
-  const handleRun=useCallback(async()=>{
-    setLoading(true);setError(null);
-    try{
-      const prices=await fetchCandles(coin,"1d",days);
-      setResult(runBacktest(prices,cfg,{...startCond,...rsiCfg},rsiCfg));
-      setScreen("result");setTab("stats");
-    }catch(e){setError(e.message);}
-    finally{setLoading(false);}
-  },[coin,days,cfg,startCond,rsiCfg]);
-
-  const coinObj=COINS.find(c=>c.symbol===coin);
-  const periodObj=PERIODS.find(p=>p.days===days);
-
-  // Stil sabitleri
-  const SEC=(border)=>({margin:"14px 14px 0",background:"#12121a",borderRadius:18,overflow:"hidden",border:border||"1px solid #1e1e2e"});
-  const SH=(color)=>({padding:"12px 16px 10px",fontSize:10,fontWeight:800,color:color||"#f7931a",letterSpacing:"0.12em",textTransform:"uppercase",borderBottom:"1px solid #1e1e2e"});
-  const TB=(a)=>({flex:1,padding:"10px 0",fontSize:11,fontWeight:800,border:"none",background:a?"#f7931a":"transparent",color:a?"#000":"#5a5a78",borderRadius:12,cursor:"pointer"});
-  const CARD=(c)=>({background:"#0a0a0f",borderRadius:16,padding:14,border:`1px solid ${c}33`});
-
-  const lastEquity=result?.equity?.length?result.equity[result.equity.length-1]:null;
-  const lastRSI=lastEquity?.rsi;
-  const ivl=Math.max(1,Math.floor((result?.equity?.length||1)/6));
-
-  /* ── Başlatma Koşulu Bölümü ── */
-  const StartSection=()=>(
-    <div style={SEC("1px solid #4dabf744")}>
-      <div style={SH("#4dabf7")}>🚀 Başlatma Koşulu</div>
-
-      {/* Anında */}
-      <button onClick={()=>setStartCond({type:"instant"})} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px",background:"transparent",border:"none",cursor:"pointer",borderBottom:"1px solid #0f0f1e"}}>
-        <div style={{textAlign:"left"}}>
-          <div style={{fontSize:15,fontWeight:800,color:startCond.type==="instant"?"#f0f0f5":"#5a5a78"}}>⚡ Anında</div>
-          <div style={{fontSize:11,color:"#3a3a58",marginTop:3}}>Döngü başlayınca hemen gir</div>
-        </div>
-        <div style={{width:24,height:24,borderRadius:"50%",background:startCond.type==="instant"?"#f7931a":"transparent",border:startCond.type==="instant"?"2px solid #f7931a":"2px solid #3a3a58",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#000",fontWeight:900}}>
-          {startCond.type==="instant"&&"✓"}
-        </div>
-      </button>
-
-      {/* RSI Sinyali */}
-      <button onClick={()=>setStartCond({type:"rsi"})} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px",background:"transparent",border:"none",cursor:"pointer",borderBottom:startCond.type==="rsi"?"1px solid #9775fa33":"none"}}>
-        <div style={{textAlign:"left"}}>
-          <div style={{fontSize:15,fontWeight:800,color:startCond.type==="rsi"?"#9775fa":"#5a5a78"}}>📉 RSI Sinyali</div>
-          <div style={{fontSize:11,color:"#3a3a58",marginTop:3}}>RSI koşulu sağlanınca gir</div>
-        </div>
-        <div style={{width:24,height:24,borderRadius:"50%",background:startCond.type==="rsi"?"#9775fa":"transparent",border:startCond.type==="rsi"?"2px solid #9775fa":"2px solid #3a3a58",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#000",fontWeight:900}}>
-          {startCond.type==="rsi"&&"✓"}
-        </div>
-      </button>
-
-      {startCond.type==="rsi"&&(
-        <div style={{background:"#0d0d18"}}>
-          {/* Periyot */}
-          <Row label="RSI Periyodu" sub="Hesaplama dönemi (öneri: 14)"
-            right={<Stepper value={rsiCfg.period} step={1} min={2} max={50} onChange={updR("period")}/>} />
-
-          {/* Zaman dilimi */}
-          <div style={{padding:"12px 16px",borderBottom:"1px solid #0f0f1e"}}>
-            <div style={{fontSize:12,color:"#5a5a78",marginBottom:10,fontWeight:700}}>ZAMAN DİLİMİ</div>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-              {TF_OPTIONS.map(tf=>{
-                const active=rsiCfg.timeframe===tf.value;
-                return<button key={tf.value} onClick={()=>updR("timeframe")(tf.value)} style={{padding:"8px 16px",borderRadius:50,fontSize:13,fontWeight:800,border:active?"2px solid #9775fa":"2px solid #1e1e2e",background:active?"#9775fa22":"#0a0a0f",color:active?"#9775fa":"#5a5a78",cursor:"pointer"}}>{tf.label}</button>;
-              })}
-            </div>
-          </div>
-
-          {/* Yön */}
-          <div style={{padding:"12px 16px",borderBottom:"1px solid #0f0f1e"}}>
-            <div style={{fontSize:12,color:"#5a5a78",marginBottom:10,fontWeight:700}}>KOŞUL</div>
-            <div style={{display:"flex",gap:8}}>
-              {[{v:"lt",l:"RSI <"},{v:"gt",l:"RSI >"}].map(o=>{
-                const active=rsiCfg.rsiDir===o.v;
-                return<button key={o.v} onClick={()=>updR("rsiDir")(o.v)} style={{flex:1,padding:"10px",borderRadius:12,fontSize:14,fontWeight:800,border:active?"2px solid #9775fa":"2px solid #1e1e2e",background:active?"#9775fa22":"#0a0a0f",color:active?"#9775fa":"#5a5a78",cursor:"pointer"}}>{o.l}</button>;
-              })}
-            </div>
-          </div>
-
-          {/* Eşik */}
-          <Row label="Eşik Değeri" sub="RSI bu seviyeye göre değerlendirilir"
-            right={<Stepper value={rsiCfg.threshold} step={1} min={1} max={99} onChange={updR("threshold")}/>} last/>
-
-          {/* Özet */}
-          <div style={{margin:"12px 14px",background:"#12121a",borderRadius:12,padding:"11px 14px",border:"1px solid #9775fa33"}}>
-            <span style={{fontSize:12,color:"#9090a8"}}>
-              RSI({rsiCfg.period}) · {TF_OPTIONS.find(t=>t.value===rsiCfg.timeframe)?.label||rsiCfg.timeframe}{" "}
-              grafiğinde <span style={{color:"#9775fa",fontWeight:800}}>
-                {rsiCfg.rsiDir==="lt"?`< ${rsiCfg.threshold}`:`> ${rsiCfg.threshold}`}
-              </span> olunca deal aç
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  /* ── Sonuç Ekranı ── */
-  const ResultScreen=()=>{
-    if(!result)return null;
-    const {stats,equity,deals}=result;
-    const pc=stats.totalProfit>=0?"#69db7c":"#f85149";
-
-    return<>
-      {/* Hero */}
-      <div style={{margin:"14px 14px 0",background:"linear-gradient(140deg,#1a1208,#081a0c)",borderRadius:22,padding:"20px 18px",border:"1px solid #f7931a33",textAlign:"center"}}>
-        <div style={{fontSize:11,color:"#5a5a78",letterSpacing:"0.1em",marginBottom:8,fontWeight:700}}>
-          {coinObj?.label} · {periodObj?.label} · {stats.totalDeals} DÖNGÜ
-        </div>
-        <div style={{fontSize:44,fontWeight:900,color:pc,lineHeight:1}}>{fmtPct(stats.totalProfitPct)}</div>
-        <div style={{fontSize:20,fontWeight:700,color:pc,marginTop:6,opacity:.85}}>
-          {stats.totalProfit>=0?"+":""}{fmtUSD(stats.totalProfit)}
-        </div>
-        <div style={{display:"flex",gap:8,justifyContent:"center",marginTop:14}}>
-          {[
-            {l:"Win Rate",v:fmtPct(stats.winRate),c:stats.winRate>=50?"#69db7c":"#f85149"},
-            {l:"Max DD",v:fmtPct(-stats.maxDrawdown),c:"#f85149"},
-            {l:"Ort. Safety",v:fmt(stats.avgSafetyOrders,1),c:"#fcc419"},
-          ].map(({l,v,c})=>(
-            <div key={l} style={{flex:1,background:"#0a0a0f88",borderRadius:12,padding:"9px 6px"}}>
-              <div style={{fontSize:14,fontWeight:800,color:c}}>{v}</div>
-              <div style={{fontSize:10,color:"#4a4a68",marginTop:2}}>{l}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{marginTop:12,display:"inline-flex",alignItems:"center",gap:6,background:startCond.type==="rsi"?"#9775fa22":"#f7931a22",borderRadius:50,padding:"5px 14px",fontSize:11,fontWeight:800,color:startCond.type==="rsi"?"#9775fa":"#f7931a",border:`1px solid ${startCond.type==="rsi"?"#9775fa44":"#f7931a44"}`}}>
-          {startCond.type==="instant"?"⚡ Anında":`📉 RSI(${rsiCfg.period}) ${rsiCfg.rsiDir==="lt"?"<":">"} ${rsiCfg.threshold} · ${TF_OPTIONS.find(t=>t.value===rsiCfg.timeframe)?.label||rsiCfg.timeframe}`}
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div style={{display:"flex",gap:5,padding:"14px 14px 0"}}>
-        {[["stats","📊 Stats"],["chart","📈 Grafik"],["rsi","📉 RSI"],["deals","📋 Döngüler"]].map(([t,l])=>(
-          <button key={t} style={TB(tab===t)} onClick={()=>setTab(t)}>{l}</button>
-        ))}
-      </div>
-
-      {/* Stats */}
-      {tab==="stats"&&(
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,padding:14}}>
-          {[
-            {label:"Toplam Kâr",value:fmtUSD(stats.totalProfit),color:pc},
-            {label:"ROI",value:fmtPct(stats.totalProfitPct),color:pc},
-            {label:"Win Rate",value:fmtPct(stats.winRate),color:stats.winRate>=50?"#69db7c":"#f85149"},
-            {label:"Max Drawdown",value:fmtPct(-stats.maxDrawdown),color:"#f85149"},
-            {label:"Toplam Döngü",value:stats.totalDeals,color:"#4dabf7"},
-            {label:"Kazanan / Kaybeden",value:`${stats.wins}W / ${stats.losses}L`,color:"#f0f0f5"},
-            {label:"Stop Loss İsabeti",value:stats.slHits,color:stats.slHits>0?"#f85149":"#5a5a78"},
-            {label:"Ort. Safety Emri",value:fmt(stats.avgSafetyOrders,1),color:"#fcc419"},
-          ].map(({label,value,color})=>(
-            <div key={label} style={CARD(color)}>
-              <div style={{fontSize:20,fontWeight:900,color,lineHeight:1,marginBottom:5}}>{value}</div>
-              <div style={{fontSize:10,color:"#4a4a68",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Chart */}
-      {tab==="chart"&&(
-        <div style={{margin:"14px 14px 0",background:"#12121a",borderRadius:18,padding:"16px 6px 12px",border:"1px solid #1e1e2e"}}>
-          <div style={{fontSize:10,color:"#3a3a58",paddingLeft:12,marginBottom:10,fontWeight:700}}>PORTFÖY & FİYAT</div>
-          <ResponsiveContainer width="100%" height={230}>
-            <ComposedChart data={equity} margin={{top:0,right:4,left:0,bottom:0}}>
-              <CartesianGrid stroke="#1a1a28" strokeDasharray="3 3"/>
-              <XAxis dataKey="date" tick={{fill:"#3a3a58",fontSize:9}} tickLine={false} interval={ivl}/>
-              <YAxis yAxisId="p" orientation="left" tick={{fill:"#3a3a58",fontSize:9}} tickLine={false} width={46} tickFormatter={v=>v>=1000?"$"+(v/1000).toFixed(1)+"k":"$"+v.toFixed(0)}/>
-              <YAxis yAxisId="pr" orientation="right" tick={{fill:"#3a3a58",fontSize:9}} tickLine={false} width={46} tickFormatter={v=>v>=1000?"$"+(v/1000).toFixed(0)+"k":"$"+v.toFixed(0)}/>
-              <Tooltip content={<PriceTip/>}/>
-              <Area yAxisId="p" type="monotone" dataKey="value" stroke="#f7931a" fill="#f7931a1a" strokeWidth={2.5} dot={false}/>
-              <Line yAxisId="pr" type="monotone" dataKey="price" stroke="#4dabf7" strokeWidth={1.5} dot={false} strokeDasharray="5 3"/>
-            </ComposedChart>
-          </ResponsiveContainer>
-          <div style={{display:"flex",gap:18,justifyContent:"center",marginTop:10,fontSize:11,color:"#5a5a78",fontWeight:700}}>
-            <span>🟠 Portföy</span><span>🔵 Fiyat</span>
-          </div>
-        </div>
-      )}
-
-      {/* RSI */}
-      {tab==="rsi"&&(
-        <div style={{padding:"14px",display:"flex",flexDirection:"column",gap:12}}>
-          {lastRSI!=null&&(()=>{
-            const triggered=rsiCfg.rsiDir==="lt"?lastRSI<rsiCfg.threshold:lastRSI>rsiCfg.threshold;
-            const color=triggered?"#69db7c":"#9775fa";
-            const bg=triggered?"#082a0a":"#12122a";
-            return<div style={{display:"flex",alignItems:"center",gap:12,padding:14,background:bg,borderRadius:14,border:`1px solid ${color}44`}}>
-              <div style={{fontSize:32,fontWeight:900,color,minWidth:56,textAlign:"center"}}>{lastRSI}</div>
-              <div>
-                <div style={{fontSize:13,color,fontWeight:800}}>Son RSI({rsiCfg.period}) · {triggered?"✅ Sinyal Aktif":"⏳ Bekleniyor"}</div>
-                <div style={{fontSize:11,color:"#5a5a78",marginTop:3}}>
-                  {startCond.type==="rsi"?`RSI ${rsiCfg.rsiDir==="lt"?"<":">"} ${rsiCfg.threshold} koşulu aranıyor`:"RSI göstergesi"}
-                </div>
-              </div>
-            </div>;
-          })()}
-
-          <div style={{background:"#12121a",borderRadius:18,padding:"16px 6px 12px",border:"1px solid #1e1e2e"}}>
-            <div style={{fontSize:10,color:"#3a3a58",paddingLeft:12,marginBottom:10,fontWeight:700}}>RSI ({rsiCfg.period})</div>
-            <ResponsiveContainer width="100%" height={210}>
-              <ComposedChart data={equity} margin={{top:0,right:4,left:0,bottom:0}}>
-                <CartesianGrid stroke="#1a1a28" strokeDasharray="3 3"/>
-                <XAxis dataKey="date" tick={{fill:"#3a3a58",fontSize:9}} tickLine={false} interval={ivl}/>
-                <YAxis domain={[0,100]} ticks={[0,20,30,50,70,80,100]} tick={{fill:"#3a3a58",fontSize:9}} tickLine={false} width={28}/>
-                <Tooltip content={<RSITip threshold={rsiCfg.threshold} dir={rsiCfg.rsiDir}/>}/>
-                <ReferenceLine y={70} stroke="#f8514966" strokeDasharray="4 3" strokeWidth={1}/>
-                <ReferenceLine y={30} stroke="#69db7c66" strokeDasharray="4 3" strokeWidth={1}/>
-                <ReferenceLine y={50} stroke="#2a2a3e" strokeDasharray="2 4" strokeWidth={1}/>
-                {startCond.type==="rsi"&&(
-                  <ReferenceLine y={rsiCfg.threshold} stroke="#9775fa" strokeDasharray="3 2" strokeWidth={2}
-                    label={{value:`Eşik:${rsiCfg.threshold}`,position:"insideTopLeft",fill:"#9775fa",fontSize:9}}/>
-                )}
-                <Line type="monotone" dataKey="rsi" stroke="#9775fa" strokeWidth={2} dot={false} connectNulls={false}/>
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {/* Döngüler */}
-      {tab==="deals"&&(
-        <div style={{padding:"14px",display:"flex",flexDirection:"column",gap:10}}>
-          {deals.map((d,i)=>{
-            const isSL=d.exitReason==="SL";
-            const isOpen=d.exitReason==="OPEN";
-            const borderColor=isSL?"#f85149":d.profit>=0?"#69db7c33":"#f8514933";
-            return<div key={i} className="fc" style={{animationDelay:`${i*.03}s`,background:"#12121a",border:`1px solid ${borderColor}`,borderRadius:16,padding:"14px 15px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
-                <div>
-                  <div style={{fontSize:11,color:"#3a3a58",fontWeight:700}}>
-                    #{i+1} · {d.startDate} → {d.endDate}
-                    {isSL&&<span style={{color:"#f85149",marginLeft:6,fontSize:10}}>🛑 SL</span>}
-                    {isOpen&&<span style={{color:"#fcc419",marginLeft:6,fontSize:10}}>⏳ AÇIK</span>}
-                  </div>
-                  <div style={{fontSize:12,color:"#6a6a88",marginTop:3}}>
-                    Safety: <span style={{color:"#fcc419",fontWeight:800}}>{d.safetyCount}</span>
-                    <span style={{margin:"0 5px",color:"#2a2a3e"}}>·</span>
-                    Ort: <span style={{color:"#c0c0d8",fontWeight:700}}>{fmtUSD(d.avgCost)}</span>
-                  </div>
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontSize:18,fontWeight:900,lineHeight:1,color:d.profit>=0?"#69db7c":"#f85149"}}>{fmtPct(d.profitPct)}</div>
-                  <div style={{fontSize:12,fontWeight:700,marginTop:3,color:d.profit>=0?"#69db7c99":"#f8514999"}}>{d.profit>=0?"+":""}{fmtUSD(d.profit)}</div>
-                </div>
-              </div>
-              <div style={{display:"flex",gap:8}}>
-                {[["İlk Giriş",d.initPrice],["Çıkış",d.exitPrice],["Top. Yatırım",d.totalCost]].map(([l,v])=>(
-                  <div key={l} style={{flex:1,background:"#0a0a0f",borderRadius:10,padding:"7px 8px"}}>
-                    <div style={{fontSize:10,color:"#3a3a58",fontWeight:700}}>{l}</div>
-                    <div style={{fontSize:12,color:"#c0c0d8",fontWeight:700,marginTop:2}}>{fmtUSD(v)}</div>
-                  </div>
-                ))}
-              </div>
-            </div>;
-          })}
-        </div>
-      )}
-    </>;
-  };
-
-  /* ── Render ── */
-  return(
-    <div style={{minHeight:"100vh",background:"#0a0a0f",color:"#f0f0f5",fontFamily:"'Nunito',sans-serif",display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto"}}>
-
-      {/* Header */}
-      <div style={{background:"#0d0d15",borderBottom:"1px solid #1a1a2e",padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:20}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          {screen==="result"&&<button onClick={()=>setScreen("settings")} style={{background:"#1e1e30",border:"none",color:"#f0f0f5",borderRadius:12,width:36,height:36,cursor:"pointer",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>}
-          <div>
-            <div style={{fontWeight:900,fontSize:15,color:"#f7931a"}}>OKX DCA BOT</div>
-            <div style={{fontSize:10,color:"#3a3a58",letterSpacing:"0.1em",fontWeight:700}}>BACKTEST SİMÜLATÖRÜ</div>
-          </div>
-        </div>
-        <div style={{background:"#1a1a2e",borderRadius:12,padding:"7px 14px",fontSize:13,fontWeight:800,color:"#f7931a",border:"1px solid #2a2a40"}}>
-          {coinObj?.emoji} {coinObj?.label} · {periodObj?.label}
-        </div>
-      </div>
-
-      <div style={{flex:1,overflowY:"auto",paddingBottom:100}}>
-        {screen==="settings"&&<>
-
-          {/* Kripto Para */}
-          <div style={SEC()}>
-            <div style={SH()}>🪙 İşlem Çifti</div>
-            <ChipRow items={COINS} value={coin} onChange={setCoin} getLabel={c=>`${c.emoji} ${c.label}`} getValue={c=>c.symbol}/>
-          </div>
-
-          {/* Periyot */}
-          <div style={SEC()}>
-            <div style={SH()}>📅 Backtest Periyodu</div>
-            <ChipRow items={PERIODS} value={days} onChange={setDays} getLabel={p=>p.label} getValue={p=>p.days}/>
-          </div>
-
-          {/* Sermaye */}
-          <div style={SEC()}>
-            <div style={SH()}>💰 Toplam Yatırım Miktarı</div>
-            <Row label="Başlangıç Sermayesi ($)" sub="Botun kullanacağı toplam bakiye"
-              right={<Stepper value={cfg.startCapital} step={500} min={100} onChange={upd("startCapital")}/>}/>
-            <div style={{padding:"10px 16px",display:"flex",gap:8,alignItems:"center"}}>
-              <div style={{width:8,height:8,borderRadius:"50%",flexShrink:0,background:maxCycleInv>cfg.startCapital?"#f85149":"#69db7c"}}/>
-              <div style={{fontSize:12,fontWeight:700,color:maxCycleInv>cfg.startCapital?"#f85149":"#69db7c"}}>
-                {maxCycleInv>cfg.startCapital?`⚠ Tek döngü maks: $${Math.ceil(maxCycleInv)} — yetersiz`:`✓ Tek döngü maks: $${Math.ceil(maxCycleInv)}`}
-              </div>
-            </div>
-          </div>
-
-          {/* OKX DCA Parametreleri */}
-          <div style={SEC()}>
-            <div style={SH()}>⚙️ Bot Parametreleri</div>
-
-            <Row label="İlk alım miktarı ($)" sub="Her döngünün ilk alım emri büyüklüğü"
-              right={<Stepper value={cfg.initialAmt} step={10} min={1} onChange={upd("initialAmt")}/>}/>
-
-            <Row label="Güvenlik emri miktarı ($)" sub="Her güvenlik emrinin başlangıç büyüklüğü"
-              right={<Stepper value={cfg.safetyAmt} step={10} min={1} onChange={upd("safetyAmt")}/>}/>
-
-            <Row label="Fiyat adımı (%)" sub="Güvenlik emrinin tetikleneceği fiyat düşüşü"
-              right={<Stepper value={cfg.priceStep} step={0.1} min={0.1} decimals onChange={upd("priceStep")}/>}/>
-
-            <Row label="Fiyat adımı katsayısı ×" sub="Her adımda fiyat adımını büyütme oranı"
-              right={<Stepper value={cfg.stepMult} step={0.1} min={1} decimals onChange={upd("stepMult")}/>}/>
-
-            <Row label="Güvenlik emri katsayısı ×" sub="Her güvenlik emrinde miktar büyütme oranı"
-              right={<Stepper value={cfg.amtMult} step={0.1} min={1} decimals onChange={upd("amtMult")}/>}/>
-
-            <Row label="Maks güvenlik emri" sub="Döngü başına açılabilecek maks emr sayısı"
-              right={<Stepper value={cfg.maxSafetyOrders} step={1} min={1} max={100} onChange={upd("maxSafetyOrders")}/>}/>
-
-            <Row label="Döngü kârı (%)" sub="Ortalama maliyetten TP tetikleme oranı"
-              right={<Stepper value={cfg.tpPct} step={0.1} min={0.1} decimals onChange={upd("tpPct")}/>}/>
-
-            <Row label="Zarar durdur (%)" sub="İlk giriş fiyatından SL seviyesi (0 = kapalı)"
-              right={<Stepper value={cfg.slPct} step={0.5} min={0} decimals onChange={upd("slPct")}/>}/>
-
-            <Row label="Döngüler arası bekleme (gün)" sub="TP/SL sonrası sonraki döngü gecikmesi" last
-              right={<Stepper value={cfg.cooldown} step={1} min={0} onChange={upd("cooldown")}/>}/>
-          </div>
-
-          {/* Başlatma Koşulu */}
-          <StartSection/>
-
-          {error&&<div style={{margin:"14px 14px 0",background:"#1a0808",border:"1px solid #f85149",borderRadius:14,padding:14,fontSize:13,color:"#f85149",lineHeight:1.6}}>⚠ {error}</div>}
-        </>}
-
-        {screen==="result"&&<ResultScreen/>}
-      </div>
-
-      {/* FAB */}
-      {screen==="settings"&&(
-        <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,padding:"16px 16px 28px",background:"linear-gradient(to top,#0a0a0f 70%,transparent)",zIndex:20}}>
-          <button onClick={handleRun} disabled={loading||maxCycleInv>cfg.startCapital} style={{
-            width:"100%",
-            background:loading||maxCycleInv>cfg.startCapital?"#1e1e30":"linear-gradient(135deg,#f7931a,#d4780d)",
-            color:loading||maxCycleInv>cfg.startCapital?"#5a5a78":"#000",
-            fontWeight:900,fontSize:16,border:"none",borderRadius:18,padding:"18px",
-            cursor:loading||maxCycleInv>cfg.startCapital?"not-allowed":"pointer",
-            boxShadow:loading||maxCycleInv>cfg.startCapital?"none":"0 8px 28px rgba(247,147,26,0.4)",
-            fontFamily:"Nunito,sans-serif"
-          }}>
-            {loading
-              ?<span style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
-                  <span style={{width:18,height:18,border:"3px solid #5a5a7855",borderTop:"3px solid #9090a8",borderRadius:"50%",display:"inline-block",animation:"spin .7s linear infinite"}}/>
-                  Veri çekiliyor...
-                </span>
-              :maxCycleInv>cfg.startCapital?"⚠ Sermaye Yetersiz"
-              :"▶ BACKTEST BAŞLAT"}
-          </button>
-        </div>
-      )}
-    </div>
-  );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+/* ═══════════════════════════════════════════════════════════
+   SCREEN SWITCH
+═══════════════════════════════════════════════════════════ */
+function showResult(){
+  document.getElementById("settingsPanel").classList.add("hidden");
+  document.getElementById("resultPanel").classList.remove("hidden");
+  document.getElementById("fabWrap").classList.add("hidden");
+  document.getElementById("backBtn").classList.remove("hidden");
+  switchTab("stats");
+}
+
+function showSettings(){
+  document.getElementById("resultPanel").classList.add("hidden");
+  document.getElementById("settingsPanel").classList.remove("hidden");
+  document.getElementById("fabWrap").classList.remove("hidden");
+  document.getElementById("backBtn").classList.add("hidden");
+  const btn=document.getElementById("fabBtn");
+  btn.disabled=false;btn.textContent="▶ BACKTEST BAŞLAT";
+  updateCapInfo();
+}
+
+function switchTab(name){
+  activeTab=name;
+  document.querySelectorAll(".tab-btn").forEach((b,i)=>{
+    const tabs=["stats","chart","rsi","deals"];
+    b.className="tab-btn"+(tabs[i]===name?" active":"");
+  });
+  document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+  document.getElementById("tab-"+name).classList.add("active");
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════ */
+buildChips();
+buildSteppers();
+setStartCond("instant");
+setRsiDir("lt");
+updateBadge();
+updateCapInfo();
+updateRsiSummary();
 </script>
 </body>
 </html>
