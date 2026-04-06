@@ -1,0 +1,26 @@
+{
+  "name": "DCA Backtest",
+  "short_name": "Backtest",
+  "description": "OKX DCA Bot Backtest Simülatörü",
+  "start_url": "/DCA-BACKTEST/",
+  "scope": "/DCA-BACKTEST/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070b14",
+  "theme_color": "#070b14",
+  "lang": "tr",
+  "icons": [
+    {
+      "src": "android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
