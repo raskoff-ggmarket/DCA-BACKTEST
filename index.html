@@ -226,7 +226,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="hero-row">
       <div class="hi"><div class="hiv" id="hWR"></div><div class="hil">Win Rate</div></div>
       <div class="hi"><div class="hiv" id="hDD" style="color:var(--red)"></div><div class="hil">Max DD</div></div>
-      <div class="hi"><div class="hiv" id="hSO" style="color:var(--yellow)"></div><div class="hil">Ort. Safety</div></div>
+      <div class="hi"><div class="hiv" id="hSO"></div><div class="hil">Döngü</div></div>
     </div>
     <div class="start-bdg" id="sBdg"></div>
   </div>
@@ -689,15 +689,20 @@ function backtest(prices) {
     equity.push({date:date, value: inDeal ? cash + deal.totalQty * price : cash, price:price});
   }
 
-  /* Açık deal kapat */
+  /* Açık deal — kapat ama ayrı tut */
+  var openDeal = null;
   if (inDeal && deal) {
     var lp = prices[prices.length-1].price;
-    var profit = deal.totalQty * lp - deal.totalCost;
+    var unrealProfit = deal.totalQty * lp - deal.totalCost;
+    openDeal = Object.assign({}, deal, {
+      endDate: prices[prices.length-1].date,
+      exitPrice: lp,
+      profit: unrealProfit,
+      profitPct: unrealProfit / deal.totalCost * 100,
+      why: "OPEN"
+    });
+    deals.push(openDeal);
     cash += deal.totalQty * lp;
-    deals.push(Object.assign({}, deal, {
-      endDate: prices[prices.length-1].date, exitPrice: lp,
-      profit: profit, profitPct: profit / deal.totalCost * 100, why: "OPEN"
-    }));
   }
 
   var peak = -Infinity, maxDD = 0;
@@ -707,18 +712,55 @@ function backtest(prices) {
     if (dd > maxDD) maxDD = dd;
   }
 
-  var tp = deals.reduce(function(a, d) { return a + d.profit; }, 0);
-  var wins = deals.filter(function(d) { return d.profit > 0; }).length;
+  var lastPrice = prices[prices.length-1].price;
+  var firstDate = prices[0].ts || 0;
+  var lastDate  = prices[prices.length-1].ts || 0;
+  var daysElapsed = lastDate && firstDate ? (lastDate - firstDate) / 86400000 : S.days;
+
+  /* Gerçekleşmiş PnL (sadece kapalı döngüler: TP + SL) */
+  var closedDeals = deals.filter(function(d) { return d.why === "TP" || d.why === "SL"; });
+  var realizedPnL = closedDeals.reduce(function(a, d) { return a + d.profit; }, 0);
+
+  /* Unrealized PnL (açık işlem) */
+  var unrealizedPnL = openDeal ? openDeal.profit : 0;
+
+  /* Toplam PnL */
+  var totalPnL = realizedPnL + unrealizedPnL;
+
+  /* Yatırılan toplam tutar (açık deal varsa onun maliyeti) */
+  var investedAmt = openDeal ? openDeal.totalCost : 0;
+
+  /* APR hesabı */
+  var arbitrageAPR = daysElapsed > 0 ? (realizedPnL / S.startCapital) / (daysElapsed / 365) * 100 : 0;
+  var totalAPR     = daysElapsed > 0 ? (totalPnL    / S.startCapital) / (daysElapsed / 365) * 100 : 0;
+
+  var wins = closedDeals.filter(function(d) { return d.profit > 0; }).length;
+  var completedCycles = closedDeals.length;
 
   return {
-    deals: deals, equity: equity,
+    deals: deals, equity: equity, openDeal: openDeal,
     stats: {
-      totalDeals: deals.length, wins: wins, losses: deals.length - wins,
+      totalDeals: deals.length,
+      completedCycles: completedCycles,
+      wins: wins,
+      losses: completedCycles - wins,
       slHits: deals.filter(function(d) { return d.why === "SL"; }).length,
-      winRate: deals.length ? wins / deals.length * 100 : 0,
-      totalProfit: tp, roi: tp / S.startCapital * 100,
+      winRate: completedCycles ? wins / completedCycles * 100 : 0,
+      realizedPnL: realizedPnL,
+      unrealizedPnL: unrealizedPnL,
+      totalPnL: totalPnL,
+      totalPnLPct: totalPnL / S.startCapital * 100,
+      roi: totalPnL / S.startCapital * 100,
+      arbitrageAPR: arbitrageAPR,
+      totalAPR: totalAPR,
       maxDrawdown: maxDD,
       avgSO: deals.length ? deals.reduce(function(a,d){ return a+d.safetyCount; }, 0) / deals.length : 0,
+      investedAmt: investedAmt,
+      finalCapital: cash,
+      lastPrice: lastPrice,
+      openDealAvgCost: openDeal ? openDeal.avgCost : null,
+      openDealTP: openDeal ? openDeal.avgCost * (1 + S.tpPct / 100) : null,
+      openDealSafetyCount: openDeal ? openDeal.safetyCount : 0,
     }
   };
 }
@@ -757,24 +799,29 @@ async function run() {
    RENDER
 ════════════════════════════════════════ */
 function render(res, source, mumCnt) {
-  var stats = res.stats, deals = res.deals;
+  var stats = res.stats, deals = res.deals, openDeal = res.openDeal;
   var coin = COINS.find(function(c) { return c.id === S.coin; });
   var per  = PERS.find(function(p)  { return p.d  === S.days; });
-  var pc   = stats.totalProfit >= 0 ? "var(--green)" : "var(--red)";
+  var pcT  = stats.totalPnL >= 0 ? "var(--green)" : "var(--red)";
+  var pcR  = stats.realizedPnL >= 0 ? "var(--green)" : "var(--red)";
+  var pcU  = stats.unrealizedPnL >= 0 ? "var(--green)" : "var(--red)";
 
+  /* ── Hero ── */
   document.getElementById("hMeta").textContent =
-    coin.sym + " · " + per.l + " · " + stats.totalDeals + " döngü · " + mumCnt.toLocaleString() + " mum";
-  document.getElementById("hPct").textContent = fp(stats.roi);
-  document.getElementById("hPct").style.color = pc;
-  document.getElementById("hUsd").textContent = (stats.totalProfit >= 0 ? "+" : "") + fu(stats.totalProfit);
-  document.getElementById("hUsd").style.color = pc;
+    coin.sym + "/USDT · " + per.l + " · " + mumCnt.toLocaleString() + " mum";
+  document.getElementById("hPct").textContent = fp(stats.totalPnLPct);
+  document.getElementById("hPct").style.color = pcT;
+  document.getElementById("hUsd").textContent =
+    "Toplam PnL: " + (stats.totalPnL >= 0 ? "+" : "") + fu(stats.totalPnL);
+  document.getElementById("hUsd").style.color = pcT;
   document.getElementById("hWR").textContent  = fp(stats.winRate);
   document.getElementById("hWR").style.color  = stats.winRate >= 50 ? "var(--green)" : "var(--red)";
   document.getElementById("hDD").textContent  = fp(-stats.maxDrawdown);
-  document.getElementById("hSO").textContent  = f(stats.avgSO, 1);
+  document.getElementById("hSO").textContent  = stats.completedCycles;
+  document.getElementById("hSO").style.color  = "var(--accent2)";
   document.getElementById("srcBar").textContent = "📡 Kaynak: " + source + " · " + mumCnt.toLocaleString() + " mum";
 
-  /* Start badge */
+  /* ── Start badge ── */
   var sb = document.getElementById("sBdg");
   if (S.cond === "instant") {
     sb.style.cssText = "margin-top:10px;display:inline-flex;align-items:center;gap:5px;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600;background:rgba(0,212,170,.1);color:var(--accent);border:1px solid rgba(0,212,170,.25)";
@@ -785,43 +832,117 @@ function render(res, source, mumCnt) {
     sb.textContent = "📉 RSI(" + S.rsiTP + ") " + (S.rsiDir === "lt" ? "< " : "> ") + S.rsiThr + " · " + (tf ? tf.l : S.rsiTf);
   }
 
-  /* Stats grid */
+  /* ── Stats grid ── */
   var sg = document.getElementById("statsG");
   sg.innerHTML = "";
-  [
-    {l:"Toplam Kâr",   v:fu(stats.totalProfit),  c:pc},
-    {l:"ROI",          v:fp(stats.roi),            c:pc},
-    {l:"Win Rate",     v:fp(stats.winRate),         c:stats.winRate>=50?"var(--green)":"var(--red)"},
-    {l:"Max Drawdown", v:fp(-stats.maxDrawdown),   c:"var(--red)"},
-    {l:"Toplam Döngü", v:stats.totalDeals,          c:"var(--accent2)"},
-    {l:"Kazan/Kaybet", v:stats.wins+"W / "+stats.losses+"L", c:"var(--text)"},
-    {l:"SL İsabeti",   v:stats.slHits,             c:stats.slHits>0?"var(--red)":"var(--text3)"},
-    {l:"Ort. Safety",  v:f(stats.avgSO,1),         c:"var(--yellow)"},
-  ].forEach(function(row) {
-    sg.innerHTML += '<div class="sc" style="border-color:' + row.c + '22">' +
-      '<div class="sv" style="color:' + row.c + '">' + row.v + '</div>' +
-      '<div class="sl">' + row.l + '</div></div>';
-  });
 
-  /* Deals */
+  /* OKX tarzı: tam genişlik satırlar + 2 sütun grid */
+  function fullRow(label, value, color, sub) {
+    return '<div class="sc" style="grid-column:1/-1;border-color:' + color + '33;padding:14px 16px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center">' +
+      '<div class="sl" style="text-transform:none;font-size:12px;letter-spacing:0">' + label + '</div>' +
+      '<div>' +
+      '<div class="sv" style="color:' + color + ';text-align:right">' + value + '</div>' +
+      (sub ? '<div style="font-size:11px;color:' + color + ';text-align:right;opacity:.7;margin-top:2px">' + sub + '</div>' : '') +
+      '</div></div></div>';
+  }
+  function halfCard(label, value, color) {
+    return '<div class="sc" style="border-color:' + color + '22">' +
+      '<div class="sv" style="color:' + color + '">' + value + '</div>' +
+      '<div class="sl">' + label + '</div></div>';
+  }
+
+  /* Yatırılan tutar + Son sermaye */
+  sg.innerHTML += fullRow(
+    "Yatırılan Tutar (USDT)",
+    fu(stats.investedAmt),
+    "var(--text2)"
+  );
+  sg.innerHTML += fullRow(
+    "Başlangıç / Son Sermaye",
+    fu(S.startCapital) + " → " + fu(stats.finalCapital),
+    stats.finalCapital >= S.startCapital ? "var(--green)" : "var(--red)"
+  );
+
+  /* Arbitraged PnL (realized) + Floating PnL (unrealized) */
+  sg.innerHTML +=
+    halfCard("Arbitraged PnL", (stats.realizedPnL >= 0 ? "+" : "") + fu(stats.realizedPnL) + "<br><small style='font-size:11px'>" + fp(stats.realizedPnL / S.startCapital * 100) + "</small>", pcR) +
+    halfCard("Floating PnL",   (stats.unrealizedPnL >= 0 ? "+" : "") + fu(stats.unrealizedPnL) + "<br><small style='font-size:11px'>" + fp(stats.unrealizedPnL / S.startCapital * 100) + "</small>", pcU);
+
+  /* APR */
+  sg.innerHTML += fullRow(
+    "Arbitrage APR / Toplam APR",
+    fp(stats.arbitrageAPR) + " / " + fp(stats.totalAPR),
+    stats.arbitrageAPR >= 0 ? "var(--green)" : "var(--red)"
+  );
+
+  /* Son fiyat + TP + Avg Cost (açık deal varsa) */
+  if (openDeal) {
+    sg.innerHTML +=
+      halfCard("Son Fiyat (USDT)", fu(stats.lastPrice), "var(--text)") +
+      halfCard("TP Fiyatı",        fu(stats.openDealTP), "var(--green)");
+    sg.innerHTML += fullRow(
+      "Ortalama Maliyet (Avg Cost)",
+      fu(stats.openDealAvgCost),
+      "var(--text2)"
+    );
+  } else {
+    sg.innerHTML += halfCard("Son Fiyat (USDT)", fu(stats.lastPrice), "var(--text)") +
+                   halfCard("Max Drawdown",      fp(-stats.maxDrawdown), "var(--red)");
+  }
+
+  /* Completed cycles + Filled/Max SO */
+  sg.innerHTML +=
+    halfCard("Tamamlanan Döngü", stats.completedCycles, "var(--accent2)") +
+    halfCard("Dold./Maks Safety", (openDeal ? stats.openDealSafetyCount : "—") + " / " + S.maxSO, "var(--yellow)");
+
+  /* Win Rate + SL */
+  sg.innerHTML +=
+    halfCard("Win Rate", fp(stats.winRate), stats.winRate >= 50 ? "var(--green)" : "var(--red)") +
+    halfCard("SL İsabeti", stats.slHits, stats.slHits > 0 ? "var(--red)" : "var(--text3)");
+
+  /* Açık işlem özet kartı */
+  if (openDeal) {
+    var upnlC = stats.unrealizedPnL >= 0 ? "rgba(0,212,170,.12)" : "rgba(255,79,109,.12)";
+    var upnlB = stats.unrealizedPnL >= 0 ? "rgba(0,212,170,.3)"  : "rgba(255,79,109,.3)";
+    sg.innerHTML += '<div class="sc" style="grid-column:1/-1;border-color:' + upnlB + ';background:' + upnlC + ';padding:14px 16px">' +
+      '<div class="sl" style="text-transform:none;font-size:11px;letter-spacing:0;margin-bottom:10px;color:var(--yellow)">⏳ AÇIK İŞLEM — ' + openDeal.startDate + '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">' +
+      [
+        ["Unrealized PnL", (stats.unrealizedPnL>=0?"+":"") + fu(stats.unrealizedPnL), pcU],
+        ["Avg Cost",  fu(openDeal.avgCost),  "var(--text)"],
+        ["TP Fiyatı", fu(stats.openDealTP),  "var(--green)"],
+        ["Yatırılan", fu(openDeal.totalCost),"var(--text2)"],
+        ["Safety",    openDeal.safetyCount + "/" + S.maxSO, "var(--yellow)"],
+        ["Son Fiyat", fu(stats.lastPrice),   "var(--text)"],
+      ].map(function(r) {
+        return '<div><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">' + r[0] + '</div>' +
+               '<div style="font-size:13px;font-weight:700;color:' + r[2] + '">' + r[1] + '</div></div>';
+      }).join("") +
+      '</div></div>';
+  }
+
+  /* ── Deals ── */
   var dl = document.getElementById("dealL");
   dl.innerHTML = "";
   deals.forEach(function(d, i) {
     var isSL   = d.why === "SL";
     var isOpen = d.why === "OPEN";
     var pc2 = d.profit >= 0 ? "var(--green)" : "var(--red)";
-    var bc  = isSL ? "rgba(255,79,109,.35)" : d.profit >= 0 ? "rgba(0,212,170,.18)" : "rgba(255,79,109,.18)";
+    var bc  = isSL ? "rgba(255,79,109,.35)" : isOpen ? "rgba(251,191,36,.2)" : d.profit >= 0 ? "rgba(0,212,170,.18)" : "rgba(255,79,109,.18)";
     var delay = Math.min(i * 0.02, 0.3);
     dl.innerHTML +=
       '<div class="dc" style="border-color:' + bc + ';animation-delay:' + delay + 's">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
       '<div>' +
       '<div class="dm">#' + (i+1) + ' &nbsp;' + d.startDate + ' → ' + d.endDate +
-        (isSL   ? ' <span style="color:var(--red);font-size:10px">SL</span>' : "") +
-        (isOpen ? ' <span style="color:var(--yellow);font-size:10px">AÇIK</span>' : "") +
+        (isSL   ? ' <span style="color:var(--red);font-size:10px">🛑 SL</span>' : "") +
+        (isOpen ? ' <span style="color:var(--yellow);font-size:10px">⏳ AÇIK</span>' : "") +
       '</div>' +
-      '<div class="dsub">Safety: <span style="color:var(--yellow);font-weight:700">' + d.safetyCount + '</span>' +
-        ' &nbsp;·&nbsp; Ort: <span style="color:var(--text);font-weight:600">' + fu(d.avgCost) + '</span></div>' +
+      '<div class="dsub">Safety: <span style="color:var(--yellow);font-weight:700">' + d.safetyCount + "/" + S.maxSO + '</span>' +
+        ' &nbsp;·&nbsp; Avg Cost: <span style="color:var(--text);font-weight:600">' + fu(d.avgCost) + '</span>' +
+        (isOpen ? ' &nbsp;·&nbsp; TP: <span style="color:var(--green);font-weight:600">' + fu(d.avgCost * (1 + S.tpPct/100)) + '</span>' : "") +
+      '</div>' +
       '</div>' +
       '<div style="text-align:right">' +
       '<div class="dpct" style="color:' + pc2 + '">' + fp(d.profitPct) + '</div>' +
@@ -829,7 +950,11 @@ function render(res, source, mumCnt) {
         (d.profit>=0?"+":"") + fu(d.profit) + '</div>' +
       '</div></div>' +
       '<div class="d3">' +
-      [["İlk Giriş",d.initPrice],["Çıkış",d.exitPrice],["Yatırım",d.totalCost]].map(function(row) {
+      [
+        ["İlk Giriş", d.initPrice],
+        [isOpen ? "Anlık Fiyat" : "Çıkış", d.exitPrice],
+        ["Yatırılan", d.totalCost]
+      ].map(function(row) {
         return '<div class="dc3"><div class="dc3l">' + row[0] + '</div><div class="dc3v">' + fu(row[1]) + '</div></div>';
       }).join("") +
       '</div></div>';
