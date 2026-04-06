@@ -310,7 +310,7 @@ const PERS=[{l:"6A",d:180},{l:"1Y",d:365},{l:"2Y",d:730}];
 const TFS=[{l:"1s",v:"h1"},{l:"4s",v:"h4"},{l:"1G",v:"d1"}];
 
 /* ══ STATE ══ */
-const S={
+const DEFAULTS={
   coin:"bitcoin", days:365,
   startCapital:10000, initAmt:100, safeAmt:100,
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
@@ -318,6 +318,19 @@ const S={
   cond:"instant",
   rsiTP:14, rsiTf:"h1", rsiDir:"lt", rsiThr:30,
 };
+const S=Object.assign({},DEFAULTS);
+
+/* ══ LOCALSTORAGE ══ */
+const LS_KEY="dca_backtest_v1";
+function loadState(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(LS_KEY)||"{}");
+    Object.keys(DEFAULTS).forEach(k=>{if(saved[k]!==undefined) S[k]=saved[k];});
+  }catch(e){}
+}
+function saveState(){
+  try{ localStorage.setItem(LS_KEY,JSON.stringify(S)); }catch(e){}
+}
 
 /* ══ HELPERS ══ */
 const f=(n,d=2)=>(n??0).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -663,7 +676,7 @@ function buildChips(){
     const b=document.createElement("button");
     b.className="chip"+(c.id===S.coin?" on":"");
     b.textContent=c.e+" "+c.sym;
-    b.onclick=()=>{S.coin=c.id;rChips();updateBadge();};
+    b.onclick=()=>{S.coin=c.id;rChips();updateBadge();saveState();};
     cc.appendChild(b);
   });
   // Periods
@@ -672,7 +685,7 @@ function buildChips(){
     const b=document.createElement("button");
     b.className="chip"+(p.d===S.days?" on":"");
     b.textContent=p.l;
-    b.onclick=()=>{S.days=p.d;rChips();updateBadge();};
+    b.onclick=()=>{S.days=p.d;rChips();updateBadge();saveState();};
     pc.appendChild(b);
   });
   // TFs
@@ -682,7 +695,7 @@ function buildChips(){
     b.className="chip"+(t.v===S.rsiTf?" on-p":"");
     b.style.padding="7px 13px";
     b.textContent=t.l;
-    b.onclick=()=>{S.rsiTf=t.v;rChips();updateRsiSum();};
+    b.onclick=()=>{S.rsiTf=t.v;rChips();updateRsiSum();saveState();};
     tc.appendChild(b);
   });
 }
@@ -697,7 +710,7 @@ function buildSteps(){
     const db=document.createElement("button");db.className="sbtn";db.textContent="−";
     const inp=document.createElement("input");inp.type="number";inp.className="sinp";inp.value=S[k];
     const ib=document.createElement("button");ib.className="sbtn";ib.textContent="+";
-    const u=v=>{let val=Math.min(mx,Math.max(mn,parseFloat(v)||0));val=d?+val.toFixed(d):Math.round(val);S[k]=val;inp.value=val;updateCap();updateRsiSum();};
+    const u=v=>{let val=Math.min(mx,Math.max(mn,parseFloat(v)||0));val=d?+val.toFixed(d):Math.round(val);S[k]=val;inp.value=val;updateCap();updateRsiSum();saveState();};
     db.onclick=()=>u(S[k]-s);ib.onclick=()=>u(S[k]+s);inp.onchange=()=>u(inp.value);
     el.appendChild(db);el.appendChild(inp);el.appendChild(ib);
   });
@@ -721,13 +734,13 @@ function setCond(type){
   rR.textContent=isR?"✓":"";
   document.getElementById("cRsiT").style.color=isR?"var(--purple)":"var(--text3)";
   document.getElementById("rsiSub").classList.toggle("hidden",!isR);
-}
+  saveState();
 function setDir(dir){
   S.rsiDir=dir;
   document.getElementById("dLt").className="dir-btn"+(dir==="lt"?" on":"");
   document.getElementById("dGt").className="dir-btn"+(dir==="gt"?" on":"");
   updateRsiSum();
-}
+  saveState();
 function updateRsiSum(){
   const tf=TFS.find(t=>t.v===S.rsiTf);
   document.getElementById("rsiSum").innerHTML=
@@ -747,7 +760,8 @@ if("serviceWorker" in navigator){
 }
 
 /* ══ INIT ══ */
-buildChips(); buildSteps(); setCond("instant"); setDir("lt"); updateBadge(); updateCap(); updateRsiSum();
+loadState();
+buildChips(); buildSteps(); setCond(S.cond); setDir(S.rsiDir); updateBadge(); updateCap(); updateRsiSum();
 </script>
 </body>
 </html>
