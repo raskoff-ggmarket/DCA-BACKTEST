@@ -313,7 +313,7 @@ function f(n, d) {
   d = d === undefined ? 2 : d;
   return (n || 0).toLocaleString("en-US", {minimumFractionDigits:d, maximumFractionDigits:d});
 }
-function fu(n) { return Math.abs(n) >= 1000 ? "$" + f(n/1000, 1) + "k" : "$" + f(n, 2); }
+function fu(n) { return "$" + f(n, 2); }
 function fp(n) { return (n >= 0 ? "+" : "") + f(n, 1) + "%"; }
 function setLoad(p) { document.getElementById("lBar").style.width = p + "%"; }
 
