@@ -4,16 +4,12 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <title>Backtest</title>
-
-<!-- PWA -->
 <link rel="manifest" href="manifest.json"/>
-<meta name="theme-color" content="#00d4aa"/>
+<meta name="theme-color" content="#070b14"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Backtest"/>
-<link rel="apple-touch-icon" href="icons/icon-192.png"/>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="apple-touch-icon" href="android-chrome-192x192.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -30,83 +26,58 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .app{max-width:480px;margin:0 auto;display:flex;flex-direction:column;min-height:100vh}
-
-/* Header */
 .hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:13px 16px;
-     display:flex;align-items:center;justify-content:space-between;
-     position:sticky;top:0;z-index:30}
+     display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:30}
 .hdr-left{display:flex;align-items:center;gap:10px}
 .hdr-logo{width:32px;height:32px;background:linear-gradient(135deg,var(--accent),var(--accent2));
           border-radius:10px;display:flex;align-items:center;justify-content:center;
           font-size:15px;font-weight:700;color:#000;flex-shrink:0}
-.hdr-t{font-weight:700;font-size:14px;color:var(--text);letter-spacing:.02em}
+.hdr-t{font-weight:700;font-size:14px;color:var(--text)}
 .hdr-s{font-size:10px;color:var(--text3);margin-top:1px;letter-spacing:.08em}
 .hdr-badge{background:var(--bg4);border:1px solid var(--border2);border-radius:10px;
            padding:6px 12px;font-size:12px;font-weight:600;color:var(--accent)}
 .back-btn{background:var(--bg4);border:1px solid var(--border);color:var(--text);
           border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:18px;
           display:flex;align-items:center;justify-content:center;flex-shrink:0}
-
-/* Body */
 .body{flex:1;overflow-y:auto;padding-bottom:100px}
-
-/* Card */
 .card{margin:12px 14px 0;background:var(--bg2);border-radius:16px;overflow:hidden;border:1px solid var(--border)}
 .card-head{padding:11px 16px;font-size:10px;font-weight:700;color:var(--accent);
-           letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid var(--border);
-           display:flex;align-items:center;gap:6px}
-
-/* Row */
+           letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid var(--border)}
 .row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
 .row:last-child{border-bottom:none}
 .rl{font-size:13px;color:var(--text2)}
 .rs{font-size:11px;color:var(--text3);margin-top:2px}
-
-/* Chips */
 .chips{display:flex;gap:7px;padding:10px 14px;flex-wrap:wrap}
 .chip{padding:7px 13px;border-radius:8px;font-size:12px;font-weight:600;
       border:1px solid var(--border2);background:transparent;color:var(--text3);
       cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all .12s}
-.chip:hover{border-color:var(--accent);color:var(--accent)}
 .chip.on{border-color:var(--accent);background:rgba(0,212,170,.1);color:var(--accent)}
 .chip.on-p{border-color:var(--purple);background:rgba(167,139,250,.1);color:var(--purple)}
-
-/* Stepper */
 .step{display:flex;align-items:center;gap:5px}
-.sbtn{width:34px;height:34px;border-radius:8px;background:var(--bg4);border:1px solid var(--border2);
-      color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;
-      justify-content:center;font-family:'Space Grotesk',sans-serif}
+.sbtn{width:36px;height:36px;border-radius:8px;background:var(--bg4);border:1px solid var(--border2);
+      color:var(--text);font-size:22px;cursor:pointer;display:flex;align-items:center;
+      justify-content:center;font-family:'Space Grotesk',sans-serif;line-height:1}
 .sinp{background:var(--bg);border:1px solid var(--border2);border-radius:8px;
       color:var(--text);font-size:13px;font-weight:600;padding:6px 4px;
-      width:78px;text-align:center;font-family:'Space Grotesk',sans-serif;outline:none}
+      width:80px;text-align:center;font-family:'Space Grotesk',sans-serif;outline:none}
 .sinp:focus{border-color:var(--accent)}
-
-/* FAB */
 .fab-wrap{position:fixed;bottom:0;left:50%;transform:translateX(-50%);
           width:100%;max-width:480px;padding:14px 14px 26px;
           background:linear-gradient(to top,var(--bg) 65%,transparent);z-index:20}
 .fab{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));
      color:#000;font-weight:700;font-size:15px;border:none;border-radius:14px;
      padding:16px;cursor:pointer;font-family:'Space Grotesk',sans-serif;
-     box-shadow:0 6px 24px rgba(0,212,170,.3);letter-spacing:.02em}
+     box-shadow:0 6px 24px rgba(0,212,170,.3)}
 .fab:disabled{background:var(--bg4);color:var(--text3);box-shadow:none;cursor:not-allowed}
-
-/* Cap info */
 .cap-info{padding:9px 16px;display:flex;gap:7px;align-items:center;font-size:12px;font-weight:600}
 .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-
-/* Start condition */
 .cond-btn{width:100%;display:flex;align-items:center;justify-content:space-between;
           padding:14px 16px;background:transparent;border:none;cursor:pointer;
           border-bottom:1px solid var(--border);font-family:'Space Grotesk',sans-serif;text-align:left}
-.cond-btn:last-of-type{border-bottom:none}
 .ct{font-size:14px;font-weight:700}
 .cs{font-size:11px;color:var(--text3);margin-top:2px}
 .radio{width:22px;height:22px;border-radius:50%;border:2px solid var(--border2);
-       display:flex;align-items:center;justify-content:center;font-size:11px;
-       font-weight:700;flex-shrink:0}
-
-/* RSI direction */
+       display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
 .dir-row{display:flex;gap:7px;padding:10px 14px;border-bottom:1px solid var(--border)}
 .dir-btn{flex:1;padding:9px;border-radius:10px;font-size:13px;font-weight:700;
          border:1px solid var(--border2);background:transparent;color:var(--text3);
@@ -115,10 +86,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .rsi-sum{margin:10px 14px 12px;background:var(--bg);border-radius:10px;
          padding:10px 13px;border:1px solid rgba(167,139,250,.2);
          font-size:12px;color:var(--text2);line-height:1.5}
-
-/* Hero */
 .hero{margin:12px 14px 0;background:var(--bg2);border-radius:18px;
-      padding:20px 18px 18px;border:1px solid var(--border);text-align:center;position:relative;overflow:hidden}
+      padding:20px 18px 18px;border:1px solid var(--border);text-align:center;
+      position:relative;overflow:hidden}
 .hero::before{content:"";position:absolute;top:-50px;left:50%;transform:translateX(-50%);
               width:240px;height:240px;border-radius:50%;
               background:radial-gradient(circle,rgba(0,212,170,.07) 0%,transparent 70%);pointer-events:none}
@@ -131,23 +101,17 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .hil{font-size:10px;color:var(--text3);margin-top:2px;font-weight:500}
 .start-bdg{margin-top:10px;display:inline-flex;align-items:center;gap:5px;
            border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600}
-
-/* Stats grid */
 .sg{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 14px}
 .sc{background:var(--bg2);border-radius:12px;padding:13px;border:1px solid var(--border)}
 .sv{font-size:20px;font-weight:700;line-height:1;margin-bottom:4px}
 .sl{font-size:10px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:.06em}
-
-/* Tabs */
 .tabs{display:flex;gap:5px;padding:12px 14px 0}
 .tab-btn{flex:1;padding:9px 0;font-size:12px;font-weight:700;border:1px solid var(--border);
          background:transparent;color:var(--text3);border-radius:10px;cursor:pointer;
-         font-family:'Space Grotesk',sans-serif;transition:all .12s}
+         font-family:'Space Grotesk',sans-serif}
 .tab-btn.on{background:var(--accent);color:#000;border-color:var(--accent)}
 .tp{display:none}
 .tp.on{display:block}
-
-/* Deals */
 .dl{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
 .dc{background:var(--bg2);border-radius:14px;padding:13px 14px;animation:up .2s ease both;border:1px solid var(--border)}
 .dm{font-size:11px;color:var(--text3);font-weight:600}
@@ -158,18 +122,12 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .dc3{flex:1;background:var(--bg3);border-radius:8px;padding:6px 8px;border:1px solid var(--border)}
 .dc3l{font-size:9px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
 .dc3v{font-size:11px;color:var(--text);font-weight:700;margin-top:2px}
-
-/* Source bar */
 .src{text-align:center;font-size:10px;color:var(--text3);padding:5px;
      margin:8px 14px 0;background:var(--bg2);border-radius:8px;border:1px solid var(--border)}
-
-/* Loading bar */
 .loading-bar{height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));
              position:fixed;top:0;left:0;z-index:100;transition:width .4s;width:0}
-
-.spinner{width:16px;height:16px;border:2px solid rgba(0,0,0,.2);
-         border-top:2px solid #000;border-radius:50%;display:inline-block;animation:spin .7s linear infinite}
-
+.spinner{width:16px;height:16px;border:2px solid rgba(0,0,0,.2);border-top:2px solid #000;
+         border-radius:50%;display:inline-block;animation:spin .7s linear infinite}
 .hidden{display:none!important}
 .err{margin:12px 14px 0;background:rgba(255,79,109,.08);border:1px solid rgba(255,79,109,.3);
      border-radius:12px;padding:12px;font-size:12px;color:var(--red);line-height:1.6}
@@ -179,14 +137,13 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div class="loading-bar" id="lBar"></div>
 <div class="app">
 
-<!-- HEADER -->
 <div class="hdr">
   <div class="hdr-left">
     <button class="back-btn hidden" id="backBtn" onclick="goSettings()">‹</button>
     <div class="hdr-logo">D</div>
     <div>
       <div class="hdr-t">Backtest</div>
-      <div class="hdr-s" id="hdrSub">OKX DCA PARAMETRELERİ</div>
+      <div class="hdr-s">OKX DCA PARAMETRELERİ</div>
     </div>
   </div>
   <div class="hdr-badge" id="hdrBadge">₿ BTC · 1Y</div>
@@ -194,7 +151,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
 <div class="body">
 
-<!-- ══ SETTINGS ══ -->
+<!-- SETTINGS -->
 <div id="sPanel">
 
   <div class="card">
@@ -209,40 +166,38 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
   <div class="card">
     <div class="card-head">💰 Sermaye</div>
-    <div class="row">
+    <div class="row" id="row-startCapital">
       <div><div class="rl">Başlangıç Sermayesi ($)</div><div class="rs">Botun kullanacağı toplam bakiye</div></div>
-      <div class="step" data-k="startCapital" data-s="500" data-min="100"></div>
     </div>
     <div class="cap-info"><div class="dot" id="capD"></div><div id="capT"></div></div>
   </div>
 
   <div class="card">
     <div class="card-head">⚙️ Bot Parametreleri</div>
-    <div class="row"><div><div class="rl">İlk alım miktarı ($)</div><div class="rs">Her döngünün ilk alım emri büyüklüğü</div></div><div class="step" data-k="initAmt" data-s="10" data-min="1"></div></div>
-    <div class="row"><div><div class="rl">Güvenlik emri miktarı ($)</div><div class="rs">Her güvenlik emrinin başlangıç büyüklüğü</div></div><div class="step" data-k="safeAmt" data-s="10" data-min="1"></div></div>
-    <div class="row"><div><div class="rl">Fiyat adımı (%)</div><div class="rs">Güvenlik emrinin tetikleneceği fiyat düşüşü</div></div><div class="step" data-k="priceStep" data-s="0.1" data-min="0.1" data-d="1"></div></div>
-    <div class="row"><div><div class="rl">Fiyat adımı katsayısı ×</div><div class="rs">Her adımda fiyat adımını büyütme oranı</div></div><div class="step" data-k="stepMult" data-s="0.1" data-min="1" data-d="1"></div></div>
-    <div class="row"><div><div class="rl">Güvenlik emri katsayısı ×</div><div class="rs">Her güvenlik emrinde miktar büyütme oranı</div></div><div class="step" data-k="amtMult" data-s="0.1" data-min="1" data-d="1"></div></div>
-    <div class="row"><div><div class="rl">Maks güvenlik emri</div><div class="rs">Döngü başına açılabilecek maks emir sayısı</div></div><div class="step" data-k="maxSO" data-s="1" data-min="1" data-max="100"></div></div>
-    <div class="row"><div><div class="rl">Döngü kârı (%)</div><div class="rs">Ortalama maliyetten TP tetikleme oranı</div></div><div class="step" data-k="tpPct" data-s="0.1" data-min="0.1" data-d="1"></div></div>
-    <div class="row"><div><div class="rl">Zarar durdur (%)</div><div class="rs">İlk giriş fiyatından SL seviyesi (0 = kapalı)</div></div><div class="step" data-k="slPct" data-s="0.5" data-min="0" data-d="1"></div></div>
-    <div class="row"><div><div class="rl">Döngüler arası bekleme (gün)</div><div class="rs">TP/SL sonrası sonraki döngü gecikmesi</div></div><div class="step" data-k="cooldown" data-s="1" data-min="0"></div></div>
+    <div class="row" id="row-initAmt"><div><div class="rl">İlk alım miktarı ($)</div><div class="rs">Her döngünün ilk alım emri büyüklüğü</div></div></div>
+    <div class="row" id="row-safeAmt"><div><div class="rl">Güvenlik emri miktarı ($)</div><div class="rs">Her güvenlik emrinin başlangıç büyüklüğü</div></div></div>
+    <div class="row" id="row-priceStep"><div><div class="rl">Fiyat adımı (%)</div><div class="rs">Güvenlik emrinin tetikleneceği fiyat düşüşü</div></div></div>
+    <div class="row" id="row-stepMult"><div><div class="rl">Fiyat adımı katsayısı ×</div><div class="rs">Her adımda fiyat adımını büyütme oranı</div></div></div>
+    <div class="row" id="row-amtMult"><div><div class="rl">Güvenlik emri katsayısı ×</div><div class="rs">Her güvenlik emrinde miktar büyütme oranı</div></div></div>
+    <div class="row" id="row-maxSO"><div><div class="rl">Maks güvenlik emri</div><div class="rs">Döngü başına açılabilecek maks emir sayısı</div></div></div>
+    <div class="row" id="row-tpPct"><div><div class="rl">Döngü kârı (%)</div><div class="rs">Ortalama maliyetten TP tetikleme oranı</div></div></div>
+    <div class="row" id="row-slPct"><div><div class="rl">Zarar durdur (%)</div><div class="rs">İlk giriş fiyatından SL seviyesi (0 = kapalı)</div></div></div>
+    <div class="row" id="row-cooldown"><div><div class="rl">Döngüler arası bekleme (gün)</div><div class="rs">TP/SL sonrası sonraki döngü gecikmesi</div></div></div>
   </div>
 
   <div class="card" style="border-color:rgba(0,153,255,.25);margin-bottom:0">
     <div class="card-head" style="color:var(--accent2)">🚀 Başlatma Koşulu</div>
-    <button class="cond-btn" onclick="setCond('instant')" id="cInstBtn">
-      <div><div class="ct" id="cInstT">⚡ Anında</div><div class="cs">Döngü başlayınca hemen gir</div></div>
-      <div class="radio" id="cInstR"></div>
+    <button class="cond-btn" id="btnInstant" onclick="setCond('instant')">
+      <div><div class="ct" id="lblInstant">⚡ Anında</div><div class="cs">Döngü başlayınca hemen gir</div></div>
+      <div class="radio" id="radInstant"></div>
     </button>
-    <button class="cond-btn" onclick="setCond('rsi')" id="cRsiBtn">
-      <div><div class="ct" id="cRsiT">📉 RSI Sinyali</div><div class="cs">RSI koşulu sağlanınca gir</div></div>
-      <div class="radio" id="cRsiR"></div>
+    <button class="cond-btn" id="btnRsi" onclick="setCond('rsi')" style="border-bottom:none">
+      <div><div class="ct" id="lblRsi">📉 RSI Sinyali</div><div class="cs">RSI koşulu sağlanınca gir</div></div>
+      <div class="radio" id="radRsi"></div>
     </button>
     <div class="hidden" id="rsiSub" style="background:var(--bg3)">
-      <div class="row" style="background:var(--bg3)">
+      <div class="row" id="row-rsiTP" style="background:var(--bg3)">
         <div><div class="rl">RSI Periyodu</div><div class="rs">Öneri: 14</div></div>
-        <div class="step" data-k="rsiTP" data-s="1" data-min="2" data-max="50"></div>
       </div>
       <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
         <div style="font-size:11px;color:var(--text3);margin-bottom:9px;font-weight:600;letter-spacing:.08em">ZAMAN DİLİMİ</div>
@@ -252,9 +207,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <button class="dir-btn" id="dLt" onclick="setDir('lt')">RSI &lt; eşik</button>
         <button class="dir-btn" id="dGt" onclick="setDir('gt')">RSI &gt; eşik</button>
       </div>
-      <div class="row" style="background:var(--bg3)">
+      <div class="row" id="row-rsiThr" style="background:var(--bg3)">
         <div><div class="rl">Eşik Değeri</div></div>
-        <div class="step" data-k="rsiThr" data-s="1" data-min="1" data-max="99"></div>
       </div>
       <div class="rsi-sum" id="rsiSum"></div>
     </div>
@@ -263,7 +217,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div class="err hidden" id="errBox"></div>
 </div>
 
-<!-- ══ RESULT ══ -->
+<!-- RESULT -->
 <div id="rPanel" class="hidden">
   <div class="hero">
     <div class="hero-lbl" id="hMeta"></div>
@@ -277,12 +231,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="start-bdg" id="sBdg"></div>
   </div>
   <div class="src" id="srcBar"></div>
-
   <div class="tabs">
     <button class="tab-btn" onclick="goTab('stats')">📊 İstatistik</button>
     <button class="tab-btn" onclick="goTab('deals')">📋 Döngüler</button>
   </div>
-
   <div class="tp" id="tp-stats"><div class="sg" id="statsG"></div></div>
   <div class="tp" id="tp-deals"><div class="dl" id="dealL"></div></div>
 </div>
@@ -295,22 +247,42 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 </div><!-- /app -->
 
 <script>
-/* ══ COINS / PERIODS / TFS ══ */
-const COINS=[
-  {id:"bitcoin",    sym:"BTC", e:"₿"},
-  {id:"ethereum",   sym:"ETH", e:"Ξ"},
-  {id:"solana",     sym:"SOL", e:"◎"},
-  {id:"binancecoin",sym:"BNB", e:"⬡"},
-  {id:"ripple",     sym:"XRP", e:"✕"},
-  {id:"cardano",    sym:"ADA", e:"₳"},
-  {id:"dogecoin",   sym:"DOGE",e:"Ð"},
-  {id:"avalanche-2",sym:"AVAX",e:"▲"},
+/* ════════════════════════════════════════
+   CONSTANTS
+════════════════════════════════════════ */
+const COINS = [
+  {id:"bitcoin",    sym:"BTC",  e:"₿"},
+  {id:"ethereum",   sym:"ETH",  e:"Ξ"},
+  {id:"solana",     sym:"SOL",  e:"◎"},
+  {id:"binancecoin",sym:"BNB",  e:"⬡"},
+  {id:"ripple",     sym:"XRP",  e:"✕"},
+  {id:"cardano",    sym:"ADA",  e:"₳"},
+  {id:"dogecoin",   sym:"DOGE", e:"Ð"},
+  {id:"avalanche-2",sym:"AVAX", e:"▲"},
 ];
-const PERS=[{l:"6A",d:180},{l:"1Y",d:365},{l:"2Y",d:730}];
-const TFS=[{l:"1s",v:"h1"},{l:"4s",v:"h4"},{l:"1G",v:"d1"}];
+const PERS = [{l:"6A",d:180},{l:"1Y",d:365},{l:"2Y",d:730}];
+const TFS  = [{l:"1s",v:"h1"},{l:"4s",v:"h4"},{l:"1G",v:"d1"}];
 
-/* ══ STATE ══ */
-const DEFAULTS={
+/* Stepper tanımları */
+const STEPPERS = [
+  {k:"startCapital", step:500,  min:100,     dec:0},
+  {k:"initAmt",      step:10,   min:1,        dec:0},
+  {k:"safeAmt",      step:10,   min:1,        dec:0},
+  {k:"priceStep",    step:0.1,  min:0.1,      dec:1},
+  {k:"stepMult",     step:0.1,  min:1,        dec:1},
+  {k:"amtMult",      step:0.1,  min:1,        dec:1},
+  {k:"maxSO",        step:1,    min:1, max:100,dec:0},
+  {k:"tpPct",        step:0.1,  min:0.1,      dec:1},
+  {k:"slPct",        step:0.5,  min:0,        dec:1},
+  {k:"cooldown",     step:1,    min:0,        dec:0},
+  {k:"rsiTP",        step:1,    min:2, max:50, dec:0},
+  {k:"rsiThr",       step:1,    min:1, max:99, dec:0},
+];
+
+/* ════════════════════════════════════════
+   STATE + LOCALSTORAGE
+════════════════════════════════════════ */
+const DEFAULTS = {
   coin:"bitcoin", days:365,
   startCapital:10000, initAmt:100, safeAmt:100,
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
@@ -318,450 +290,593 @@ const DEFAULTS={
   cond:"instant",
   rsiTP:14, rsiTf:"h1", rsiDir:"lt", rsiThr:30,
 };
-const S=Object.assign({},DEFAULTS);
 
-/* ══ LOCALSTORAGE ══ */
-const LS_KEY="dca_backtest_v1";
-function loadState(){
-  try{
-    const saved=JSON.parse(localStorage.getItem(LS_KEY)||"{}");
-    Object.keys(DEFAULTS).forEach(k=>{if(saved[k]!==undefined) S[k]=saved[k];});
-  }catch(e){}
-}
-function saveState(){
-  try{ localStorage.setItem(LS_KEY,JSON.stringify(S)); }catch(e){}
+const S = Object.assign({}, DEFAULTS);
+
+function loadState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("dca_v1") || "{}");
+    Object.keys(DEFAULTS).forEach(function(k) {
+      if (saved[k] !== undefined) S[k] = saved[k];
+    });
+  } catch(e) {}
 }
 
-/* ══ HELPERS ══ */
-const f=(n,d=2)=>(n??0).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
-const fu=n=>Math.abs(n)>=1000?"$"+f(n/1000,1)+"k":"$"+f(n,2);
-const fp=n=>(n>=0?"+":"")+f(n,1)+"%";
-const lBar=()=>document.getElementById("lBar");
-const setLoad=p=>{lBar().style.width=p+"%"};
+function saveState() {
+  try { localStorage.setItem("dca_v1", JSON.stringify(S)); } catch(e) {}
+}
 
-/* ══ DATA FETCH ══
-   CoinGecko /market_chart/range:
-   - aralık ≤ 1 gün   → ~5 dakikalık mumlar
-   - aralık 1–90 gün  → saatlik mumlar
-   - aralık > 90 gün  → günlük mumlar
-   
-   Dakikalık/saatlik veri için 1 günlük chunklar ile istiyoruz.
-   2 yıl = 730 chunk (çok fazla) → 4 günlük chunk kullanıyoruz:
-   saatlik veri garantisi (4 gün < 90 gün) ve 730/4 ≈ 183 istek.
-   Rate limit için 600ms bekleme.
-   OKX fallback: saatlik mum API.
-══ */
+/* ════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════ */
+function f(n, d) {
+  d = d === undefined ? 2 : d;
+  return (n || 0).toLocaleString("en-US", {minimumFractionDigits:d, maximumFractionDigits:d});
+}
+function fu(n) { return Math.abs(n) >= 1000 ? "$" + f(n/1000, 1) + "k" : "$" + f(n, 2); }
+function fp(n) { return (n >= 0 ? "+" : "") + f(n, 1) + "%"; }
+function setLoad(p) { document.getElementById("lBar").style.width = p + "%"; }
 
-async function fetchCG(coinId, days){
-  const now=Math.floor(Date.now()/1000);
-  const from=now-days*86400;
-  const CHUNK=4*86400; // 4 günlük chunk → saatlik veri garantisi
-  let all=[];
-  let t=from;
-  let req=0;
+/* ════════════════════════════════════════
+   BUILD UI
+════════════════════════════════════════ */
+function buildStepper(rowId, cfg) {
+  var row = document.getElementById("row-" + cfg.k);
+  if (!row) return;
 
-  while(t<now){
-    const to=Math.min(t+CHUNK,now);
-    const url=`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart/range?vs_currency=usd&from=${t}&to=${to}`;
-    const r=await fetch(url,{signal:AbortSignal.timeout(10000)});
-    if(!r.ok) throw new Error("CoinGecko HTTP "+r.status);
-    const j=await r.json();
-    if(!j.prices?.length) throw new Error("Veri boş");
-    all=all.concat(j.prices);
-    t=to+1;
+  var wrap = document.createElement("div");
+  wrap.className = "step";
+
+  var dec = document.createElement("button");
+  dec.className = "sbtn";
+  dec.textContent = "−";
+
+  var inp = document.createElement("input");
+  inp.type = "number";
+  inp.className = "sinp";
+  inp.id = "inp-" + cfg.k;
+  inp.value = S[cfg.k];
+
+  var inc = document.createElement("button");
+  inc.className = "sbtn";
+  inc.textContent = "+";
+
+  function update(v) {
+    var val = parseFloat(v) || 0;
+    val = Math.max(cfg.min, Math.min(cfg.max !== undefined ? cfg.max : 999999, val));
+    if (cfg.dec) {
+      val = parseFloat(val.toFixed(cfg.dec));
+    } else {
+      val = Math.round(val);
+    }
+    S[cfg.k] = val;
+    inp.value = val;
+    updateCap();
+    updateRsiSum();
+    saveState();
+  }
+
+  dec.onclick = function() { update(S[cfg.k] - cfg.step); };
+  inc.onclick = function() { update(S[cfg.k] + cfg.step); };
+  inp.onchange = function() { update(inp.value); };
+
+  wrap.appendChild(dec);
+  wrap.appendChild(inp);
+  wrap.appendChild(inc);
+  row.appendChild(wrap);
+}
+
+function buildChips() {
+  /* Coins */
+  var cc = document.getElementById("coinC");
+  COINS.forEach(function(c) {
+    var b = document.createElement("button");
+    b.className = "chip" + (c.id === S.coin ? " on" : "");
+    b.textContent = c.e + " " + c.sym;
+    b.onclick = function() {
+      S.coin = c.id;
+      refreshChips();
+      updateBadge();
+      saveState();
+    };
+    cc.appendChild(b);
+  });
+
+  /* Periods */
+  var pc = document.getElementById("perC");
+  PERS.forEach(function(p) {
+    var b = document.createElement("button");
+    b.className = "chip" + (p.d === S.days ? " on" : "");
+    b.textContent = p.l;
+    b.onclick = function() {
+      S.days = p.d;
+      refreshChips();
+      updateBadge();
+      saveState();
+    };
+    pc.appendChild(b);
+  });
+
+  /* Timeframes */
+  var tc = document.getElementById("tfC");
+  TFS.forEach(function(t) {
+    var b = document.createElement("button");
+    b.className = "chip" + (t.v === S.rsiTf ? " on-p" : "");
+    b.style.padding = "7px 13px";
+    b.textContent = t.l;
+    b.onclick = function() {
+      S.rsiTf = t.v;
+      refreshChips();
+      updateRsiSum();
+      saveState();
+    };
+    tc.appendChild(b);
+  });
+}
+
+function refreshChips() {
+  var cbs = document.querySelectorAll("#coinC .chip");
+  COINS.forEach(function(c, i) { cbs[i].className = "chip" + (c.id === S.coin ? " on" : ""); });
+  var pbs = document.querySelectorAll("#perC .chip");
+  PERS.forEach(function(p, i)  { pbs[i].className = "chip" + (p.d === S.days ? " on" : ""); });
+  var tbs = document.querySelectorAll("#tfC .chip");
+  TFS.forEach(function(t, i)   { tbs[i].className = "chip" + (t.v === S.rsiTf ? " on-p" : ""); });
+}
+
+function syncInputs() {
+  STEPPERS.forEach(function(cfg) {
+    var inp = document.getElementById("inp-" + cfg.k);
+    if (inp) inp.value = S[cfg.k];
+  });
+}
+
+function updateCap() {
+  var t = S.initAmt, a = S.safeAmt;
+  for (var i = 0; i < S.maxSO; i++) { t += a; a *= S.amtMult; }
+  var ok = t <= S.startCapital;
+  document.getElementById("capD").style.background = ok ? "var(--green)" : "var(--red)";
+  document.getElementById("capT").style.color = ok ? "var(--green)" : "var(--red)";
+  document.getElementById("capT").textContent = ok
+    ? "✓ Yeterli — $" + Math.ceil(t) + " gerekli"
+    : "⚠ Tek döngü maks: $" + Math.ceil(t) + " — yetersiz";
+  var btn = document.getElementById("fabBtn");
+  btn.disabled = !ok;
+  btn.textContent = ok ? "▶ Backtest Başlat" : "⚠ Sermaye Yetersiz";
+}
+
+function setCond(type) {
+  S.cond = type;
+  var isR = type === "rsi";
+
+  var iR = document.getElementById("radInstant");
+  iR.style.cssText = "width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;" +
+    "background:" + (isR ? "transparent" : "var(--accent)") + ";" +
+    "border:2px solid " + (isR ? "var(--border2)" : "var(--accent)") + ";color:#000";
+  iR.textContent = isR ? "" : "✓";
+  document.getElementById("lblInstant").style.color = isR ? "var(--text3)" : "var(--text)";
+
+  var rR = document.getElementById("radRsi");
+  rR.style.cssText = "width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;" +
+    "background:" + (isR ? "var(--purple)" : "transparent") + ";" +
+    "border:2px solid " + (isR ? "var(--purple)" : "var(--border2)") + ";color:#000";
+  rR.textContent = isR ? "✓" : "";
+  document.getElementById("lblRsi").style.color = isR ? "var(--purple)" : "var(--text3)";
+
+  document.getElementById("rsiSub").classList.toggle("hidden", !isR);
+  saveState();
+}
+
+function setDir(dir) {
+  S.rsiDir = dir;
+  document.getElementById("dLt").className = "dir-btn" + (dir === "lt" ? " on" : "");
+  document.getElementById("dGt").className = "dir-btn" + (dir === "gt" ? " on" : "");
+  updateRsiSum();
+  saveState();
+}
+
+function updateRsiSum() {
+  var tf = TFS.find(function(t) { return t.v === S.rsiTf; });
+  document.getElementById("rsiSum").innerHTML =
+    "RSI(" + S.rsiTP + ") · " + (tf ? tf.l : S.rsiTf) + " grafiğinde " +
+    "<strong style='color:var(--purple)'>" + (S.rsiDir === "lt" ? "< " : "> ") + S.rsiThr + "</strong> olunca deal aç";
+}
+
+function updateBadge() {
+  var c = COINS.find(function(x) { return x.id === S.coin; });
+  var p = PERS.find(function(x)  { return x.d  === S.days; });
+  document.getElementById("hdrBadge").textContent = c.e + " " + c.sym + " · " + p.l;
+}
+
+/* ════════════════════════════════════════
+   FETCH — CoinGecko saatlik chunk
+════════════════════════════════════════ */
+async function fetchCG(coinId, days) {
+  var now  = Math.floor(Date.now() / 1000);
+  var from = now - days * 86400;
+  var CHUNK = 4 * 86400;
+  var all = [], t = from, req = 0, totalChunks = Math.ceil(days / 4);
+
+  while (t < now) {
+    var to = Math.min(t + CHUNK, now);
+    var url = "https://api.coingecko.com/api/v3/coins/" + coinId +
+              "/market_chart/range?vs_currency=usd&from=" + t + "&to=" + to;
+    var r = await fetch(url, {signal: AbortSignal.timeout(12000)});
+    if (!r.ok) throw new Error("CoinGecko HTTP " + r.status);
+    var j = await r.json();
+    if (!j.prices || !j.prices.length) throw new Error("Veri boş");
+    all = all.concat(j.prices);
+    t = to + 1;
     req++;
-    // Her 5 istekte 1 saniye bekle (rate limit)
-    if(req%5===0&&t<now) await new Promise(res=>setTimeout(res,1000));
-    else if(t<now) await new Promise(res=>setTimeout(res,200));
-    // Loading bar ilerleme
-    setLoad(10+Math.floor((req/Math.ceil(days/4))*75));
+    setLoad(10 + Math.floor(req / totalChunks * 75));
+    if (t < now) await new Promise(function(res) { setTimeout(res, req % 5 === 0 ? 1000 : 200); });
   }
 
-  // Tekrar zaman damgalarını temizle (saatlik unique)
-  const seen=new Set();
-  return all
-    .filter(([ts])=>{
-      const k=Math.floor(ts/3600000);
-      if(seen.has(k))return false;
-      seen.add(k);return true;
-    })
-    .map(([ts,price])=>({
-      date:new Date(ts).toLocaleDateString("tr-TR",{month:"numeric",day:"numeric"}),
-      price, ts
-    }));
+  var seen = new Set();
+  return all.filter(function(row) {
+    var k = Math.floor(row[0] / 3600000);
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  }).map(function(row) {
+    return {
+      date: new Date(row[0]).toLocaleDateString("tr-TR", {month:"numeric", day:"numeric"}),
+      price: row[1],
+      ts: row[0]
+    };
+  });
 }
 
-async function fetchOKX(coinId, days){
-  const coin=COINS.find(c=>c.id===coinId);
-  const instId=coin.sym+"-USDT";
-  const needed=days*24;
-  let all=[],after="";
-  while(all.length<needed){
-    let url=`https://www.okx.com/api/v5/market/history-candles?instId=${instId}&bar=1H&limit=300`;
-    if(after) url+=`&after=${after}`;
-    const r=await fetch(url,{signal:AbortSignal.timeout(10000)});
-    if(!r.ok) throw new Error("OKX "+r.status);
-    const j=await r.json();
-    if(!j.data?.length) break;
-    all=all.concat(j.data);
-    after=j.data[j.data.length-1][0];
-    if(j.data.length<300) break;
-    await new Promise(res=>setTimeout(res,200));
-    setLoad(10+Math.floor((all.length/needed)*75));
+async function fetchOKX(coinId, days) {
+  var coin = COINS.find(function(c) { return c.id === coinId; });
+  var instId = coin.sym + "-USDT";
+  var needed = days * 24;
+  var all = [], after = "";
+
+  while (all.length < needed) {
+    var url = "https://www.okx.com/api/v5/market/history-candles?instId=" + instId + "&bar=1H&limit=300";
+    if (after) url += "&after=" + after;
+    var r = await fetch(url, {signal: AbortSignal.timeout(10000)});
+    if (!r.ok) throw new Error("OKX " + r.status);
+    var j = await r.json();
+    if (!j.data || !j.data.length) break;
+    all = all.concat(j.data);
+    after = j.data[j.data.length - 1][0];
+    if (j.data.length < 300) break;
+    setLoad(10 + Math.floor(all.length / needed * 75));
+    await new Promise(function(res) { setTimeout(res, 200); });
   }
-  if(!all.length) throw new Error("OKX veri boş");
-  return all.slice(0,needed).reverse().map(k=>({
-    date:new Date(parseInt(k[0])).toLocaleDateString("tr-TR",{month:"numeric",day:"numeric"}),
-    price:parseFloat(k[4]),ts:parseInt(k[0])
-  }));
+
+  if (!all.length) throw new Error("OKX veri boş");
+  return all.slice(0, needed).reverse().map(function(k) {
+    return {
+      date: new Date(parseInt(k[0])).toLocaleDateString("tr-TR", {month:"numeric", day:"numeric"}),
+      price: parseFloat(k[4]),
+      ts: parseInt(k[0])
+    };
+  });
 }
 
-async function fetchPrices(coinId, days){
+async function fetchPrices(coinId, days) {
   setLoad(5);
-  // CoinGecko dene
-  try{
-    const d=await fetchCG(coinId,days);
-    return{prices:d,source:"CoinGecko (saatlik)"};
-  }catch(e){ console.warn("CG:",e.message); setLoad(10); }
-  // OKX fallback
-  try{
-    const d=await fetchOKX(coinId,days);
-    return{prices:d,source:"OKX (saatlik)"};
-  }catch(e){ console.warn("OKX:",e.message); }
-  throw new Error("Veri çekilemedi. Lütfen internet bağlantınızı kontrol edin.");
+  try {
+    var d = await fetchCG(coinId, days);
+    return {prices: d, source: "CoinGecko (saatlik)"};
+  } catch(e) { console.warn("CG:", e.message); setLoad(10); }
+  try {
+    var d2 = await fetchOKX(coinId, days);
+    return {prices: d2, source: "OKX (saatlik)"};
+  } catch(e) { console.warn("OKX:", e.message); }
+  throw new Error("Veri çekilemedi. İnternet bağlantınızı kontrol edin.");
 }
 
-/* ══ RSI ══ */
-function calcRSI(prices,period){
-  const out=new Array(prices.length).fill(null);
-  if(prices.length<period+1) return out;
-  let ag=0,al=0;
-  for(let i=1;i<=period;i++){const d=prices[i].price-prices[i-1].price;d>0?ag+=d:al-=d;}
-  ag/=period; al/=period;
-  for(let i=period;i<prices.length;i++){
-    if(i>period){const d=prices[i].price-prices[i-1].price;ag=(ag*(period-1)+(d>0?d:0))/period;al=(al*(period-1)+(d<0?-d:0))/period;}
-    out[i]=+((100-100/(1+(al===0?100:ag/al))).toFixed(2));
+/* ════════════════════════════════════════
+   RSI
+════════════════════════════════════════ */
+function calcRSI(prices, period) {
+  var out = new Array(prices.length).fill(null);
+  if (prices.length < period + 1) return out;
+  var ag = 0, al = 0;
+  for (var i = 1; i <= period; i++) {
+    var d = prices[i].price - prices[i-1].price;
+    if (d > 0) ag += d; else al -= d;
+  }
+  ag /= period; al /= period;
+  for (var i = period; i < prices.length; i++) {
+    if (i > period) {
+      var d = prices[i].price - prices[i-1].price;
+      ag = (ag * (period-1) + (d > 0 ? d : 0)) / period;
+      al = (al * (period-1) + (d < 0 ? -d : 0)) / period;
+    }
+    out[i] = parseFloat((100 - 100 / (1 + (al === 0 ? 100 : ag/al))).toFixed(2));
   }
   return out;
 }
 
-/* ══ BACKTEST (OKX mantığı) ══ */
-function backtest(prices){
-  const trigRSI=S.cond==="rsi"?calcRSI(prices,S.rsiTP):null;
-  const deals=[],equity=[];
-  let cash=S.startCapital,inDeal=false,deal=null,cdHours=S.cooldown*24,cdLeft=0;
-  let waitRSI=(S.cond==="rsi");
+/* ════════════════════════════════════════
+   BACKTEST (OKX mantığı)
+════════════════════════════════════════ */
+function backtest(prices) {
+  var trigRSI = S.cond === "rsi" ? calcRSI(prices, S.rsiTP) : null;
+  var deals = [], equity = [];
+  var cash = S.startCapital, inDeal = false, deal = null;
+  var cdLeft = 0, waitRSI = (S.cond === "rsi");
 
-  for(let i=0;i<prices.length;i++){
-    const {price,date}=prices[i];
+  for (var i = 0; i < prices.length; i++) {
+    var price = prices[i].price;
+    var date  = prices[i].date;
 
-    // RSI başlatma koşulu
-    if(waitRSI&&!inDeal&&cdLeft===0){
-      const rv=trigRSI?trigRSI[i]:null;
-      if(rv==null){equity.push({date,value:cash,price});continue;}
-      const ok=S.rsiDir==="lt"?rv<S.rsiThr:rv>S.rsiThr;
-      if(!ok){equity.push({date,value:cash,price});continue;}
-      waitRSI=false;
+    /* RSI başlatma koşulu */
+    if (waitRSI && !inDeal && cdLeft === 0) {
+      var rv = trigRSI ? trigRSI[i] : null;
+      if (rv === null) { equity.push({date:date, value:cash, price:price}); continue; }
+      var ok = S.rsiDir === "lt" ? rv < S.rsiThr : rv > S.rsiThr;
+      if (!ok) { equity.push({date:date, value:cash, price:price}); continue; }
+      waitRSI = false;
     }
 
-    if(!inDeal){
-      if(cdLeft>0){cdLeft--;if(S.cond==="rsi")waitRSI=true;equity.push({date,value:cash,price});continue;}
-      if(cash<S.initAmt){equity.push({date,value:cash,price});continue;}
-      cash-=S.initAmt;
+    if (!inDeal) {
+      if (cdLeft > 0) {
+        cdLeft--;
+        if (S.cond === "rsi") waitRSI = true;
+        equity.push({date:date, value:cash, price:price});
+        continue;
+      }
+      if (cash < S.initAmt) { equity.push({date:date, value:cash, price:price}); continue; }
+      cash -= S.initAmt;
 
-      // OKX: safety seviyeleri ilk fiyata göre
-      const so=[];
-      let stepNow=S.priceStep, lp=price*(1-S.priceStep/100);
-      for(let n=0;n<S.maxSO;n++){
-        so.push({price:lp, amt:S.safeAmt*Math.pow(S.amtMult,n), filled:false});
-        stepNow*=S.stepMult;
-        lp*=(1-stepNow/100);
+      /* OKX: safety seviyeleri — ilk fiyata göre */
+      var so = [];
+      var stepNow = S.priceStep;
+      var lvlPrice = price * (1 - S.priceStep / 100);
+      for (var n = 0; n < S.maxSO; n++) {
+        so.push({price: lvlPrice, amt: S.safeAmt * Math.pow(S.amtMult, n), filled: false});
+        stepNow *= S.stepMult;
+        lvlPrice *= (1 - stepNow / 100);
       }
-      deal={startDate:date,initPrice:price,
-            orders:[{date,price,size:S.initAmt,qty:S.initAmt/price}],
-            totalCost:S.initAmt,totalQty:S.initAmt/price,avgCost:price,safetyCount:0,so};
-      inDeal=true;
+
+      deal = {
+        startDate: date, initPrice: price,
+        orders: [{date:date, price:price, size:S.initAmt, qty:S.initAmt/price}],
+        totalCost: S.initAmt, totalQty: S.initAmt/price,
+        avgCost: price, safetyCount: 0, so: so
+      };
+      inDeal = true;
+
     } else {
-      // TP — ortalama maliyete göre
-      if(price>=deal.avgCost*(1+S.tpPct/100)){
-        const profit=deal.totalQty*price-deal.totalCost;
-        cash+=deal.totalQty*price;
-        deals.push({...deal,endDate:date,exitPrice:price,profit,profitPct:profit/deal.totalCost*100,why:"TP"});
-        inDeal=false;deal=null;cdLeft=cdHours;
-        if(S.cond==="rsi")waitRSI=true;
-        equity.push({date,value:cash,price});continue;
+      /* TP — ortalama maliyete göre */
+      if (price >= deal.avgCost * (1 + S.tpPct / 100)) {
+        var profit = deal.totalQty * price - deal.totalCost;
+        cash += deal.totalQty * price;
+        deals.push(Object.assign({}, deal, {
+          endDate: date, exitPrice: price,
+          profit: profit, profitPct: profit / deal.totalCost * 100, why: "TP"
+        }));
+        inDeal = false; deal = null; cdLeft = S.cooldown * 24;
+        if (S.cond === "rsi") waitRSI = true;
+        equity.push({date:date, value:cash, price:price});
+        continue;
       }
-      // SL — ilk fiyata göre
-      if(S.slPct>0&&price<=deal.initPrice*(1-S.slPct/100)){
-        const profit=deal.totalQty*price-deal.totalCost;
-        cash+=deal.totalQty*price;
-        deals.push({...deal,endDate:date,exitPrice:price,profit,profitPct:profit/deal.totalCost*100,why:"SL"});
-        inDeal=false;deal=null;cdLeft=cdHours;
-        if(S.cond==="rsi")waitRSI=true;
-        equity.push({date,value:cash,price});continue;
+
+      /* SL — ilk fiyata göre */
+      if (S.slPct > 0 && price <= deal.initPrice * (1 - S.slPct / 100)) {
+        var profit = deal.totalQty * price - deal.totalCost;
+        cash += deal.totalQty * price;
+        deals.push(Object.assign({}, deal, {
+          endDate: date, exitPrice: price,
+          profit: profit, profitPct: profit / deal.totalCost * 100, why: "SL"
+        }));
+        inDeal = false; deal = null; cdLeft = S.cooldown * 24;
+        if (S.cond === "rsi") waitRSI = true;
+        equity.push({date:date, value:cash, price:price});
+        continue;
       }
-      // Safety orders
-      for(let n=0;n<deal.so.length;n++){
-        const lv=deal.so[n];
-        if(!lv.filled&&price<=lv.price){
-          if(cash<lv.amt)break;
-          cash-=lv.amt;
-          deal.orders.push({date,price,size:lv.amt,qty:lv.amt/price});
-          deal.totalCost+=lv.amt;deal.totalQty+=lv.amt/price;
-          deal.avgCost=deal.totalCost/deal.totalQty;
-          deal.safetyCount++;lv.filled=true;
+
+      /* Safety orders */
+      for (var n = 0; n < deal.so.length; n++) {
+        var lv = deal.so[n];
+        if (!lv.filled && price <= lv.price) {
+          if (cash < lv.amt) break;
+          cash -= lv.amt;
+          deal.orders.push({date:date, price:price, size:lv.amt, qty:lv.amt/price});
+          deal.totalCost += lv.amt;
+          deal.totalQty  += lv.amt / price;
+          deal.avgCost    = deal.totalCost / deal.totalQty;
+          deal.safetyCount++;
+          lv.filled = true;
         }
       }
     }
-    equity.push({date,value:inDeal?cash+deal.totalQty*price:cash,price});
+
+    equity.push({date:date, value: inDeal ? cash + deal.totalQty * price : cash, price:price});
   }
 
-  // Açık deal kapat
-  if(inDeal&&deal){
-    const lp=prices[prices.length-1].price,profit=deal.totalQty*lp-deal.totalCost;
-    cash+=deal.totalQty*lp;
-    deals.push({...deal,endDate:prices[prices.length-1].date,exitPrice:lp,profit,profitPct:profit/deal.totalCost*100,why:"OPEN"});
+  /* Açık deal kapat */
+  if (inDeal && deal) {
+    var lp = prices[prices.length-1].price;
+    var profit = deal.totalQty * lp - deal.totalCost;
+    cash += deal.totalQty * lp;
+    deals.push(Object.assign({}, deal, {
+      endDate: prices[prices.length-1].date, exitPrice: lp,
+      profit: profit, profitPct: profit / deal.totalCost * 100, why: "OPEN"
+    }));
   }
 
-  let peak=-Infinity,maxDD=0;
-  for(const e of equity){if(e.value>peak)peak=e.value;const dd=(peak-e.value)/peak*100;if(dd>maxDD)maxDD=dd;}
-  const tp=deals.reduce((a,d)=>a+d.profit,0);
-  const wins=deals.filter(d=>d.profit>0).length;
-  return{deals,equity,stats:{
-    totalDeals:deals.length,wins,losses:deals.length-wins,
-    slHits:deals.filter(d=>d.why==="SL").length,
-    winRate:deals.length?wins/deals.length*100:0,
-    totalProfit:tp,roi:tp/S.startCapital*100,
-    maxDrawdown:maxDD,
-    avgSO:deals.length?deals.reduce((a,d)=>a+d.safetyCount,0)/deals.length:0,
-  }};
+  var peak = -Infinity, maxDD = 0;
+  for (var i = 0; i < equity.length; i++) {
+    if (equity[i].value > peak) peak = equity[i].value;
+    var dd = (peak - equity[i].value) / peak * 100;
+    if (dd > maxDD) maxDD = dd;
+  }
+
+  var tp = deals.reduce(function(a, d) { return a + d.profit; }, 0);
+  var wins = deals.filter(function(d) { return d.profit > 0; }).length;
+
+  return {
+    deals: deals, equity: equity,
+    stats: {
+      totalDeals: deals.length, wins: wins, losses: deals.length - wins,
+      slHits: deals.filter(function(d) { return d.why === "SL"; }).length,
+      winRate: deals.length ? wins / deals.length * 100 : 0,
+      totalProfit: tp, roi: tp / S.startCapital * 100,
+      maxDrawdown: maxDD,
+      avgSO: deals.length ? deals.reduce(function(a,d){ return a+d.safetyCount; }, 0) / deals.length : 0,
+    }
+  };
 }
 
-/* ══ RUN ══ */
-async function run(){
-  const btn=document.getElementById("fabBtn");
-  btn.disabled=true;
-  btn.innerHTML='<span class="spinner"></span> Veri çekiliyor...';
+/* ════════════════════════════════════════
+   RUN
+════════════════════════════════════════ */
+async function run() {
+  var btn = document.getElementById("fabBtn");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Veri çekiliyor...';
   document.getElementById("errBox").classList.add("hidden");
   setLoad(3);
 
-  try{
-    const {prices,source}=await fetchPrices(S.coin,S.days);
-    if(prices.length<20) throw new Error(`Yeterli veri yok (${prices.length} mum). Daha kısa periyot deneyin.`);
+  try {
+    var res = await fetchPrices(S.coin, S.days);
+    var prices = res.prices, source = res.source;
+    if (prices.length < 20) throw new Error("Yeterli veri yok (" + prices.length + " mum).");
     setLoad(90);
-    const result=backtest(prices);
-    render(result,source,prices.length);
+    var result = backtest(prices);
+    render(result, source, prices.length);
     goResult();
-  }catch(e){
-    const eb=document.getElementById("errBox");
-    eb.textContent="⚠ "+e.message;
+  } catch(e) {
+    var eb = document.getElementById("errBox");
+    eb.textContent = "⚠ " + e.message;
     eb.classList.remove("hidden");
-    btn.disabled=false;
-    btn.textContent="▶ Backtest Başlat";
+    btn.disabled = false;
+    btn.textContent = "▶ Backtest Başlat";
   }
+
   setLoad(100);
-  setTimeout(()=>setLoad(0),700);
+  setTimeout(function() { setLoad(0); }, 700);
 }
 
-/* ══ RENDER ══ */
-function render(res,source,mumCnt){
-  const {stats,equity,deals}=res;
-  const coin=COINS.find(c=>c.id===S.coin);
-  const per=PERS.find(p=>p.d===S.days);
-  const pc=stats.totalProfit>=0?"var(--green)":"var(--red)";
+/* ════════════════════════════════════════
+   RENDER
+════════════════════════════════════════ */
+function render(res, source, mumCnt) {
+  var stats = res.stats, deals = res.deals;
+  var coin = COINS.find(function(c) { return c.id === S.coin; });
+  var per  = PERS.find(function(p)  { return p.d  === S.days; });
+  var pc   = stats.totalProfit >= 0 ? "var(--green)" : "var(--red)";
 
-  // Hero
-  document.getElementById("hMeta").textContent=
-    `${coin.sym} · ${per.l} · ${stats.totalDeals} döngü · ${mumCnt.toLocaleString()} mum`;
-  document.getElementById("hPct").textContent=fp(stats.roi);
-  document.getElementById("hPct").style.color=pc;
-  document.getElementById("hUsd").textContent=(stats.totalProfit>=0?"+":"")+fu(stats.totalProfit);
-  document.getElementById("hUsd").style.color=pc;
-  document.getElementById("hWR").textContent=fp(stats.winRate);
-  document.getElementById("hWR").style.color=stats.winRate>=50?"var(--green)":"var(--red)";
-  document.getElementById("hDD").textContent=fp(-stats.maxDrawdown);
-  document.getElementById("hSO").textContent=f(stats.avgSO,1);
+  document.getElementById("hMeta").textContent =
+    coin.sym + " · " + per.l + " · " + stats.totalDeals + " döngü · " + mumCnt.toLocaleString() + " mum";
+  document.getElementById("hPct").textContent = fp(stats.roi);
+  document.getElementById("hPct").style.color = pc;
+  document.getElementById("hUsd").textContent = (stats.totalProfit >= 0 ? "+" : "") + fu(stats.totalProfit);
+  document.getElementById("hUsd").style.color = pc;
+  document.getElementById("hWR").textContent  = fp(stats.winRate);
+  document.getElementById("hWR").style.color  = stats.winRate >= 50 ? "var(--green)" : "var(--red)";
+  document.getElementById("hDD").textContent  = fp(-stats.maxDrawdown);
+  document.getElementById("hSO").textContent  = f(stats.avgSO, 1);
+  document.getElementById("srcBar").textContent = "📡 Kaynak: " + source + " · " + mumCnt.toLocaleString() + " mum";
 
-  // Source
-  document.getElementById("srcBar").textContent=`📡 Kaynak: ${source} · ${mumCnt.toLocaleString()} mum`;
-
-  // Start badge
-  const sb=document.getElementById("sBdg");
-  if(S.cond==="instant"){
-    sb.style.cssText="margin-top:10px;display:inline-flex;align-items:center;gap:5px;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600;background:rgba(0,212,170,.1);color:var(--accent);border:1px solid rgba(0,212,170,.25)";
-    sb.textContent="⚡ Anında Başlatma";
+  /* Start badge */
+  var sb = document.getElementById("sBdg");
+  if (S.cond === "instant") {
+    sb.style.cssText = "margin-top:10px;display:inline-flex;align-items:center;gap:5px;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600;background:rgba(0,212,170,.1);color:var(--accent);border:1px solid rgba(0,212,170,.25)";
+    sb.textContent = "⚡ Anında Başlatma";
   } else {
-    const tf=TFS.find(t=>t.v===S.rsiTf);
-    sb.style.cssText="margin-top:10px;display:inline-flex;align-items:center;gap:5px;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600;background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.25)";
-    sb.textContent=`📉 RSI(${S.rsiTP}) ${S.rsiDir==="lt"?"<":">"} ${S.rsiThr} · ${tf?tf.l:S.rsiTf}`;
+    var tf = TFS.find(function(t) { return t.v === S.rsiTf; });
+    sb.style.cssText = "margin-top:10px;display:inline-flex;align-items:center;gap:5px;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600;background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.25)";
+    sb.textContent = "📉 RSI(" + S.rsiTP + ") " + (S.rsiDir === "lt" ? "< " : "> ") + S.rsiThr + " · " + (tf ? tf.l : S.rsiTf);
   }
 
-  // Stats grid
-  const sg=document.getElementById("statsG"); sg.innerHTML="";
+  /* Stats grid */
+  var sg = document.getElementById("statsG");
+  sg.innerHTML = "";
   [
     {l:"Toplam Kâr",   v:fu(stats.totalProfit),  c:pc},
     {l:"ROI",          v:fp(stats.roi),            c:pc},
     {l:"Win Rate",     v:fp(stats.winRate),         c:stats.winRate>=50?"var(--green)":"var(--red)"},
     {l:"Max Drawdown", v:fp(-stats.maxDrawdown),   c:"var(--red)"},
     {l:"Toplam Döngü", v:stats.totalDeals,          c:"var(--accent2)"},
-    {l:"Kazan/Kaybet", v:`${stats.wins}W / ${stats.losses}L`, c:"var(--text)"},
+    {l:"Kazan/Kaybet", v:stats.wins+"W / "+stats.losses+"L", c:"var(--text)"},
     {l:"SL İsabeti",   v:stats.slHits,             c:stats.slHits>0?"var(--red)":"var(--text3)"},
     {l:"Ort. Safety",  v:f(stats.avgSO,1),         c:"var(--yellow)"},
-  ].forEach(({l,v,c})=>{
-    sg.innerHTML+=`<div class="sc" style="border-color:${c}22">
-      <div class="sv" style="color:${c}">${v}</div>
-      <div class="sl">${l}</div>
-    </div>`;
+  ].forEach(function(row) {
+    sg.innerHTML += '<div class="sc" style="border-color:' + row.c + '22">' +
+      '<div class="sv" style="color:' + row.c + '">' + row.v + '</div>' +
+      '<div class="sl">' + row.l + '</div></div>';
   });
 
-  // Deals
-  const dl=document.getElementById("dealL"); dl.innerHTML="";
-  deals.forEach((d,i)=>{
-    const isSL=d.why==="SL",isOpen=d.why==="OPEN";
-    const pc2=d.profit>=0?"var(--green)":"var(--red)";
-    const bc=isSL?"rgba(255,79,109,.35)":d.profit>=0?"rgba(0,212,170,.18)":"rgba(255,79,109,.18)";
-    dl.innerHTML+=`<div class="dc" style="border-color:${bc};animation-delay:${Math.min(i*.02,.3)}s">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
-          <div class="dm">#${i+1} &nbsp;${d.startDate} → ${d.endDate}${isSL?' <span style="color:var(--red);font-size:10px">SL</span>':""}${isOpen?' <span style="color:var(--yellow);font-size:10px">AÇIK</span>':""}</div>
-          <div class="dsub">
-            Safety: <span style="color:var(--yellow);font-weight:700">${d.safetyCount}</span>
-            &nbsp;·&nbsp;
-            Ort: <span style="color:var(--text);font-weight:600">${fu(d.avgCost)}</span>
-          </div>
-        </div>
-        <div style="text-align:right">
-          <div class="dpct" style="color:${pc2}">${fp(d.profitPct)}</div>
-          <div class="dusd" style="color:${d.profit>=0?"rgba(0,212,170,.65)":"rgba(255,79,109,.65)"}">${d.profit>=0?"+":""}${fu(d.profit)}</div>
-        </div>
-      </div>
-      <div class="d3">
-        ${[["İlk Giriş",d.initPrice],["Çıkış",d.exitPrice],["Yatırım",d.totalCost]].map(([l,v])=>`
-        <div class="dc3"><div class="dc3l">${l}</div><div class="dc3v">${fu(v)}</div></div>`).join("")}
-      </div>
-    </div>`;
+  /* Deals */
+  var dl = document.getElementById("dealL");
+  dl.innerHTML = "";
+  deals.forEach(function(d, i) {
+    var isSL   = d.why === "SL";
+    var isOpen = d.why === "OPEN";
+    var pc2 = d.profit >= 0 ? "var(--green)" : "var(--red)";
+    var bc  = isSL ? "rgba(255,79,109,.35)" : d.profit >= 0 ? "rgba(0,212,170,.18)" : "rgba(255,79,109,.18)";
+    var delay = Math.min(i * 0.02, 0.3);
+    dl.innerHTML +=
+      '<div class="dc" style="border-color:' + bc + ';animation-delay:' + delay + 's">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
+      '<div>' +
+      '<div class="dm">#' + (i+1) + ' &nbsp;' + d.startDate + ' → ' + d.endDate +
+        (isSL   ? ' <span style="color:var(--red);font-size:10px">SL</span>' : "") +
+        (isOpen ? ' <span style="color:var(--yellow);font-size:10px">AÇIK</span>' : "") +
+      '</div>' +
+      '<div class="dsub">Safety: <span style="color:var(--yellow);font-weight:700">' + d.safetyCount + '</span>' +
+        ' &nbsp;·&nbsp; Ort: <span style="color:var(--text);font-weight:600">' + fu(d.avgCost) + '</span></div>' +
+      '</div>' +
+      '<div style="text-align:right">' +
+      '<div class="dpct" style="color:' + pc2 + '">' + fp(d.profitPct) + '</div>' +
+      '<div class="dusd" style="color:' + (d.profit>=0?"rgba(0,212,170,.65)":"rgba(255,79,109,.65)") + '">' +
+        (d.profit>=0?"+":"") + fu(d.profit) + '</div>' +
+      '</div></div>' +
+      '<div class="d3">' +
+      [["İlk Giriş",d.initPrice],["Çıkış",d.exitPrice],["Yatırım",d.totalCost]].map(function(row) {
+        return '<div class="dc3"><div class="dc3l">' + row[0] + '</div><div class="dc3v">' + fu(row[1]) + '</div></div>';
+      }).join("") +
+      '</div></div>';
   });
 }
 
-/* ══ NAVIGATION ══ */
-function goResult(){
+/* ════════════════════════════════════════
+   NAVIGATION
+════════════════════════════════════════ */
+function goResult() {
   document.getElementById("sPanel").classList.add("hidden");
   document.getElementById("rPanel").classList.remove("hidden");
   document.getElementById("fabW").classList.add("hidden");
   document.getElementById("backBtn").classList.remove("hidden");
   goTab("stats");
 }
-function goSettings(){
+
+function goSettings() {
   document.getElementById("rPanel").classList.add("hidden");
   document.getElementById("sPanel").classList.remove("hidden");
   document.getElementById("fabW").classList.remove("hidden");
   document.getElementById("backBtn").classList.add("hidden");
-  const b=document.getElementById("fabBtn");
-  b.disabled=false; b.textContent="▶ Backtest Başlat";
+  var btn = document.getElementById("fabBtn");
+  btn.disabled = false;
+  btn.textContent = "▶ Backtest Başlat";
   updateCap();
 }
-function goTab(name){
-  document.querySelectorAll(".tab-btn").forEach((b,i)=>{
-    b.className="tab-btn"+(["stats","deals"][i]===name?" on":"");
+
+function goTab(name) {
+  document.querySelectorAll(".tab-btn").forEach(function(b, i) {
+    b.className = "tab-btn" + (["stats","deals"][i] === name ? " on" : "");
   });
-  document.querySelectorAll(".tp").forEach(p=>p.classList.remove("on"));
-  document.getElementById("tp-"+name).classList.add("on");
+  document.querySelectorAll(".tp").forEach(function(p) { p.classList.remove("on"); });
+  document.getElementById("tp-" + name).classList.add("on");
 }
 
-/* ══ UI BUILDERS ══ */
-function buildChips(){
-  // Coins
-  const cc=document.getElementById("coinC");
-  COINS.forEach(c=>{
-    const b=document.createElement("button");
-    b.className="chip"+(c.id===S.coin?" on":"");
-    b.textContent=c.e+" "+c.sym;
-    b.onclick=()=>{S.coin=c.id;rChips();updateBadge();saveState();};
-    cc.appendChild(b);
-  });
-  // Periods
-  const pc=document.getElementById("perC");
-  PERS.forEach(p=>{
-    const b=document.createElement("button");
-    b.className="chip"+(p.d===S.days?" on":"");
-    b.textContent=p.l;
-    b.onclick=()=>{S.days=p.d;rChips();updateBadge();saveState();};
-    pc.appendChild(b);
-  });
-  // TFs
-  const tc=document.getElementById("tfC");
-  TFS.forEach(t=>{
-    const b=document.createElement("button");
-    b.className="chip"+(t.v===S.rsiTf?" on-p":"");
-    b.style.padding="7px 13px";
-    b.textContent=t.l;
-    b.onclick=()=>{S.rsiTf=t.v;rChips();updateRsiSum();saveState();};
-    tc.appendChild(b);
-  });
-}
-function rChips(){
-  document.querySelectorAll("#coinC .chip").forEach((b,i)=>{b.className="chip"+(COINS[i].id===S.coin?" on":"");});
-  document.querySelectorAll("#perC .chip").forEach((b,i)=>{b.className="chip"+(PERS[i].d===S.days?" on":"");});
-  document.querySelectorAll("#tfC .chip").forEach((b,i)=>{b.className="chip"+(TFS[i].v===S.rsiTf?" on-p":"");});
-}
-function buildSteps(){
-  document.querySelectorAll(".step[data-k]").forEach(el=>{
-    const k=el.dataset.k,s=+el.dataset.s||1,mn=+(el.dataset.min||0),mx=+(el.dataset.max||999999),d=+(el.dataset.d||0);
-    const db=document.createElement("button");db.className="sbtn";db.textContent="−";
-    const inp=document.createElement("input");inp.type="number";inp.className="sinp";inp.value=S[k];
-    const ib=document.createElement("button");ib.className="sbtn";ib.textContent="+";
-    const u=v=>{let val=Math.min(mx,Math.max(mn,parseFloat(v)||0));val=d?+val.toFixed(d):Math.round(val);S[k]=val;inp.value=val;updateCap();updateRsiSum();saveState();};
-    db.onclick=()=>u(S[k]-s);ib.onclick=()=>u(S[k]+s);inp.onchange=()=>u(inp.value);
-    el.appendChild(db);el.appendChild(inp);el.appendChild(ib);
-  });
-}
-function maxInv(){let t=S.initAmt,a=S.safeAmt;for(let i=0;i<S.maxSO;i++){t+=a;a*=S.amtMult;}return t;}
-function updateCap(){
-  const m=maxInv(),ok=m<=S.startCapital;
-  document.getElementById("capD").style.background=ok?"var(--green)":"var(--red)";
-  document.getElementById("capT").style.color=ok?"var(--green)":"var(--red)";
-  document.getElementById("capT").textContent=ok?`✓ Yeterli — $${Math.ceil(m)} gerekli`:`⚠ Tek döngü maks: $${Math.ceil(m)} — yetersiz`;
-  const b=document.getElementById("fabBtn");
-  b.disabled=!ok; b.textContent=ok?"▶ Backtest Başlat":"⚠ Sermaye Yetersiz";
-}
-function setCond(type){
-  S.cond=type; const isR=type==="rsi";
-  const iR=document.getElementById("cInstR"),rR=document.getElementById("cRsiR");
-  iR.style.cssText=`width:22px;height:22px;border-radius:50%;border:2px solid ${isR?"var(--border2)":"var(--accent)"};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:${isR?"transparent":"var(--accent)"};color:#000`;
-  iR.textContent=isR?"":"✓";
-  document.getElementById("cInstT").style.color=isR?"var(--text3)":"var(--text)";
-  rR.style.cssText=`width:22px;height:22px;border-radius:50%;border:2px solid ${isR?"var(--purple)":"var(--border2)"};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:${isR?"var(--purple)":"transparent"};color:#000`;
-  rR.textContent=isR?"✓":"";
-  document.getElementById("cRsiT").style.color=isR?"var(--purple)":"var(--text3)";
-  document.getElementById("rsiSub").classList.toggle("hidden",!isR);
-  saveState();
-function setDir(dir){
-  S.rsiDir=dir;
-  document.getElementById("dLt").className="dir-btn"+(dir==="lt"?" on":"");
-  document.getElementById("dGt").className="dir-btn"+(dir==="gt"?" on":"");
-  updateRsiSum();
-  saveState();
-function updateRsiSum(){
-  const tf=TFS.find(t=>t.v===S.rsiTf);
-  document.getElementById("rsiSum").innerHTML=
-    `RSI(${S.rsiTP}) · ${tf?tf.l:S.rsiTf} grafiğinde <strong style="color:var(--purple)">${S.rsiDir==="lt"?"<":">"} ${S.rsiThr}</strong> olunca deal aç`;
-}
-function updateBadge(){
-  const c=COINS.find(x=>x.id===S.coin),p=PERS.find(x=>x.d===S.days);
-  document.getElementById("hdrBadge").textContent=`${c.e} ${c.sym} · ${p.l}`;
-}
-
-/* ══ PWA install (isteğe bağlı) ══ */
-if("serviceWorker" in navigator){
-  window.addEventListener("load",()=>{
-    // Basit sw yoksa sorun çıkarmaz
-    navigator.serviceWorker.register("sw.js").catch(()=>{});
-  });
-}
-
-/* ══ INIT ══ */
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
 loadState();
-buildChips(); buildSteps(); setCond(S.cond); setDir(S.rsiDir); updateBadge(); updateCap(); updateRsiSum();
+STEPPERS.forEach(function(cfg) { buildStepper("row-" + cfg.k, cfg); });
+buildChips();
+setCond(S.cond);
+setDir(S.rsiDir);
+updateBadge();
+updateCap();
+updateRsiSum();
 </script>
 </body>
 </html>
