@@ -518,7 +518,7 @@ async function fetchCG(coinId, days) {
     seen.add(k); return true;
   }).map(function(row) {
     return {
-      date: new Date(row[0]).toLocaleDateString("tr-TR", {month:"numeric", day:"numeric"}),
+      date: new Date(row[0]).toLocaleDateString("tr-TR", {day:"2-digit", month:"2-digit", year:"2-digit"}),
       price: row[1],
       ts: row[0]
     };
@@ -548,7 +548,7 @@ async function fetchOKX(coinId, days) {
   if (!all.length) throw new Error("OKX veri boş");
   return all.slice(0, needed).reverse().map(function(k) {
     return {
-      date: new Date(parseInt(k[0])).toLocaleDateString("tr-TR", {month:"numeric", day:"numeric"}),
+      date: new Date(parseInt(k[0])).toLocaleDateString("tr-TR", {day:"2-digit", month:"2-digit", year:"2-digit"}),
       price: parseFloat(k[4]),
       ts: parseInt(k[0])
     };
