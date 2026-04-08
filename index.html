@@ -184,8 +184,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="row" id="row-amtMult"><div><div class="rl">Güvenlik emri katsayısı ×</div><div class="rs">Her güvenlik emrinde miktar büyütme oranı</div></div></div>
     <div class="row" id="row-maxSO"><div><div class="rl">Maks güvenlik emri</div><div class="rs">Döngü başına açılabilecek maks emir sayısı</div></div></div>
     <div class="row" id="row-tpPct"><div><div class="rl">Döngü kârı (%)</div><div class="rs">Ortalama maliyetten TP tetikleme oranı</div></div></div>
-    <div class="row" id="row-slPct"><div><div class="rl">Zarar durdur (%)</div><div class="rs">İlk giriş fiyatından SL seviyesi (0 = kapalı)</div></div></div>
-    <div class="row" id="row-cooldown"><div><div class="rl">Döngüler arası bekleme (gün)</div><div class="rs">TP/SL sonrası sonraki döngü gecikmesi</div></div></div>
   </div>
 
   <!-- Başlatma Koşulu -->
@@ -306,7 +304,7 @@ var DEFAULTS = {
   coin:"bitcoin", days:365,
   startCapital:10000, initAmt:100, safeAmt:100,
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
-  maxSO:10, tpPct:1.5, slPct:0, cooldown:0,
+  maxSO:10, tpPct:1.5,
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
 };
@@ -329,13 +327,11 @@ var STEPPERS = [
   {k:"startCapital",step:500, min:100,       dec:0},
   {k:"initAmt",     step:10,  min:1,          dec:0},
   {k:"safeAmt",     step:10,  min:1,          dec:0},
-  {k:"priceStep",   step:0.1, min:0.1,        dec:1},
-  {k:"stepMult",    step:0.1, min:1,          dec:1},
-  {k:"amtMult",     step:0.1, min:1,          dec:1},
+  {k:"priceStep",   step:0.1, min:0.1,        dec:2},
+  {k:"stepMult",    step:0.1, min:1,          dec:2},
+  {k:"amtMult",     step:0.1, min:1,          dec:2},
   {k:"maxSO",       step:1,   min:1, max:100, dec:0},
-  {k:"tpPct",       step:0.1, min:0.1,        dec:1},
-  {k:"slPct",       step:0.5, min:0,          dec:1},
-  {k:"cooldown",    step:1,   min:0,          dec:0},
+  {k:"tpPct",       step:0.1, min:0.1,        dec:2},
   {k:"rsiTP",       step:1,   min:2, max:50,  dec:0},
   {k:"rsiThr",      step:1,   min:1, max:99,  dec:0},
 ];
@@ -479,16 +475,7 @@ function backtest(prices, rsiArr){
         var profit=deal.totalQty*price-deal.totalCost;
         cash+=deal.totalQty*price;
         deals.push(Object.assign({},deal,{endDate:date,exitPrice:price,profit:profit,profitPct:profit/deal.totalCost*100,why:"TP"}));
-        inDeal=false; deal=null; cdLeft=S.cooldown*24;
-        if(S.cond==="rsi") waitRSI=true;
-        equity.push({date:date,value:cash,price:price}); continue;
-      }
-      /* SL — ilk fiyata göre */
-      if(S.slPct>0 && price<=deal.initPrice*(1-S.slPct/100)){
-        var profit=deal.totalQty*price-deal.totalCost;
-        cash+=deal.totalQty*price;
-        deals.push(Object.assign({},deal,{endDate:date,exitPrice:price,profit:profit,profitPct:profit/deal.totalCost*100,why:"SL"}));
-        inDeal=false; deal=null; cdLeft=S.cooldown*24;
+        inDeal=false; deal=null; cdLeft=0;
         if(S.cond==="rsi") waitRSI=true;
         equity.push({date:date,value:cash,price:price}); continue;
       }
@@ -547,7 +534,6 @@ function backtest(prices, rsiArr){
     stats:{
       completedCycles:closedDeals.length,
       wins:wins, losses:closedDeals.length-wins,
-      slHits:deals.filter(function(d){return d.why==="SL";}).length,
       winRate:closedDeals.length?wins/closedDeals.length*100:0,
       realizedPnL:realizedPnL, unrealizedPnL:unrealizedPnL, totalPnL:totalPnL,
       totalPnLPct:totalPnL/S.startCapital*100,
@@ -688,7 +674,7 @@ function render(res, source, mumCnt){
 
   sg.innerHTML+=
     halfCard("Win Rate",fp(stats.winRate),stats.winRate>=50?"var(--green)":"var(--red)")+
-    halfCard("SL İsabeti",stats.slHits,stats.slHits>0?"var(--red)":"var(--text3)");
+    halfCard("Tamamlanan Döngü",stats.completedCycles,"var(--accent2)");
 
   /* Açık işlem özet */
   if(openDeal){
@@ -722,7 +708,6 @@ function render(res, source, mumCnt){
       '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
       '<div>'+
       '<div class="dm">#'+(i+1)+' '+d.startDate+' → '+d.endDate+
-        (isSL?' <span style="color:var(--red);font-size:10px">🛑 SL</span>':"")+
         (isOpen?' <span style="color:var(--yellow);font-size:10px">⏳ AÇIK</span>':"")+
       '</div>'+
       '<div class="dsub">Safety: <span style="color:var(--yellow);font-weight:700">'+d.safetyCount+"/"+S.maxSO+'</span>'+
