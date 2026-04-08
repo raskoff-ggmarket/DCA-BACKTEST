@@ -569,8 +569,74 @@ async function fetchPrices(coinId, days) {
 }
 
 /* ════════════════════════════════════════
-   RSI
+   RSI TF CANDLE FETCH — OKX
 ════════════════════════════════════════ */
+var OKX_TF_MAP = {"3m":"3m","5m":"5m","15m":"15m","30m":"30m","1h":"1H","4h":"4H"};
+
+async function fetchRSICandles(coinId, tf, days) {
+  var coin   = COINS.find(function(c) { return c.id === coinId; });
+  var instId = coin.sym + "-USDT";
+  var bar    = OKX_TF_MAP[tf] || "1H";
+
+  /* Kaç dakika = 1 mum */
+  var minPerBar = {"3m":3,"5m":5,"15m":15,"30m":30,"1h":60,"4h":240}[tf] || 60;
+  var needed = Math.ceil(days * 24 * 60 / minPerBar) + 300; /* +300 RSI warm-up */
+  var maxReq = 100; /* maks 100 istek = 30.000 mum */
+  var limit  = Math.min(needed, maxReq * 300);
+
+  var all = [], after = "", reqCount = 0;
+
+  while (all.length < limit && reqCount < maxReq) {
+    var url = "https://www.okx.com/api/v5/market/history-candles?instId=" + instId +
+              "&bar=" + bar + "&limit=300";
+    if (after) url += "&after=" + after;
+    var r = await fetch(url, {signal: AbortSignal.timeout(10000)});
+    if (!r.ok) throw new Error("OKX RSI " + r.status);
+    var j = await r.json();
+    if (!j.data || !j.data.length) break;
+    all = all.concat(j.data);
+    after = j.data[j.data.length - 1][0];
+    reqCount++;
+    if (j.data.length < 300) break;
+    await new Promise(function(res) { setTimeout(res, 150); });
+  }
+
+  if (!all.length) throw new Error("RSI verisi alınamadı");
+
+  /* Yeniden eskiye geliyor → tersine çevir */
+  return all.reverse().map(function(k) {
+    return { ts: parseInt(k[0]), price: parseFloat(k[4]) };
+  });
+}
+
+/* RSI değerlerini timestamp'e göre bir objeye dönüştür */
+function buildRSIMap(candles, period) {
+  var rsiVals = calcRSI(candles, period);
+  var map = {};
+  candles.forEach(function(c, i) {
+    if (rsiVals[i] !== null) map[c.ts] = rsiVals[i];
+  });
+  /* Sıralı timestamp listesi (binary search için) */
+  var keys = Object.keys(map).map(Number).sort(function(a,b){return a-b;});
+  return { map: map, keys: keys };
+}
+
+/* Bir timestamp için en yakın (≤) RSI değerini döndür */
+function lookupRSI(rsiIndex, ts) {
+  if (!rsiIndex || !rsiIndex.keys.length) return null;
+  var keys = rsiIndex.keys;
+  /* Binary search */
+  var lo = 0, hi = keys.length - 1, best = -1;
+  while (lo <= hi) {
+    var mid = (lo + hi) >> 1;
+    if (keys[mid] <= ts) { best = mid; lo = mid + 1; }
+    else { hi = mid - 1; }
+  }
+  if (best === -1) return null;
+  return rsiIndex.map[keys[best]];
+}
+
+
 function calcRSI(prices, period) {
   var out = new Array(prices.length).fill(null);
   if (prices.length < period + 1) return out;
@@ -594,8 +660,7 @@ function calcRSI(prices, period) {
 /* ════════════════════════════════════════
    BACKTEST (OKX mantığı)
 ════════════════════════════════════════ */
-function backtest(prices) {
-  var trigRSI = S.cond === "rsi" ? calcRSI(prices, S.rsiTP) : null;
+function backtest(prices, rsiIndex) {
   var deals = [], equity = [];
   var cash = S.startCapital, inDeal = false, deal = null;
   var cdLeft = 0, waitRSI = (S.cond === "rsi");
@@ -603,10 +668,11 @@ function backtest(prices) {
   for (var i = 0; i < prices.length; i++) {
     var price = prices[i].price;
     var date  = prices[i].date;
+    var ts    = prices[i].ts || 0;
 
-    /* RSI başlatma koşulu */
+    /* RSI başlatma koşulu — seçilen TF'den gelen değeri kullan */
     if (waitRSI && !inDeal && cdLeft === 0) {
-      var rv = trigRSI ? trigRSI[i] : null;
+      var rv = rsiIndex ? lookupRSI(rsiIndex, ts) : null;
       if (rv === null) { equity.push({date:date, value:cash, price:price}); continue; }
       var ok = S.rsiDir === "lt" ? rv < S.rsiThr : rv > S.rsiThr;
       if (!ok) { equity.push({date:date, value:cash, price:price}); continue; }
@@ -776,13 +842,31 @@ async function run() {
   setLoad(3);
 
   try {
+    /* 1. Ana fiyat verisi */
     var res = await fetchPrices(S.coin, S.days);
     var prices = res.prices, source = res.source;
     if (prices.length < 20) throw new Error("Yeterli veri yok (" + prices.length + " mum).");
+
+    /* 2. RSI modu açıksa seçilen TF'den ayrı veri çek */
+    var rsiIndex = null;
+    if (S.cond === "rsi") {
+      btn.innerHTML = '<span class="spinner"></span> RSI verisi çekiliyor (' + S.rsiTf + ')...';
+      try {
+        var rsiCandles = await fetchRSICandles(S.coin, S.rsiTf, S.days);
+        rsiIndex = buildRSIMap(rsiCandles, S.rsiTP);
+        source += " · RSI " + S.rsiTf.toUpperCase() + " (" + rsiCandles.length.toLocaleString() + " mum)";
+      } catch(e) {
+        console.warn("RSI veri hatası:", e.message);
+        /* RSI verisi gelmezse uyar ama devam et */
+        source += " · RSI alınamadı";
+      }
+    }
+
     setLoad(90);
-    var result = backtest(prices);
+    var result = backtest(prices, rsiIndex);
     render(result, source, prices.length);
     goResult();
+
   } catch(e) {
     var eb = document.getElementById("errBox");
     eb.textContent = "⚠ " + e.message;
