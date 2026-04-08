@@ -261,7 +261,7 @@ const COINS = [
   {id:"avalanche-2",sym:"AVAX", e:"▲"},
 ];
 const PERS = [{l:"6A",d:180},{l:"1Y",d:365},{l:"2Y",d:730}];
-const TFS  = [{l:"1s",v:"h1"},{l:"4s",v:"h4"},{l:"1G",v:"d1"}];
+const TFS  = [{l:"3m",v:"3m"},{l:"5m",v:"5m"},{l:"15m",v:"15m"},{l:"30m",v:"30m"},{l:"1h",v:"1h"},{l:"4h",v:"4h"}];
 
 /* Stepper tanımları */
 const STEPPERS = [
@@ -288,7 +288,7 @@ const DEFAULTS = {
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
   maxSO:10, tpPct:1.5, slPct:0, cooldown:0,
   cond:"instant",
-  rsiTP:14, rsiTf:"h1", rsiDir:"lt", rsiThr:30,
+  rsiTP:14, rsiTf:"1h", rsiDir:"lt", rsiThr:30,
 };
 
 const S = Object.assign({}, DEFAULTS);
