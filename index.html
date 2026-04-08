@@ -200,11 +200,11 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <!-- Anında: sabit 1m -->
     <div id="instantSub" class="hidden" style="background:var(--bg3);border-top:1px solid var(--border)">
       <div style="padding:11px 16px;display:flex;align-items:center;gap:8px">
-        <div style="background:rgba(0,212,170,.12);border:1px solid rgba(0,212,170,.3);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:700;color:var(--accent)">1m</div>
-        <div style="font-size:12px;color:var(--text3)">Backtest her zaman 1 dakikalık mumlarla çalışır</div>
+        <div style="background:rgba(0,212,170,.12);border:1px solid rgba(0,212,170,.3);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:700;color:var(--accent)">1h</div>
+        <div style="font-size:12px;color:var(--text3)">Backtest her zaman 1 saatlik mumlarla çalışır</div>
       </div>
       <div style="margin:0 14px 12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:10px;padding:9px 12px;font-size:11px;color:var(--yellow);line-height:1.5">
-        ⚠ OKX maksimum 30.000 mum döndürür (~21 gün). Uzun periyotlarda backtest son 21 günü kapsar.
+        ⚠ OKX maksimum 30.000 mum döndürür (~3.4 yıl). Daha uzun periyotlarda son 3.4 yılı kapsar.
       </div>
     </div>
 
@@ -280,20 +280,24 @@ var COINS = [
   {id:"dogecoin",   sym:"DOGE", e:"Ð"},
   {id:"avalanche-2",sym:"AVAX", e:"▲"},
 ];
-var PERS = [{l:"6A",d:180},{l:"1Y",d:365},{l:"2Y",d:730}];
+var PERS = [
+  {l:"1A", d:30},
+  {l:"3A", d:90},
+  {l:"6A", d:180},
+  {l:"1Y", d:365},
+  {l:"2Y", d:730},
+  {l:"3Y", d:1095},
+];
 
 /* RSI zaman dilimleri + OKX bar kodu */
 var RSI_TFS = [
-  {l:"3m", v:"3m",  okx:"3m",  minPerBar:3},
-  {l:"5m", v:"5m",  okx:"5m",  minPerBar:5},
-  {l:"15m",v:"15m", okx:"15m", minPerBar:15},
   {l:"30m",v:"30m", okx:"30m", minPerBar:30},
   {l:"1h", v:"1h",  okx:"1H",  minPerBar:60},
   {l:"4h", v:"4h",  okx:"4H",  minPerBar:240},
 ];
 
 /* Anında modu: sabit 1m → OKX bar kodu */
-var INSTANT_BAR = {okx:"1m", minPerBar:1};
+var INSTANT_BAR = {okx:"1H", minPerBar:60};
 
 /* ═══════════════════════════════
    STATE + LOCALSTORAGE
@@ -304,7 +308,7 @@ var DEFAULTS = {
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
   maxSO:10, tpPct:1.5, slPct:0, cooldown:0,
   cond:"instant",
-  rsiTP:14, rsiTf:"1h", rsiDir:"lt", rsiThr:30,
+  rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
 };
 var S = Object.assign({}, DEFAULTS);
 
@@ -585,10 +589,10 @@ async function run(){
       mumCount=prices.length;
     } else {
       /* Anında modu: sabit 1 dakikalık mumlar */
-      btn.innerHTML='<span class="spinner"></span> 1m mumlar çekiliyor...';
+      btn.innerHTML='<span class="spinner"></span> 1h mumlar çekiliyor...';
       var needed1m=candleCount(S.days, INSTANT_BAR.minPerBar);
       prices=await fetchOKXCandles(S.coin, INSTANT_BAR.okx, needed1m);
-      sourceLabel="OKX · 1m mumlar";
+      sourceLabel="OKX · 1h mumlar";
       mumCount=prices.length;
     }
 
@@ -635,7 +639,7 @@ function render(res, source, mumCnt){
   var sb=document.getElementById("sBdg");
   if(S.cond==="instant"){
     sb.style.cssText="margin-top:10px;display:inline-flex;align-items:center;gap:5px;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600;background:rgba(0,212,170,.1);color:var(--accent);border:1px solid rgba(0,212,170,.25)";
-    sb.textContent="⚡ Anında · 1m mumlar";
+    sb.textContent="⚡ Anında · 1h mumlar";
   } else {
     var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
     sb.style.cssText="margin-top:10px;display:inline-flex;align-items:center;gap:5px;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600;background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.25)";
