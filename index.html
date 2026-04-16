@@ -191,7 +191,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="splash-credit-line">Developed with the assistance of <span>Claude.ai</span></div>
     <div class="splash-credit-copy">All rights reserved © 2026</div>
   </div>
-  <button class="splash-btn" onclick="closeSplash()">Başla →</button>
+  <button class="splash-btn" id="splashBtn">Başla →</button>
 </div>
 <div class="loading-bar" id="lBar"></div>
 <div class="app">
@@ -1129,16 +1129,17 @@ function toggleTtpSub(){
    SPLASH
 ═══════════════════════════════ */
 function closeSplash(){
-  document.getElementById("splash").classList.add("hide");
-  setTimeout(function(){
-    document.getElementById("splash").style.display="none";
-  },500);
+  var el=document.getElementById("splash");
+  el.style.transition="opacity .4s ease";
+  el.style.opacity="0";
+  setTimeout(function(){ el.style.display="none"; },450);
 }
 
 /* ═══════════════════════════════
    INIT
 ═══════════════════════════════ */
 loadState();
+document.getElementById("splashBtn").addEventListener("click", closeSplash);
 
 /* Stepperları kur */
 STEPPERS.forEach(function(cfg){buildStepper(cfg.k);});
