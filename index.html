@@ -147,9 +147,52 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .toggle input:checked+.toggle-slider{background:rgba(0,212,170,.2);border-color:var(--accent)}
 .toggle input:checked+.toggle-slider:before{transform:translateX(20px);background:var(--accent)}
 .toggle-sub-panel{background:var(--bg3);border-top:1px solid var(--border);padding:0}
+
+/* ── Splash ── */
+.splash{position:fixed;inset:0;z-index:999;background:var(--bg);
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        gap:0;transition:opacity .5s ease, visibility .5s ease}
+.splash.hide{opacity:0;visibility:hidden}
+.splash-logo{width:110px;height:110px;border-radius:28px;overflow:hidden;
+             box-shadow:0 0 48px rgba(0,212,170,.25);
+             animation:splashIn .6s cubic-bezier(.34,1.56,.64,1) both}
+.splash-logo img{width:100%;height:100%;object-fit:cover}
+.splash-title{font-size:26px;font-weight:700;color:var(--text);margin-top:22px;
+              animation:splashUp .5s .15s ease both}
+.splash-sub{font-size:13px;color:var(--accent);font-weight:600;margin-top:6px;letter-spacing:.02em;
+            animation:splashUp .5s .2s ease both}
+.splash-divider{width:40px;height:1px;background:var(--border2);margin:24px auto;
+                animation:splashUp .5s .25s ease both}
+.splash-credit{text-align:center;animation:splashUp .5s .3s ease both;display:flex;flex-direction:column;gap:5px}
+.splash-credit-line{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.02em}
+.splash-credit-line span{color:var(--text2)}
+.splash-credit-copy{font-size:10px;color:var(--text3);opacity:.6;margin-top:4px;letter-spacing:.04em}
+.splash-btn{margin-top:36px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+            color:#000;font-weight:700;font-size:14px;border:none;border-radius:50px;
+            padding:13px 36px;cursor:pointer;font-family:'Space Grotesk',sans-serif;
+            box-shadow:0 6px 24px rgba(0,212,170,.3);letter-spacing:.03em;
+            animation:splashUp .5s .4s ease both}
+@keyframes splashIn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+@keyframes splashUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
+
+<!-- ── SPLASH ── -->
+<div class="splash" id="splash">
+  <div class="splash-logo">
+    <img src="android-chrome-512x512.png" alt="DCA Backtest"/>
+  </div>
+  <div class="splash-title">DCA Backtest</div>
+  <div class="splash-sub">OKX DCA Bot Simülatörü</div>
+  <div class="splash-divider"></div>
+  <div class="splash-credit">
+    <div class="splash-credit-line">Designed and Built by <span>Raskoff</span></div>
+    <div class="splash-credit-line">Developed with the assistance of <span>Claude.ai</span></div>
+    <div class="splash-credit-copy">All rights reserved © 2026</div>
+  </div>
+  <button class="splash-btn" onclick="closeSplash()">Başla →</button>
+</div>
 <div class="loading-bar" id="lBar"></div>
 <div class="app">
 
@@ -337,6 +380,8 @@ var COINS = [
   {id:"cardano",    sym:"ADA",  e:"₳"},
   {id:"dogecoin",   sym:"DOGE", e:"Ð"},
   {id:"avalanche-2",sym:"AVAX", e:"▲"},
+  {id:"tether-gold",sym:"XAUT", e:"🥇"},
+  {id:"pax-gold",   sym:"PAXG", e:"🪙"},
 ];
 var PERS = [
   {l:"1A", d:30},
@@ -1008,6 +1053,16 @@ function toggleReinvestSub(){
 }
 function toggleTtpSub(){
   document.getElementById("ttpSubPanel").classList.toggle("hidden",!S.ttpEnabled);
+}
+
+/* ═══════════════════════════════
+   SPLASH
+═══════════════════════════════ */
+function closeSplash(){
+  document.getElementById("splash").classList.add("hide");
+  setTimeout(function(){
+    document.getElementById("splash").style.display="none";
+  },500);
 }
 
 /* ═══════════════════════════════
