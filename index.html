@@ -181,7 +181,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <!-- ── SPLASH ── -->
 <div class="splash" id="splash">
   <div class="splash-logo">
-    <img src="android-chrome-512x512.png" alt="DCA Backtest"/>
+    <img src="icon.png" alt="DCA Backtest"/>
   </div>
   <div class="splash-title">DCA Backtest</div>
   <div class="splash-sub">OKX DCA Bot Simülatörü</div>
@@ -199,7 +199,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div class="hdr">
   <div class="hdr-left">
     <button class="back-btn hidden" id="backBtn" onclick="goSettings()">‹</button>
-    <div class="hdr-logo">D</div>
+    <div class="hdr-logo">
+      <img src="icon.png" alt="logo" style="width:32px;height:32px;border-radius:10px;object-fit:cover;display:block"/>
+    </div>
     <div>
       <div class="hdr-t">Backtest</div>
       <div class="hdr-s">OKX DCA PARAMETRELERİ</div>
@@ -240,6 +242,24 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="row" id="row-amtMult"><div><div class="rl">Güvenlik emri katsayısı ×</div><div class="rs">Her güvenlik emrinde miktar büyütme oranı</div></div></div>
     <div class="row" id="row-maxSO"><div><div class="rl">Maks güvenlik emri</div><div class="rs">Döngü başına açılabilecek maks emir sayısı</div></div></div>
     <div class="row" id="row-tpPct"><div><div class="rl">Döngü kârı (%)</div><div class="rs">Ortalama maliyetten TP tetikleme oranı</div></div></div>
+  </div>
+
+  <!-- Kâr Modu -->
+  <div class="card" style="border-color:rgba(251,191,36,.2)">
+    <div class="card-head" style="color:var(--yellow)">💰 Bot Kârı Modu</div>
+    <div style="padding:10px 14px 14px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
+        Bot kârını hangi para biriminde hesaplamak istiyorsun?
+      </div>
+      <div style="display:flex;gap:8px" id="profitModeC">
+        <button id="pmQuote" onclick="setProfitMode('quote')" style="flex:1;padding:11px 8px;border-radius:10px;font-size:13px;font-weight:700;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all .12s">
+          USDT (Quote)<br><span style="font-size:10px;font-weight:500;opacity:.7">Standar</span>
+        </button>
+        <button id="pmBase" onclick="setProfitMode('base')" style="flex:1;padding:11px 8px;border-radius:10px;font-size:13px;font-weight:700;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all .12s">
+          <span id="pmBaseLabel">COIN (Base)</span><br><span style="font-size:10px;font-weight:500;opacity:.7">Coin biriktirir</span>
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Reinvest + TTP -->
@@ -411,6 +431,7 @@ var DEFAULTS = {
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
   maxSO:10, tpPct:1.5,
   reinvest:false, reinvestPct:100, ttpEnabled:false, ttpPct:0.5,
+  profitMode:"quote",
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
 };
@@ -553,9 +574,13 @@ function backtest(prices, rsiArr){
    * initAmt ve safeAmt'e orantılı olarak dağıtılır.
    * Toplam order büyüklüğü = initAmt + safeAmt * (amtMult^0 + amtMult^1 + ... + amtMult^(maxSO-1))
    * Her order kendi payı oranında büyür.
+   *
+   * Base modu: TP anında USDT almak yerine, kâra karşılık gelen coin miktarı tutulur.
+   * Yani satış yapılmaz, kâr kadar coin portfolyoda kalır.
    */
   var dynInitAmt = S.initAmt;   /* dinamik, reinvest ile büyür */
   var dynSafeAmt = S.safeAmt;   /* dinamik, reinvest ile büyür */
+  var baseAccumulated = 0;       /* base modda biriktirilen coin */
 
   /* Toplam 1 döngü order büyüklüğünü hesapla (scale base) */
   function totalOrderBase(init, safe){
@@ -622,10 +647,18 @@ function backtest(prices, rsiArr){
           if(price>deal.ttpPeak) deal.ttpPeak=price;
           if(price<=deal.ttpPeak*(1-S.ttpPct/100)){
             var profit=deal.totalQty*price-deal.totalCost;
-            cash+=deal.totalQty*price;
+            var profitInBase=0;
+            if(S.profitMode==="base"){
+              /* Base mod: kâr kadar coin tut, sadece maliyet kadar USDT al */
+              profitInBase=profit>0?profit/price:0;
+              baseAccumulated+=profitInBase;
+              cash+=deal.totalCost; /* sadece yatırılan geri gelir */
+            } else {
+              cash+=deal.totalQty*price;
+            }
             applyReinvest(profit);
             deals.push(Object.assign({},deal,{endDate:date,exitPrice:price,profit:profit,
-              profitPct:profit/deal.totalCost*100,why:"TTP"}));
+              profitPct:profit/deal.totalCost*100,why:"TTP",profitInBase:profitInBase}));
             inDeal=false;deal=null;cdLeft=0;
             if(S.cond==="rsi")waitRSI=true;
             equity.push({date:date,value:cash,price:price});continue;
@@ -635,10 +668,17 @@ function backtest(prices, rsiArr){
         /* Normal TP */
         if(price>=tpPrice){
           var profit=deal.totalQty*price-deal.totalCost;
-          cash+=deal.totalQty*price;
+          var profitInBase=0;
+          if(S.profitMode==="base"){
+            profitInBase=profit>0?profit/price:0;
+            baseAccumulated+=profitInBase;
+            cash+=deal.totalCost;
+          } else {
+            cash+=deal.totalQty*price;
+          }
           applyReinvest(profit);
           deals.push(Object.assign({},deal,{endDate:date,exitPrice:price,profit:profit,
-            profitPct:profit/deal.totalCost*100,why:"TP"}));
+            profitPct:profit/deal.totalCost*100,why:"TP",profitInBase:profitInBase}));
           inDeal=false;deal=null;cdLeft=0;
           if(S.cond==="rsi")waitRSI=true;
           equity.push({date:date,value:cash,price:price});continue;
@@ -715,6 +755,7 @@ function backtest(prices, rsiArr){
       /* Reinvest: son döngü order büyüklükleri */
       finalInitAmt:dynInitAmt,
       finalSafeAmt:dynSafeAmt,
+      baseAccumulated:baseAccumulated,
     }
   };
 }
@@ -856,6 +897,16 @@ function render(res, source, mumCnt){
     );
   }
 
+  /* Base mod: biriktirilen coin */
+  if(S.profitMode==="base" && stats.baseAccumulated>0){
+    sg.innerHTML+=fullRow(
+      "Biriktirilen "+coin.sym+" (Base Kâr)",
+      f(stats.baseAccumulated,6)+" "+coin.sym,
+      "var(--yellow)",
+      "≈ "+fu(stats.baseAccumulated*stats.lastPrice)+" (son fiyatla)"
+    );
+  }
+
   /* Açık işlem özet */
   if(openDeal){
     var upnlC=stats.unrealizedPnL>=0?"rgba(0,212,170,.1)":"rgba(255,79,109,.1)";
@@ -894,6 +945,7 @@ function render(res, source, mumCnt){
       '<div class="dsub">Safety: <span style="color:var(--yellow);font-weight:700">'+d.safetyCount+"/"+S.maxSO+'</span>'+
         ' · Avg: <span style="color:var(--text);font-weight:600">'+fu(d.avgCost)+'</span>'+
         (isOpen?' · TP: <span style="color:var(--green);font-weight:600">'+fu(d.avgCost*(1+S.tpPct/100))+'</span>':"")+
+        (S.profitMode==="base"&&d.profitInBase>0?' · <span style="color:var(--yellow)">+'+f(d.profitInBase,6)+' '+coin.sym+'</span>':"")+
       '</div>'+
       '</div>'+
       '<div style="text-align:right">'+
@@ -986,7 +1038,7 @@ function buildMainChips(){
     var b=document.createElement("button");
     b.className="chip"+(c.id===S.coin?" on":"");
     b.textContent=c.e+" "+c.sym;
-    b.onclick=function(){S.coin=c.id;refreshMainChips();updateBadge();updateWarnTexts();saveState();};
+    b.onclick=function(){S.coin=c.id;refreshMainChips();updateBadge();updateWarnTexts();updateProfitModeLabel();saveState();};
     cc.appendChild(b);
   });
   var pc=document.getElementById("perC");
@@ -1048,7 +1100,25 @@ function updateBadge(){
   document.getElementById("hdrBadge").textContent=c.e+" "+c.sym+" · "+p.l;
 }
 
-function toggleReinvestSub(){
+function setProfitMode(mode){
+  S.profitMode=mode;
+  var qBtn=document.getElementById("pmQuote");
+  var bBtn=document.getElementById("pmBase");
+  var isBase=mode==="base";
+  qBtn.style.borderColor=isBase?"var(--border2)":"var(--yellow)";
+  qBtn.style.background=isBase?"transparent":"rgba(251,191,36,.1)";
+  qBtn.style.color=isBase?"var(--text3)":"var(--yellow)";
+  bBtn.style.borderColor=isBase?"var(--yellow)":"var(--border2)";
+  bBtn.style.background=isBase?"rgba(251,191,36,.1)":"transparent";
+  bBtn.style.color=isBase?"var(--yellow)":"var(--text3)";
+  saveState();
+}
+
+function updateProfitModeLabel(){
+  var coin=COINS.find(function(c){return c.id===S.coin;});
+  var el=document.getElementById("pmBaseLabel");
+  if(el && coin) el.textContent=coin.sym+" (Base)";
+}
   document.getElementById("reinvestSubPanel").classList.toggle("hidden",!S.reinvest);
 }
 function toggleTtpSub(){
@@ -1094,6 +1164,8 @@ document.getElementById("chkReinvest").checked = S.reinvest;
 document.getElementById("chkTtp").checked = S.ttpEnabled;
 toggleReinvestSub();
 toggleTtpSub();
+setProfitMode(S.profitMode);
+updateProfitModeLabel();
 </script>
 </body>
 </html>
