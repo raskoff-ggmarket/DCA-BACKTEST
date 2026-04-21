@@ -228,6 +228,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="row" id="row-startCapital">
       <div><div class="rl">Başlangıç Sermayesi ($)</div><div class="rs">Botun kullanacağı toplam bakiye</div></div>
     </div>
+    <div class="row">
+      <div><div class="rl">Kâr Modu</div><div class="rs" id="profitModeDesc">TP kârı USDT olarak tahakkuk eder</div></div>
+      <div id="profitModeGroup" style="display:flex;gap:6px;flex-shrink:0;margin-left:12px"></div>
+    </div>
     <div class="cap-info"><div class="dot" id="capD"></div><div id="capT"></div></div>
   </div>
 
@@ -250,7 +254,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="toggle-wrap">
       <div class="toggle-info">
         <div class="toggle-lbl">Reinvest (Kâr Yeniden Yatırım)</div>
-        <div class="toggle-sub">Her TP sonrası kârın belirlenen %'i sermayeye eklenir</div>
+        <div class="toggle-sub" id="reinvestNote">Her TP sonrası kârın belirlenen %'i sermayeye eklenir</div>
       </div>
       <label class="toggle" style="margin-left:12px">
         <input type="checkbox" id="chkReinvest" onchange="S.reinvest=this.checked;toggleReinvestSub();saveState()"/>
@@ -411,6 +415,7 @@ var DEFAULTS = {
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
   maxSO:10, tpPct:1.5,
   reinvest:false, reinvestPct:100, ttpEnabled:false, ttpPct:0.5,
+  profitMode:"quote",
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
 };
@@ -546,175 +551,179 @@ function backtest(prices, rsiArr){
   var deals=[], equity=[];
   var cash=S.startCapital, inDeal=false, deal=null;
   var cdLeft=0, waitRSI=(S.cond==="rsi");
+  var accumBase=0;
+  var isBase=S.profitMode==="base";
 
-  /*
-   * 3Commas Reinvest mantığı:
-   * Her TP/TTP kapandığında kârın reinvestPct%'i,
-   * initAmt ve safeAmt'e orantılı olarak dağıtılır.
-   * Toplam order büyüklüğü = initAmt + safeAmt * (amtMult^0 + amtMult^1 + ... + amtMult^(maxSO-1))
-   * Her order kendi payı oranında büyür.
-   */
-  var dynInitAmt = S.initAmt;   /* dinamik, reinvest ile büyür */
-  var dynSafeAmt = S.safeAmt;   /* dinamik, reinvest ile büyür */
+  var dynInitAmt=S.initAmt;
+  var dynSafeAmt=S.safeAmt;
 
-  /* Toplam 1 döngü order büyüklüğünü hesapla (scale base) */
-  function totalOrderBase(init, safe){
-    var t=init, a=safe;
+  function totalOrderBase(init,safe){
+    var t=init,a=safe;
     for(var n=0;n<S.maxSO;n++){t+=a*Math.pow(S.amtMult,n);}
     return t;
   }
 
-  /* Reinvest: kârın % kadarını order büyüklüklerine orantılı dağıt */
   function applyReinvest(profit){
-    if(!S.reinvest || profit<=0) return;
-    var add = profit * (S.reinvestPct/100);
-    var base = totalOrderBase(dynInitAmt, dynSafeAmt);
+    if(isBase||!S.reinvest||profit<=0) return;
+    var add=profit*(S.reinvestPct/100);
+    var base=totalOrderBase(dynInitAmt,dynSafeAmt);
     if(base<=0) return;
-    /* initAmt ve safeAmt aynı oranda büyür */
-    var ratio = (base + add) / base;
-    dynInitAmt = parseFloat((dynInitAmt * ratio).toFixed(8));
-    dynSafeAmt = parseFloat((dynSafeAmt * ratio).toFixed(8));
+    var ratio=(base+add)/base;
+    dynInitAmt=parseFloat((dynInitAmt*ratio).toFixed(8));
+    dynSafeAmt=parseFloat((dynSafeAmt*ratio).toFixed(8));
+  }
+
+  function closeDealAt(price,date,why){
+    var profit, bProfit=0;
+    if(isBase){
+      bProfit=deal.totalQty-deal.totalCost/price;
+      profit=bProfit*price;
+      cash+=deal.totalCost;
+      accumBase+=bProfit;
+    } else {
+      profit=deal.totalQty*price-deal.totalCost;
+      cash+=deal.totalQty*price;
+      applyReinvest(profit);
+    }
+    deals.push(Object.assign({},deal,{
+      endDate:date,exitPrice:price,
+      profit:profit,profitPct:profit/deal.totalCost*100,
+      baseProfit:bProfit,why:why
+    }));
+    inDeal=false;deal=null;cdLeft=0;
+    if(S.cond==="rsi")waitRSI=true;
+  }
+
+  function eqVal(price){
+    var bv=isBase?accumBase*price:0;
+    return bv+(inDeal?cash+deal.totalQty*price:cash);
   }
 
   for(var i=0;i<prices.length;i++){
     var price=prices[i].price, date=prices[i].date;
 
-    /* RSI başlatma koşulu */
-    if(waitRSI && !inDeal && cdLeft===0){
+    if(waitRSI&&!inDeal&&cdLeft===0){
       var rv=rsiArr?rsiArr[i]:null;
-      if(rv===null){equity.push({date:date,value:cash,price:price});continue;}
+      if(rv===null){equity.push({date:date,value:eqVal(price),price:price});continue;}
       var ok=S.rsiDir==="lt"?rv<S.rsiThr:rv>S.rsiThr;
-      if(!ok){equity.push({date:date,value:cash,price:price});continue;}
+      if(!ok){equity.push({date:date,value:eqVal(price),price:price});continue;}
       waitRSI=false;
     }
 
     if(!inDeal){
-      if(cdLeft>0){cdLeft--;if(S.cond==="rsi")waitRSI=true;equity.push({date:date,value:cash,price:price});continue;}
-      if(cash<dynInitAmt){equity.push({date:date,value:cash,price:price});continue;}
+      if(cdLeft>0){cdLeft--;if(S.cond==="rsi")waitRSI=true;equity.push({date:date,value:eqVal(price),price:price});continue;}
+      if(cash<dynInitAmt){equity.push({date:date,value:eqVal(price),price:price});continue;}
       cash-=dynInitAmt;
 
-      /* Safety seviyeleri — OKX: ilk fiyata göre, dinamik büyüklükle */
       var so=[];
-      var stepNow=S.priceStep, lvlPrice=price*(1-S.priceStep/100);
+      var stepNow=S.priceStep,lvlPrice=price*(1-S.priceStep/100);
       for(var n=0;n<S.maxSO;n++){
-        so.push({price:lvlPrice, amt:dynSafeAmt*Math.pow(S.amtMult,n), filled:false});
-        stepNow*=S.stepMult; lvlPrice*=(1-stepNow/100);
+        so.push({price:lvlPrice,amt:dynSafeAmt*Math.pow(S.amtMult,n),filled:false});
+        stepNow*=S.stepMult;lvlPrice*=(1-stepNow/100);
       }
-      deal={startDate:date, initPrice:price,
+      deal={startDate:date,initPrice:price,
             orders:[{date:date,price:price,size:dynInitAmt,qty:dynInitAmt/price}],
-            totalCost:dynInitAmt, totalQty:dynInitAmt/price,
-            avgCost:price, safetyCount:0, so:so,
-            ttpActive:false, ttpPeak:0,
-            /* Döngü başındaki order büyüklüklerini kaydet (raporlama için) */
-            snapshotInitAmt:dynInitAmt, snapshotSafeAmt:dynSafeAmt};
+            totalCost:dynInitAmt,totalQty:dynInitAmt/price,
+            avgCost:price,safetyCount:0,so:so,
+            ttpActive:false,ttpPeak:0,
+            snapshotInitAmt:dynInitAmt,snapshotSafeAmt:dynSafeAmt};
       inDeal=true;
 
     } else {
       var tpPrice=deal.avgCost*(1+S.tpPct/100);
 
       if(S.ttpEnabled){
-        /* TTP: TP seviyesine ulaşınca trailing başlat */
-        if(!deal.ttpActive && price>=tpPrice){
-          deal.ttpActive=true;
-          deal.ttpPeak=price;
-        }
+        if(!deal.ttpActive&&price>=tpPrice){deal.ttpActive=true;deal.ttpPeak=price;}
         if(deal.ttpActive){
-          if(price>deal.ttpPeak) deal.ttpPeak=price;
+          if(price>deal.ttpPeak)deal.ttpPeak=price;
           if(price<=deal.ttpPeak*(1-S.ttpPct/100)){
-            var profit=deal.totalQty*price-deal.totalCost;
-            cash+=deal.totalQty*price;
-            applyReinvest(profit);
-            deals.push(Object.assign({},deal,{endDate:date,exitPrice:price,profit:profit,
-              profitPct:profit/deal.totalCost*100,why:"TTP"}));
-            inDeal=false;deal=null;cdLeft=0;
-            if(S.cond==="rsi")waitRSI=true;
-            equity.push({date:date,value:cash,price:price});continue;
+            closeDealAt(price,date,"TTP");
+            equity.push({date:date,value:eqVal(price),price:price});continue;
           }
         }
       } else {
-        /* Normal TP */
         if(price>=tpPrice){
-          var profit=deal.totalQty*price-deal.totalCost;
-          cash+=deal.totalQty*price;
-          applyReinvest(profit);
-          deals.push(Object.assign({},deal,{endDate:date,exitPrice:price,profit:profit,
-            profitPct:profit/deal.totalCost*100,why:"TP"}));
-          inDeal=false;deal=null;cdLeft=0;
-          if(S.cond==="rsi")waitRSI=true;
-          equity.push({date:date,value:cash,price:price});continue;
+          closeDealAt(price,date,"TP");
+          equity.push({date:date,value:eqVal(price),price:price});continue;
         }
       }
 
-      /* Safety emirler */
       for(var n=0;n<deal.so.length;n++){
         var lv=deal.so[n];
-        if(!lv.filled && price<=lv.price){
+        if(!lv.filled&&price<=lv.price){
           if(cash<lv.amt)break;
           cash-=lv.amt;
           deal.orders.push({date:date,price:price,size:lv.amt,qty:lv.amt/price});
-          deal.totalCost+=lv.amt; deal.totalQty+=lv.amt/price;
+          deal.totalCost+=lv.amt;deal.totalQty+=lv.amt/price;
           deal.avgCost=deal.totalCost/deal.totalQty;
-          deal.safetyCount++; lv.filled=true;
+          deal.safetyCount++;lv.filled=true;
         }
       }
     }
-    equity.push({date:date,value:inDeal?cash+deal.totalQty*price:cash,price:price});
+    equity.push({date:date,value:eqVal(price),price:price});
   }
 
-  /* Açık deal */
   var openDeal=null;
-  if(inDeal && deal){
+  if(inDeal&&deal){
     var lp=prices[prices.length-1].price;
     var unrealProfit=deal.totalQty*lp-deal.totalCost;
     openDeal=Object.assign({},deal,{
       endDate:prices[prices.length-1].date,exitPrice:lp,
-      profit:unrealProfit,profitPct:unrealProfit/deal.totalCost*100,why:"OPEN"
+      profit:unrealProfit,profitPct:unrealProfit/deal.totalCost*100,
+      baseProfit:0,why:"OPEN"
     });
     deals.push(openDeal);
     cash+=deal.totalQty*lp;
   }
 
-  /* Drawdown */
-  var peak=-Infinity, maxDD=0;
+  var peak=-Infinity,maxDD=0;
   for(var i=0;i<equity.length;i++){
-    if(equity[i].value>peak) peak=equity[i].value;
+    if(equity[i].value>peak)peak=equity[i].value;
     var dd=(peak-equity[i].value)/peak*100;
-    if(dd>maxDD) maxDD=dd;
+    if(dd>maxDD)maxDD=dd;
   }
 
   var lastPrice=prices[prices.length-1].price;
-  var firstTs=prices[0].ts||0, lastTs=prices[prices.length-1].ts||0;
+  var firstTs=prices[0].ts||0,lastTs=prices[prices.length-1].ts||0;
   var daysEl=lastTs&&firstTs?(lastTs-firstTs)/86400000:S.days;
 
   var closedDeals=deals.filter(function(d){return d.why==="TP"||d.why==="TTP";});
-  var realizedPnL=closedDeals.reduce(function(a,d){return a+d.profit;},0);
-  var unrealizedPnL=openDeal?openDeal.profit:0;
+  var realizedPnL,unrealizedPnL;
+  if(isBase){
+    realizedPnL=accumBase*lastPrice;
+    unrealizedPnL=openDeal?openDeal.profit:0;
+  } else {
+    realizedPnL=closedDeals.reduce(function(a,d){return a+d.profit;},0);
+    unrealizedPnL=openDeal?openDeal.profit:0;
+  }
   var totalPnL=realizedPnL+unrealizedPnL;
   var wins=closedDeals.filter(function(d){return d.profit>0;}).length;
+  var finalCapital=isBase?cash+accumBase*lastPrice:cash;
 
   var arbitrageAPR=daysEl>0?(realizedPnL/S.startCapital)/(daysEl/365)*100:0;
   var totalAPR    =daysEl>0?(totalPnL   /S.startCapital)/(daysEl/365)*100:0;
 
   return {
-    deals:deals, equity:equity, openDeal:openDeal,
+    deals:deals,equity:equity,openDeal:openDeal,
     stats:{
       completedCycles:closedDeals.length,
-      wins:wins, losses:closedDeals.length-wins,
+      wins:wins,losses:closedDeals.length-wins,
       winRate:closedDeals.length?wins/closedDeals.length*100:0,
-      realizedPnL:realizedPnL, unrealizedPnL:unrealizedPnL, totalPnL:totalPnL,
+      realizedPnL:realizedPnL,unrealizedPnL:unrealizedPnL,totalPnL:totalPnL,
       totalPnLPct:totalPnL/S.startCapital*100,
-      arbitrageAPR:arbitrageAPR, totalAPR:totalAPR,
+      arbitrageAPR:arbitrageAPR,totalAPR:totalAPR,
       maxDrawdown:maxDD,
       avgSO:deals.length?deals.reduce(function(a,d){return a+d.safetyCount;},0)/deals.length:0,
       investedAmt:openDeal?openDeal.totalCost:0,
-      finalCapital:cash,
+      finalCapital:finalCapital,
       lastPrice:lastPrice,
       openDealAvgCost:openDeal?openDeal.avgCost:null,
       openDealTP:openDeal?openDeal.avgCost*(1+S.tpPct/100):null,
       openDealSafetyCount:openDeal?openDeal.safetyCount:0,
-      /* Reinvest: son döngü order büyüklükleri */
       finalInitAmt:dynInitAmt,
       finalSafeAmt:dynSafeAmt,
+      accumBase:accumBase,
+      isBase:isBase,
     }
   };
 }
@@ -778,7 +787,8 @@ function render(res, source, mumCnt){
   var pcR =stats.realizedPnL>=0?"var(--green)":"var(--red)";
   var pcU =stats.unrealizedPnL>=0?"var(--green)":"var(--red)";
 
-  document.getElementById("hMeta").textContent=coin.sym+"/USDT · "+per.l+" · "+mumCnt.toLocaleString()+" mum";
+  var isBase=stats.isBase;
+  document.getElementById("hMeta").textContent=coin.sym+"/USDT · "+per.l+" · "+mumCnt.toLocaleString()+" mum"+(isBase?" · Base ₿":"");
   document.getElementById("hPct").textContent=fp(stats.totalPnLPct);
   document.getElementById("hPct").style.color=pcT;
   document.getElementById("hUsd").textContent="Toplam PnL: "+(stats.totalPnL>=0?"+":"")+fu(stats.totalPnL);
@@ -792,14 +802,15 @@ function render(res, source, mumCnt){
 
   /* Start badge */
   var sb=document.getElementById("sBdg");
+  var modeSfx=isBase?" · "+coin.sym+" Base":"";
   if(S.cond==="instant"){
-    var extras=(S.reinvest?" · Reinvest":"")+(S.ttpEnabled?" · TTP "+f(S.ttpPct,2)+"%":"");
+    var extras=(S.reinvest&&!isBase?" · Reinvest":"")+(S.ttpEnabled?" · TTP "+f(S.ttpPct,2)+"%":"")+modeSfx;
     sb.style.cssText="margin-top:10px;display:inline-flex;align-items:center;gap:5px;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600;background:rgba(0,212,170,.1);color:var(--accent);border:1px solid rgba(0,212,170,.25)";
     sb.textContent="⚡ Anında · 1h"+extras;
   } else {
     var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
     sb.style.cssText="margin-top:10px;display:inline-flex;align-items:center;gap:5px;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600;background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.25)";
-    sb.textContent="📉 RSI("+S.rsiTP+") "+(S.rsiDir==="lt"?"< ":"> ")+S.rsiThr+" · "+(tf?tf.l:"?")+" mumlar";
+    sb.textContent="📉 RSI("+S.rsiTP+") "+(S.rsiDir==="lt"?"< ":"> ")+S.rsiThr+" · "+(tf?tf.l:"?")+" mumlar"+modeSfx;
   }
 
   /* Stats grid */
@@ -824,17 +835,35 @@ function render(res, source, mumCnt){
 
   if(openDeal) sg.innerHTML+=fullRow("Yatırılan Tutar (Açık İşlem)",fu(stats.investedAmt),"var(--text2)");
 
-  sg.innerHTML+=
-    halfCard("Arbitraged PnL",(stats.realizedPnL>=0?"+":"")+fu(stats.realizedPnL)+"<br><small style='font-size:10px'>"+fp(stats.realizedPnL/S.startCapital*100)+"</small>",pcR)+
-    halfCard("Floating PnL",(stats.unrealizedPnL>=0?"+":"")+fu(stats.unrealizedPnL)+"<br><small style='font-size:10px'>"+fp(stats.unrealizedPnL/S.startCapital*100)+"</small>",pcU);
+  if(isBase){
+    sg.innerHTML+=
+      halfCard("Birikim ("+coin.sym+")",
+        f(stats.accumBase,6)+"<br><small style='font-size:10px;color:var(--accent)'>"+coin.sym+"</small>",
+        "var(--accent)")+
+      halfCard("Birikim Değeri ($)",
+        (stats.realizedPnL>=0?"+":"")+fu(stats.realizedPnL)+"<br><small style='font-size:10px'>"+fp(stats.realizedPnL/S.startCapital*100)+"</small>",
+        pcR);
+    sg.innerHTML+=
+      halfCard("Floating PnL",(stats.unrealizedPnL>=0?"+":"")+fu(stats.unrealizedPnL)+"<br><small style='font-size:10px'>"+fp(stats.unrealizedPnL/S.startCapital*100)+"</small>",pcU)+
+      halfCard("Son Fiyat",fu(stats.lastPrice),"var(--text)");
+  } else {
+    sg.innerHTML+=
+      halfCard("Arbitraged PnL",(stats.realizedPnL>=0?"+":"")+fu(stats.realizedPnL)+"<br><small style='font-size:10px'>"+fp(stats.realizedPnL/S.startCapital*100)+"</small>",pcR)+
+      halfCard("Floating PnL",(stats.unrealizedPnL>=0?"+":"")+fu(stats.unrealizedPnL)+"<br><small style='font-size:10px'>"+fp(stats.unrealizedPnL/S.startCapital*100)+"</small>",pcU);
+    sg.innerHTML+=
+      halfCard("Son Fiyat",fu(stats.lastPrice),"var(--text)")+
+      (openDeal?halfCard("TP Fiyatı",fu(stats.openDealTP),"var(--green)"):halfCard("Max Drawdown",fp(-stats.maxDrawdown),"var(--red)"));
+  }
 
   sg.innerHTML+=fullRow("Arbitrage APR / Toplam APR",
     fp(stats.arbitrageAPR)+" / "+fp(stats.totalAPR),
     stats.arbitrageAPR>=0?"var(--green)":"var(--red)");
 
-  sg.innerHTML+=
-    halfCard("Son Fiyat",fu(stats.lastPrice),"var(--text)")+
-    (openDeal?halfCard("TP Fiyatı",fu(stats.openDealTP),"var(--green)"):halfCard("Max Drawdown",fp(-stats.maxDrawdown),"var(--red)"));
+  if(isBase){
+    sg.innerHTML+=
+      (openDeal?halfCard("TP Fiyatı",fu(stats.openDealTP),"var(--green)"):"")+
+      halfCard("Max Drawdown",fp(-stats.maxDrawdown),"var(--red)");
+  }
 
   if(openDeal) sg.innerHTML+=fullRow("Avg Cost (Açık İşlem)",fu(stats.openDealAvgCost),"var(--text2)");
 
@@ -844,10 +873,9 @@ function render(res, source, mumCnt){
 
   sg.innerHTML+=
     halfCard("Win Rate",fp(stats.winRate),stats.winRate>=50?"var(--green)":"var(--red)")+
-    halfCard("Tamamlanan Döngü",stats.completedCycles,"var(--accent2)");
+    halfCard("Kayıp Döngü",stats.losses,"var(--red)");
 
-  /* Reinvest büyüme göster */
-  if(S.reinvest && stats.finalInitAmt!==S.initAmt){
+  if(!isBase&&S.reinvest&&stats.finalInitAmt!==S.initAmt){
     sg.innerHTML+=fullRow(
       "Reinvest — Son Order Büyüklükleri",
       "Base: "+fu(stats.finalInitAmt)+" · Safety: "+fu(stats.finalSafeAmt),
@@ -880,9 +908,10 @@ function render(res, source, mumCnt){
   /* Deals */
   var dl=document.getElementById("dealL"); dl.innerHTML="";
   deals.forEach(function(d,i){
-    var isSL=d.why==="SL", isOpen=d.why==="OPEN";
+    var isOpen=d.why==="OPEN";
     var pc2=d.profit>=0?"var(--green)":"var(--red)";
-    var bc=isSL?"rgba(255,79,109,.35)":isOpen?"rgba(251,191,36,.2)":d.profit>=0?"rgba(0,212,170,.18)":"rgba(255,79,109,.18)";
+    var bc=isOpen?"rgba(251,191,36,.2)":d.profit>=0?"rgba(0,212,170,.18)":"rgba(255,79,109,.18)";
+    var baseLbl=isBase&&d.baseProfit>0?' <span style="color:var(--accent);font-size:10px;font-weight:700">+'+f(d.baseProfit,5)+' '+coin.sym+'</span>':"";
     dl.innerHTML+=
       '<div class="dc" style="border-color:'+bc+';animation-delay:'+Math.min(i*.02,.3)+'s">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
@@ -890,6 +919,7 @@ function render(res, source, mumCnt){
       '<div class="dm">#'+(i+1)+' '+d.startDate+' → '+d.endDate+
         (isOpen?' <span style="color:var(--yellow);font-size:10px">⏳ AÇIK</span>':"")+
         (d.why==="TTP"?' <span style="color:var(--purple);font-size:10px">🎯 TTP</span>':"")+
+        baseLbl+
       '</div>'+
       '<div class="dsub">Safety: <span style="color:var(--yellow);font-weight:700">'+d.safetyCount+"/"+S.maxSO+'</span>'+
         ' · Avg: <span style="color:var(--text);font-weight:600">'+fu(d.avgCost)+'</span>'+
@@ -980,13 +1010,46 @@ function buildChipGroup(containerId, items, getActive, setActive, cls){
   });
 }
 
+function buildProfitMode(){
+  var el=document.getElementById("profitModeGroup");
+  var coin=COINS.find(function(c){return c.id===S.coin;});
+  el.innerHTML="";
+  [{v:"quote",l:"USDT"},{v:"base",l:coin.sym}].forEach(function(o){
+    var b=document.createElement("button");
+    b.className="chip"+(S.profitMode===o.v?" on":"");
+    b.style.padding="6px 14px";
+    b.textContent=o.l;
+    b.onclick=function(){
+      S.profitMode=o.v;
+      el.querySelectorAll(".chip").forEach(function(c,ci){
+        c.className="chip"+(["quote","base"][ci]===S.profitMode?" on":"");
+      });
+      var desc=document.getElementById("profitModeDesc");
+      var note=document.getElementById("reinvestNote");
+      if(S.profitMode==="base"){
+        desc.textContent="TP'de yatırım geri alınır, kâr "+coin.sym+" olarak birikir";
+        desc.style.color="var(--accent)";
+        note.textContent="Base modunda Reinvest devre dışıdır";
+        note.style.color="var(--red)";
+      } else {
+        desc.textContent="TP kârı USDT olarak tahakkuk eder";
+        desc.style.color="";
+        note.textContent="Her TP sonrası kârın belirlenen %'i sermayeye eklenir";
+        note.style.color="";
+      }
+      saveState();
+    };
+    el.appendChild(b);
+  });
+}
+
 function buildMainChips(){
   var cc=document.getElementById("coinC");
   COINS.forEach(function(c){
     var b=document.createElement("button");
     b.className="chip"+(c.id===S.coin?" on":"");
     b.textContent=c.e+" "+c.sym;
-    b.onclick=function(){S.coin=c.id;refreshMainChips();updateBadge();updateWarnTexts();saveState();};
+    b.onclick=function(){S.coin=c.id;refreshMainChips();updateBadge();updateWarnTexts();buildProfitMode();saveState();};
     cc.appendChild(b);
   });
   var pc=document.getElementById("perC");
@@ -1069,12 +1132,9 @@ function closeSplash(){
    INIT
 ═══════════════════════════════ */
 loadState();
-
-/* Stepperları kur */
 STEPPERS.forEach(function(cfg){buildStepper(cfg.k);});
-
-/* Ana chip'ler */
 buildMainChips();
+buildProfitMode();
 
 /* RSI TF chip'leri */
 buildChipGroup("tfC", RSI_TFS,
