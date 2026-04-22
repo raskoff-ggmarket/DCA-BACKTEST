@@ -11,6 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="Backtest"/>
 <link rel="apple-touch-icon" href="android-chrome-192x192.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://accounts.google.com/gsi/client" async defer onload="onGisLoad()"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -174,6 +175,34 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
             animation:splashUp .5s .4s ease both}
 @keyframes splashIn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
 @keyframes splashUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.mode-nav{display:flex;gap:6px;padding:9px 14px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:58px;z-index:29}
+.mode-btn{flex:1;padding:8px;border-radius:10px;font-size:12px;font-weight:700;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all .12s}
+.mode-btn.on{background:rgba(0,212,170,.12);border-color:var(--accent);color:var(--accent)}
+.mode-btn.on-g{background:rgba(0,153,255,.12);border-color:var(--accent2);color:var(--accent2)}
+.ig-info{margin:12px 14px 0;background:rgba(0,153,255,.06);border:1px solid rgba(0,153,255,.2);border-radius:12px;padding:11px 14px;font-size:12px;color:var(--accent2);line-height:1.7}
+.coin-sel{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;
+          color:var(--text);font-size:14px;font-weight:600;padding:11px 14px;
+          font-family:'Space Grotesk',sans-serif;outline:none;cursor:pointer;
+          -webkit-appearance:none;appearance:none}
+.coin-sel:focus{border-color:var(--accent)}
+.coin-sel option{background:var(--bg2)}
+.toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);
+       background:var(--bg4);border:1px solid var(--border2);border-radius:10px;
+       padding:10px 18px;font-size:13px;font-weight:600;color:var(--text);
+       z-index:100;pointer-events:none;transition:opacity .3s;white-space:nowrap}
+.gd-btn{padding:8px 14px;border-radius:9px;font-size:12px;font-weight:700;
+        border:1px solid;cursor:pointer;font-family:'Space Grotesk',sans-serif;flex-shrink:0}
+.gd-off{border-color:var(--border2);background:var(--bg4);color:var(--text2)}
+.gd-on{border-color:rgba(74,144,226,.5);background:rgba(74,144,226,.12);color:#4a90e2}
+.gd-dis{border-color:rgba(255,79,109,.4);background:rgba(255,79,109,.08);color:var(--red)}
+.date-inp{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;
+          color:var(--text);font-size:13px;font-weight:600;padding:9px 12px;
+          font-family:'Space Grotesk',sans-serif;outline:none;color-scheme:dark}
+.date-inp:focus{border-color:var(--accent)}
+.fab-fetch{background:var(--bg4);color:var(--text2);border:1px solid var(--border2);box-shadow:none;
+           font-weight:700;font-size:14px;border-radius:14px;padding:16px 18px;
+           cursor:pointer;font-family:'Space Grotesk',sans-serif;white-space:nowrap;flex-shrink:0}
+.fab-fetch:disabled{color:var(--text3);cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -184,7 +213,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <img src="android-chrome-512x512.png" alt="DCA Backtest"/>
   </div>
   <div class="splash-title">DCA Backtest</div>
-  <div class="splash-sub">OKX DCA Bot Simülatörü</div>
+  <div class="splash-sub">DCA Bot Simülatörü</div>
   <div class="splash-divider"></div>
   <div class="splash-credit">
     <div class="splash-credit-line">Designed and Built by <span>Raskoff</span></div>
@@ -198,16 +227,21 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
 <div class="hdr">
   <div class="hdr-left">
-    <button class="back-btn hidden" id="backBtn" onclick="goSettings()">‹</button>
-    <div class="hdr-logo">D</div>
+    <button class="back-btn hidden" id="backBtn" onclick="setTab('ayarlar')">‹</button>
+    <img src="android-chrome-192x192.png" alt="logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover">
     <div>
       <div class="hdr-t">Backtest</div>
-      <div class="hdr-s">OKX DCA PARAMETRELERİ</div>
+      <div class="hdr-s">DCA PARAMETRELERİ</div>
     </div>
   </div>
   <div class="hdr-badge" id="hdrBadge">₿ BTC · 1Y</div>
 </div>
 
+<div class="mode-nav" id="mainNav">
+  <button class="mode-btn on" id="tabAyarlar" onclick="setTab('ayarlar')">⚙️ Ayarlar</button>
+  <button class="mode-btn" id="tabSonuclar" onclick="setTab('sonuclar')">📊 Sonuçlar</button>
+  <button class="mode-btn" id="tabOpt" onclick="setTab('opt')">🔍 Optimizasyon</button>
+</div>
 <div class="body">
 
 <!-- ══ SETTINGS ══ -->
@@ -215,12 +249,25 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
   <div class="card">
     <div class="card-head">🪙 İşlem Çifti</div>
-    <div class="chips" id="coinC"></div>
+    <div style="padding:12px 14px"><select class="coin-sel" id="coinC" onchange="selCoin(this.value)"></select></div>
   </div>
 
   <div class="card">
-    <div class="card-head">📅 Periyot</div>
-    <div class="chips" id="perC"></div>
+    <div class="card-head">📅 Tarih Aralığı</div>
+    <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1">
+          <div style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.08em;margin-bottom:4px">BAŞLANGIÇ</div>
+          <input type="date" class="date-inp" id="inpDateFrom" onchange="S.dateFrom=this.value;saveState()"/>
+        </div>
+        <div style="color:var(--text3);font-size:12px;padding-bottom:11px">—</div>
+        <div style="flex:1">
+          <div style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.08em;margin-bottom:4px">BİTİŞ</div>
+          <input type="date" class="date-inp" id="inpDateTo" onchange="S.dateTo=this.value;saveState()"/>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text3)" id="dcRangeInfo">Mum çekmek için 📥 Mum Çek butonunu kullanın</div>
+    </div>
   </div>
 
   <div class="card">
@@ -305,11 +352,11 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <!-- Anında: sabit 1m -->
     <div id="instantSub" class="hidden" style="background:var(--bg3);border-top:1px solid var(--border)">
       <div style="padding:11px 16px;display:flex;align-items:center;gap:8px">
-        <div style="background:rgba(0,212,170,.12);border:1px solid rgba(0,212,170,.3);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:700;color:var(--accent)">1h</div>
-        <div style="font-size:12px;color:var(--text3)">Backtest her zaman 1 saatlik mumlarla çalışır</div>
+        <div style="background:rgba(0,212,170,.12);border:1px solid rgba(0,212,170,.3);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:700;color:var(--accent)">1m</div>
+        <div style="font-size:12px;color:var(--text3)">Backtest 1 dakikalık mumlarla çalışır · Drive'da birikimli</div>
       </div>
       <div style="margin:0 14px 12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:10px;padding:9px 12px;font-size:11px;color:var(--yellow);line-height:1.5">
-        ⚠ OKX maksimum 30.000 mum döndürür (~3.4 yıl). Daha uzun periyotlarda son 3.4 yılı kapsar.
+⚠ Seans başına 30.000 mum döndürülür (~20 gün). Drive ile her çalıştırmada yeni mumlar eklenir, zamanla tam geçmiş birikir.
       </div>
     </div>
 
@@ -339,11 +386,28 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     </div>
   </div>
 
+  <div class="card" style="margin-bottom:4px">
+    <div class="card-head">☁️ Veri Depolama</div>
+    <div class="row" style="border:none">
+      <div style="min-width:0">
+        <div class="rl">Google Drive</div>
+        <div class="rs" id="gdSub">Bağlı değil · cihaz önbelleği kullanılıyor</div>
+        <div id="cacheInfo" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
+      </div>
+      <button class="gd-btn gd-off" id="gdBtn" onclick="gToggle()" style="flex-shrink:0">Bağlan</button>
+    </div>
+  </div>
   <div class="err hidden" id="errBox"></div>
 </div>
 
 <!-- ══ RESULT ══ -->
 <div id="rPanel" class="hidden">
+  <div id="noResultState" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;gap:16px;color:var(--text3)">
+    <div style="font-size:48px;opacity:.35">📊</div>
+    <div style="font-size:15px;font-weight:700;color:var(--text2)">Henüz sonuç yok</div>
+    <div style="font-size:13px;text-align:center;line-height:1.5">⚙️ Ayarlar sekmesinden parametreleri ayarlayıp<br><strong style="color:var(--accent)">▶ Backtest Başlat</strong> butonuna bas.</div>
+  </div>
+  <div id="resultContent" class="hidden">
   <div class="hero">
     <div class="hero-lbl" id="hMeta"></div>
     <div class="hero-pct" id="hPct"></div>
@@ -362,12 +426,17 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
   <div class="tp" id="tp-stats"><div class="sg" id="statsG"></div></div>
   <div class="tp" id="tp-deals"><div class="dl" id="dealL"></div></div>
+  </div><!-- /resultContent -->
 </div>
+
 
 </div><!-- /body -->
 
 <div class="fab-wrap" id="fabW">
-  <button class="fab" id="fabBtn" onclick="run()">▶ Backtest Başlat</button>
+  <div style="display:flex;gap:8px">
+    <button class="fab-fetch" id="fetchBtn" onclick="fetchCandlesRun()">📥 Mum Çek</button>
+    <button class="fab" id="fabBtn" onclick="run()" style="flex:1">▶ Backtest Başlat</button>
+  </div>
 </div>
 </div>
 
@@ -382,7 +451,7 @@ var COINS = [
   {id:"binancecoin",sym:"BNB",  e:"⬡"},
   {id:"ripple",     sym:"XRP",  e:"✕"},
   {id:"cardano",    sym:"ADA",  e:"₳"},
-  {id:"dogecoin",   sym:"DOGE", e:"Ð"},
+  {id:"hyperliquid",sym:"HYPE", e:"◈"},
   {id:"avalanche-2",sym:"AVAX", e:"▲"},
   {id:"tether-gold",sym:"XAUT", e:"🥇"},
   {id:"pax-gold",   sym:"PAXG", e:"🪙"},
@@ -403,8 +472,8 @@ var RSI_TFS = [
   {l:"4h", v:"4h",  okx:"4H",  minPerBar:240},
 ];
 
-/* Anında modu: sabit 1m → OKX bar kodu */
-var INSTANT_BAR = {okx:"1H", minPerBar:60};
+/* DCA anında modu: 1 dakikalık mumlar (Drive önbelleğiyle birikimli) */
+var INSTANT_BAR = {okx:"1m", minPerBar:1};
 
 /* ═══════════════════════════════
    STATE + LOCALSTORAGE
@@ -418,8 +487,10 @@ var DEFAULTS = {
   profitMode:"quote",
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
+  dateFrom:"", dateTo:"",
 };
 var S = Object.assign({}, DEFAULTS);
+var currentTab='ayarlar';
 
 function loadState() {
   try {
@@ -472,53 +543,521 @@ function fetchWarnText(days, minPerBar){
 }
 
 function updateWarnTexts(){
-  /* RSI uyarı */
+  /* RSI uyarı — sadece RSI modunda göster */
   var rTf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
   if(rTf){
     var w=fetchWarnText(S.days, rTf.minPerBar);
     var el=document.getElementById("rsiWarn");
     el.textContent=w; el.classList.toggle("hidden",!w);
   }
-  /* Anında 1m uyarı */
-  var w1m=fetchWarnText(S.days, 1);
-  /* (göstermiyoruz, çok uzun olabilir ama maks 100 req ile sınırlı) */
+}
+
+function tsToDateInput(ts){
+  var d=new Date(ts);
+  var y=d.getFullYear();
+  var m=String(d.getMonth()+1).padStart(2,'0');
+  var day=String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
+
+function filterByDateRange(candles,dateFrom,dateTo){
+  if(!dateFrom&&!dateTo)return candles;
+  var fromTs=dateFrom?new Date(dateFrom+'T00:00:00').getTime():0;
+  var toTs=dateTo?new Date(dateTo+'T23:59:59').getTime():Infinity;
+  return candles.filter(function(c){return c.ts>=fromTs&&c.ts<=toTs;});
+}
+
+/* ═══════════════════════════════
+   INDEXEDDB CANDLE CACHE
+═══════════════════════════════ */
+var BAR_MS={"1m":60000,"3m":180000,"5m":300000,"15m":900000,"30m":1800000,"1H":3600000,"4H":14400000};
+var HISTORY_START_TS=new Date("2022-01-01T00:00:00Z").getTime();
+var _cacheStatus="";
+var _hasResult=false;
+var _db=null;
+
+function openDB(){
+  if(_db)return Promise.resolve(_db);
+  return new Promise(function(res,rej){
+    var req=indexedDB.open("dca_cache",1);
+    req.onupgradeneeded=function(e){
+      var db=e.target.result;
+      if(!db.objectStoreNames.contains("c")){
+        var s=db.createObjectStore("c",{keyPath:["k","ts"]});
+        s.createIndex("k","k");
+      }
+    };
+    req.onsuccess=function(e){_db=e.target.result;res(_db);};
+    req.onerror=function(){rej(req.error);};
+  });
+}
+function cGet(key){
+  return openDB().then(function(db){
+    return new Promise(function(res,rej){
+      var tx=db.transaction("c","readonly");
+      var req=tx.objectStore("c").index("k").getAll(key);
+      req.onsuccess=function(){res(req.result.sort(function(a,b){return a.ts-b.ts;}));};
+      req.onerror=function(){rej(req.error);};
+    });
+  });
+}
+function cPut(key,candles){
+  return openDB().then(function(db){
+    return new Promise(function(res,rej){
+      var tx=db.transaction("c","readwrite");
+      var st=tx.objectStore("c");
+      candles.forEach(function(c){st.put(Object.assign({k:key},c));});
+      tx.oncomplete=res;tx.onerror=function(){rej(tx.error);};
+    });
+  });
+}
+function cClearAll(){
+  return openDB().then(function(db){
+    return new Promise(function(res,rej){
+      var tx=db.transaction("c","readwrite");
+      tx.objectStore("c").clear();
+      tx.oncomplete=res;tx.onerror=function(){rej(tx.error);};
+    });
+  });
+}
+function parseRawCandles(raw){
+  return raw.map(function(k){
+    return {
+      ts:parseInt(k[0]),
+      price:parseFloat(k[4]),
+      date:new Date(parseInt(k[0])).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"}),
+    };
+  }).sort(function(a,b){return a.ts-b.ts;});
+}
+async function syncLocalToDrive(){
+  if(!gdriveConnected())return;
+  /* IDB'deki tüm benzersiz key'leri bul */
+  var db=await openDB();
+  var idbKeys=await new Promise(function(res,rej){
+    var tx=db.transaction("c","readonly");
+    var req=tx.objectStore("c").index("k").getAllKeys();
+    req.onsuccess=function(){
+      var u=[];req.result.forEach(function(k){if(u.indexOf(k)<0)u.push(k);});res(u);
+    };
+    req.onerror=function(){rej(req.error);};
+  });
+  if(!idbKeys.length)return;
+  showToast("☁️ Drive'a yükleniyor…");
+  var synced=0;
+  for(var i=0;i<idbKeys.length;i++){
+    var key=idbKeys[i];
+    try{
+      var local=await cGet(key);
+      if(!local.length)continue;
+      /* Drive'daki mevcut veriyle birleştir (daha kapsamlı olanı sakla) */
+      var remote=await gdGet(key)||[];
+      var merged=local.slice();
+      if(remote.length){
+        var tsSet={};merged.forEach(function(c){tsSet[c.ts]=1;});
+        remote.forEach(function(c){if(!tsSet[c.ts])merged.push(c);});
+        merged.sort(function(a,b){return a.ts-b.ts;});
+      }
+      await gdPut(key,merged);
+      synced++;
+    }catch(e){}
+  }
+  refreshCacheRange();
+  showToast(synced?"✓ "+synced+" set Drive'a yüklendi":"✓ Drive güncel");
+}
+async function refreshCacheRange(){
+  var el=document.getElementById("cacheInfo");
+  if(!el)return;
+  el.textContent="…";
+  function fmt(cached,coin){
+    if(!cached||!cached.length)return null;
+    var c=COINS.find(function(x){return x.id===coin;});
+    return(c?c.sym:coin)+" · "+cached[0].date+" – "+cached[cached.length-1].date+" · "+cached.length.toLocaleString()+" mum";
+  }
+  var lines=[];
+  try{var d=await stGet(S.coin+"_"+INSTANT_BAR.okx);var t=fmt(d,S.coin);if(t)lines.push("DCA: "+t);}catch(e){}
+  el.textContent=lines.length?lines.join("  |  "):"Henüz veri yok";
+}
+function showToast(msg){
+  var t=document.getElementById("toast");
+  t.textContent=msg;t.style.opacity="1";
+  clearTimeout(t._tid);t._tid=setTimeout(function(){t.style.opacity="0";},2500);
+}
+function clearCache(){
+  stClear()
+    .then(function(){showToast("✓ Önbellek temizlendi");document.getElementById("cacheInfo").textContent="–";})
+    .catch(function(){showToast("⚠ Temizleme başarısız");});
+}
+
+/* ═══════════════════════════════
+   GOOGLE DRIVE STORAGE
+═══════════════════════════════ */
+var _gToken=null,_gTokenExp=0;
+var _gFileIds={},_gMem={};
+var _gManualClient=null; /* click anında sadece requestAccessToken çağrılır */
+
+var GOOGLE_CLIENT_ID="242410638546-lh3kladojlfbt9nemvg6ldp9oct87roj.apps.googleusercontent.com";
+function gdriveConnected(){return !!_gToken&&Date.now()<_gTokenExp;}
+
+function _gCallback(resp,showFeedback){
+  if(resp.access_token&&!resp.error){
+    _gToken=resp.access_token;
+    _gTokenExp=Date.now()+((resp.expires_in||3600)-60)*1000;
+    _gMem={};
+    localStorage.setItem("g_connected","1");
+    /* Email'i kaydet → sonraki sessiz bağlantılarda login_hint olarak kullan */
+    fetch("https://www.googleapis.com/oauth2/v3/userinfo",{headers:{Authorization:"Bearer "+_gToken}})
+      .then(function(r){return r.json();})
+      .then(function(j){if(j.email)localStorage.setItem("g_hint",j.email);})
+      .catch(function(){});
+    updateGdriveUI(true);
+    refreshCacheRange();
+    loadCandleRange();
+    updateFetchBtnState();
+    if(showFeedback){showToast("✓ Google Drive bağlandı");syncLocalToDrive();}
+  } else if(showFeedback&&resp.error!=="popup_closed_by_user"){
+    showToast("⚠ Google bağlantı hatası: "+resp.error);
+  }
+}
+
+/* GIS yüklenince client'ı hazırla + sessiz yeniden bağlan */
+var _GD_SCOPE="https://www.googleapis.com/auth/drive.appdata email";
+function onGisLoad(){
+  /* Manuel bağlantı için client'ı önceden oluştur
+     (click anında initTokenClient çağrılmaz → popup engellenmez) */
+  _gManualClient=google.accounts.oauth2.initTokenClient({
+    client_id:GOOGLE_CLIENT_ID,
+    scope:_GD_SCOPE,
+    callback:function(resp){_gCallback(resp,true);}
+  });
+  /* Daha önce bağlıysa sessiz token yenile (login_hint → hesap seçici atlanır) */
+  if(localStorage.getItem("g_connected")){
+    try{
+      google.accounts.oauth2.initTokenClient({
+        client_id:GOOGLE_CLIENT_ID,
+        scope:_GD_SCOPE,
+        prompt:"",
+        login_hint:localStorage.getItem("g_hint")||"",
+        callback:function(resp){_gCallback(resp,false);}
+      }).requestAccessToken({prompt:""});
+    }catch(e){}
+  }
+}
+
+/* Click handler — sadece requestAccessToken, popup engellenmez */
+function gToggle(){
+  if(gdriveConnected()){
+    var tok=_gToken;
+    _gToken=null;_gTokenExp=0;_gMem={};
+    localStorage.removeItem("g_connected");
+    try{google.accounts.oauth2.revoke(tok,function(){});}catch(e){}
+    updateGdriveUI(false);
+    showToast("Google Drive bağlantısı kesildi");
+    return;
+  }
+  if(!_gManualClient){
+    showToast("⚠ Google API henüz yüklenmedi, bir saniye bekleyip tekrar dene.");return;
+  }
+  _gManualClient.requestAccessToken();
+}
+
+function updateGdriveUI(connected){
+  var sub=document.getElementById("gdSub");
+  var btn=document.getElementById("gdBtn");
+  if(connected){
+    sub.textContent="Bağlı · Mumlar Drive'a kaydediliyor";
+    btn.className="gd-btn gd-dis";btn.textContent="Bağlantıyı Kes";
+  } else {
+    sub.textContent="Bağlı değil · Cihaz önbelleği kullanılıyor";
+    btn.className="gd-btn gd-off";btn.textContent="Bağlan";
+  }
+}
+
+async function gdGet(key){
+  if(!gdriveConnected())return null;
+  if(_gMem[key])return _gMem[key];
+  if(!_gFileIds[key]){
+    var r=await fetch(
+      "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27"+encodeURIComponent(key)+".json%27&fields=files(id)",
+      {headers:{Authorization:"Bearer "+_gToken}});
+    if(!r.ok)return null;
+    var j=await r.json();
+    if(j.files&&j.files.length)_gFileIds[key]=j.files[0].id;
+    else return [];
+  }
+  var r2=await fetch(
+    "https://www.googleapis.com/drive/v3/files/"+_gFileIds[key]+"?alt=media",
+    {headers:{Authorization:"Bearer "+_gToken}});
+  if(!r2.ok)return [];
+  var data=await r2.json();
+  _gMem[key]=data;return data;
+}
+
+async function gdPut(key,candles){
+  if(!gdriveConnected())return;
+  _gMem[key]=candles;
+  var boundary="dcabnd";
+  var isUpdate=!!_gFileIds[key];
+  var meta=isUpdate
+    ?JSON.stringify({name:key+".json"})
+    :JSON.stringify({name:key+".json",parents:["appDataFolder"]});
+  var body="--"+boundary+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+
+    meta+"\r\n--"+boundary+"\r\nContent-Type: application/json\r\n\r\n"+
+    JSON.stringify(candles)+"\r\n--"+boundary+"--";
+  var url=isUpdate
+    ?"https://www.googleapis.com/upload/drive/v3/files/"+_gFileIds[key]+"?uploadType=multipart"
+    :"https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
+  var r=await fetch(url,{
+    method:isUpdate?"PATCH":"POST",
+    headers:{Authorization:"Bearer "+_gToken,"Content-Type":"multipart/related; boundary="+boundary},
+    body:body
+  });
+  if(r.ok){var j=await r.json();_gFileIds[key]=j.id;}
+}
+
+async function gdClearAll(){
+  if(!gdriveConnected())return;
+  var r=await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id)",
+    {headers:{Authorization:"Bearer "+_gToken}});
+  if(!r.ok)return;
+  var j=await r.json();
+  for(var i=0;i<(j.files||[]).length;i++){
+    await fetch("https://www.googleapis.com/drive/v3/files/"+j.files[i].id,
+      {method:"DELETE",headers:{Authorization:"Bearer "+_gToken}});
+  }
+  _gFileIds={};_gMem={};
+}
+
+/* Aktif backend seçimi */
+async function stGet(key){
+  if(gdriveConnected()){try{var d=await gdGet(key);if(d!==null)return d;}catch(e){}}
+  try{return await cGet(key);}catch(e){return [];}
+}
+async function stPut(key,candles){
+  if(gdriveConnected()){try{await gdPut(key,candles);}catch(e){}}
+  else{try{await cPut(key,candles);}catch(e){}}
+}
+async function stClear(){
+  if(gdriveConnected())return gdClearAll();
+  return cClearAll();
 }
 
 /* ═══════════════════════════════
    OKX CANDLE FETCH
 ═══════════════════════════════ */
-async function fetchOKXCandles(coinId, okxBar, neededCount){
-  var coin   = COINS.find(function(c){return c.id===coinId;});
-  var instId = coin.sym + "-USDT";
-  var all = [], after = "", reqCount = 0, maxReq = 100;
-  var target = Math.min(neededCount, maxReq * 300);
+function showFetchProgress(ts,fetched,total){
+  var d=new Date(ts);
+  var dateStr=d.toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric"});
+  var pct=total>0?Math.min(99,Math.round(fetched/total*100)):0;
+  var btn=document.getElementById("fetchBtn");
+  if(btn)btn.innerHTML=
+    '<span class="spinner" style="border-color:rgba(255,255,255,.15);border-top-color:var(--text2);'+
+    'width:11px;height:11px;border-width:1.5px;vertical-align:middle;margin-right:4px"></span>'+
+    dateStr+' %'+pct;
+  var el=document.getElementById("dcRangeInfo");
+  if(el)el.textContent="📡 "+dateStr+" çekiliyor… %"+pct+" ("+fetched.toLocaleString()+" / "+total.toLocaleString()+" mum)";
+  setLoad(pct);
+}
 
-  while(all.length < target && reqCount < maxReq){
-    var url = "https://www.okx.com/api/v5/market/history-candles?instId=" + instId +
-              "&bar=" + okxBar + "&limit=300";
-    if(after) url += "&after=" + after;
-    var r = await fetch(url, {signal:AbortSignal.timeout(12000)});
-    if(!r.ok) throw new Error("OKX API hata: " + r.status);
-    var j = await r.json();
-    if(!j.data || !j.data.length) break;
-    all = all.concat(j.data);
-    after = j.data[j.data.length-1][0];
+async function _fetchHistorical(coinId,okxBar,neededCount,afterTs,onProgress){
+  var coin=COINS.find(function(c){return c.id===coinId;});
+  var instId=coin.sym+"-USDT";
+  var all=[],after=afterTs?String(afterTs):"",reqCount=0,maxReq=100;
+  var target=Math.min(neededCount,maxReq*300);
+  while(all.length<target&&reqCount<maxReq){
+    var url="https://www.okx.com/api/v5/market/history-candles?instId="+instId+
+            "&bar="+okxBar+"&limit=300";
+    if(after)url+="&after="+after;
+    var r;
+    try{
+      r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+    }catch(e){
+      /* Timeout veya ağ hatası — çekilen kadar döndür, sonraki basışta devam edilir */
+      break;
+    }
+    if(!r.ok)throw new Error("OKX API hata: "+r.status);
+    var j=await r.json();
+    if(!j.data||!j.data.length)break;
+    all=all.concat(j.data);
+    after=j.data[j.data.length-1][0];
+    if(onProgress)onProgress(parseInt(after),all.length,target);
     reqCount++;
-    setLoad(5 + Math.floor(all.length / target * 80));
-    if(j.data.length < 300) break;
-    await new Promise(function(res){setTimeout(res, 150);});
+    if(j.data.length<300)break;
+    await new Promise(function(res){setTimeout(res,150);});
+  }
+  return all;
+}
+
+async function _fetchNew(coinId,okxBar,latestTs){
+  var coin=COINS.find(function(c){return c.id===coinId;});
+  var instId=coin.sym+"-USDT";
+  var all=[],before=String(latestTs),reqCount=0,maxReq=5;
+  while(reqCount<maxReq){
+    var url="https://www.okx.com/api/v5/market/history-candles?instId="+instId+
+            "&bar="+okxBar+"&limit=300&before="+before;
+    var r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+    if(!r.ok)break;
+    var j=await r.json();
+    if(!j.data||!j.data.length)break;
+    all=all.concat(j.data);
+    reqCount++;
+    if(j.data.length<300)break;
+    before=j.data[j.data.length-1][0];
+  }
+  return all;
+}
+
+/* histFetch=true  → geriye doğru 30k çek, 2022-01-01'de dur  (Mum Çek)
+   histFetch=false → sadece yeni mumları ileri çek              (Backtest) */
+async function fetchOKXCandles(coinId,okxBar,histFetch){
+  var key=coinId+"_"+okxBar;
+  var barMs=BAR_MS[okxBar]||3600000;
+  var cached=[];
+  try{cached=await stGet(key);}catch(e){}
+
+  if(cached.length>0){
+    /* 1. Yeni mumları ileri çek */
+    var latestTs=cached[cached.length-1].ts;
+    var newCnt=0;
+    if(Date.now()-latestTs>barMs){
+      try{
+        var newRaw=await _fetchNew(coinId,okxBar,latestTs);
+        if(newRaw.length){
+          var newC=parseRawCandles(newRaw).filter(function(c){return c.ts>latestTs;});
+          if(newC.length){
+            cached=cached.concat(newC);newCnt=newC.length;
+            try{await stPut(key,cached);}catch(e){}
+          }
+        }
+      }catch(e){}
+    }
+
+    /* 2. Tarihsel çekim — sadece histFetch=true VE 2022-01-01'e ulaşılmamışsa */
+    var histAdded=0;
+    if(histFetch&&cached[0].ts>HISTORY_START_TS){
+      var oldestTs=cached[0].ts;
+      var progCb=function(ts,fetched,total){showFetchProgress(ts,fetched,total);};
+      var histRaw=await _fetchHistorical(coinId,okxBar,30000,oldestTs,progCb);
+      if(histRaw.length){
+        var histC=parseRawCandles(histRaw).filter(function(c){return c.ts<oldestTs&&c.ts>=HISTORY_START_TS;});
+        if(histC.length){
+          cached=histC.concat(cached);histAdded=histC.length;
+          try{await stPut(key,cached);}catch(e){}
+        }
+      }
+    }
+
+    /* Durum mesajı */
+    var histDone=cached[0].ts<=HISTORY_START_TS;
+    if(histFetch){
+      if(histDone)
+        _cacheStatus="✅ 2022-01-01'den bugüne tamam · "+cached.length.toLocaleString()+" mum"+(newCnt?" (+" +newCnt+" yeni)":"");
+      else
+        _cacheStatus="📡 "+histAdded.toLocaleString()+" tarihsel mum eklendi · toplam "+cached.length.toLocaleString()+(newCnt?" (+" +newCnt+" yeni)":"");
+    } else {
+      _cacheStatus=newCnt>0?"💾 Önbellek + "+newCnt+" yeni mum":"💾 Önbellekten · "+cached.length.toLocaleString()+" mum";
+    }
+    if(!cached.length)throw new Error("OKX'ten veri gelmedi.");
+    try{document.getElementById("cacheInfo").textContent=_cacheStatus;}catch(e){}
+    return cached;
   }
 
-  if(!all.length) throw new Error("OKX'ten veri gelmedi.");
+  /* İlk çekim — hiç veri yok */
+  var progCb0=histFetch?function(ts,fetched,total){showFetchProgress(ts,fetched,total);}:null;
+  var raw=await _fetchHistorical(coinId,okxBar,30000,"",progCb0);
+  if(!raw.length)throw new Error("OKX'ten veri gelmedi.");
+  var candles=parseRawCandles(raw).filter(function(c){return c.ts>=HISTORY_START_TS;});
+  try{await stPut(key,candles);}catch(e){}
+  _cacheStatus="📡 OKX'ten çekildi · "+candles.length.toLocaleString()+" mum";
+  try{document.getElementById("cacheInfo").textContent=_cacheStatus;}catch(e){}
+  return candles;
+}
 
-  /* Eski→yeni sırala */
-  return all.reverse().map(function(k){
-    return {
-      ts:    parseInt(k[0]),
-      price: parseFloat(k[4]),
-      date:  new Date(parseInt(k[0])).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"}),
-    };
-  });
+async function loadCandleRange(){
+  try{
+    var key;
+    if(S.cond==="rsi"){
+      var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
+      key=S.coin+"_"+(tf?tf.okx:INSTANT_BAR.okx);
+    } else {
+      key=S.coin+"_"+INSTANT_BAR.okx;
+    }
+    var inpFrom=document.getElementById("inpDateFrom");
+    var inpTo=document.getElementById("inpDateTo");
+    var infoEl=document.getElementById("dcRangeInfo");
+    if(!inpFrom||!inpTo||!infoEl)return;
+    var cached=await stGet(key);
+    if(cached&&cached.length>0){
+      var from=tsToDateInput(cached[0].ts);
+      var to=tsToDateInput(cached[cached.length-1].ts);
+      inpFrom.min=from; inpFrom.max=to;
+      inpTo.min=from; inpTo.max=to;
+      if(!S.dateFrom||S.dateFrom<from||S.dateFrom>to)S.dateFrom=from;
+      if(!S.dateTo||S.dateTo>to||S.dateTo<from)S.dateTo=to;
+      inpFrom.value=S.dateFrom;
+      inpTo.value=S.dateTo;
+      var histDone=cached[0].ts<=HISTORY_START_TS;
+      infoEl.textContent=(histDone?"✅ ":"⏳ ")+cached.length.toLocaleString()+" mum · "+from+" – "+to+(histDone?"":" · Geçmiş eksik — Mum Çek ile tamamlayın");
+      saveState();
+    } else {
+      inpFrom.value=""; inpTo.value="";
+      infoEl.textContent="Veri yok — 📥 Mum Çek ile yükleyin";
+    }
+  }catch(e){}
+}
+
+
+async function fetchCandlesRun(){
+  var btn=document.getElementById("fetchBtn");
+  if(!btn||btn.disabled)return;
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner" style="border-color:rgba(255,255,255,.2);border-top-color:var(--text2)"></span>';
+  document.getElementById("errBox").classList.add("hidden");
+  setLoad(3);
+  try{
+    if(S.cond==="rsi"){
+      var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
+      if(!tf)throw new Error("Geçersiz RSI zaman dilimi.");
+      await fetchOKXCandles(S.coin,tf.okx,true);
+    } else {
+      await fetchOKXCandles(S.coin,INSTANT_BAR.okx,true);
+    }
+    await loadCandleRange();
+    refreshCacheRange();
+    showToast(_cacheStatus||"✓ Mumlar güncellendi");
+  }catch(e){
+    document.getElementById("errBox").textContent="⚠ "+e.message;
+    document.getElementById("errBox").classList.remove("hidden");
+  }
+  await updateFetchBtnState();
+  setLoad(100);setTimeout(function(){setLoad(0);},700);
+}
+
+async function updateFetchBtnState(){
+  var btn=document.getElementById("fetchBtn");
+  if(!btn)return;
+  var key;
+  if(S.cond==="rsi"){
+    var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
+    key=S.coin+"_"+(tf?tf.okx:INSTANT_BAR.okx);
+  } else {
+    key=S.coin+"_"+INSTANT_BAR.okx;
+  }
+  var complete=false;
+  try{
+    var d=await stGet(key);
+    complete=d&&d.length>0&&d[0].ts<=HISTORY_START_TS;
+  }catch(e){}
+  if(complete){
+    btn.innerHTML="✅ Tarih Tamam";
+    btn.style.color="var(--accent)";
+    btn.style.borderColor="rgba(0,212,170,.3)";
+    btn.disabled=true;
+  } else {
+    btn.innerHTML="📥 Mum Çek";
+    btn.style.color="";
+    btn.style.borderColor="";
+    btn.disabled=false;
+  }
 }
 
 /* ═══════════════════════════════
@@ -734,7 +1273,7 @@ function backtest(prices, rsiArr){
 async function run(){
   var btn=document.getElementById("fabBtn");
   btn.disabled=true;
-  btn.innerHTML='<span class="spinner"></span> Veri çekiliyor...';
+  btn.innerHTML='<span class="spinner"></span> Yükleniyor...';
   document.getElementById("errBox").classList.add("hidden");
   setLoad(3);
 
@@ -742,29 +1281,30 @@ async function run(){
     var prices, rsiArr=null, sourceLabel, mumCount;
 
     if(S.cond==="rsi"){
-      /* RSI modu: seçilen TF mumları → aynı mumlarla RSI + backtest */
       var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
       if(!tf) throw new Error("Geçersiz RSI zaman dilimi.");
-      var needed=candleCount(S.days, tf.minPerBar)+S.rsiTP*2;
-      btn.innerHTML='<span class="spinner"></span> RSI mumları çekiliyor ('+tf.l+')...';
-      prices=await fetchOKXCandles(S.coin, tf.okx, needed);
+      btn.innerHTML='<span class="spinner"></span> Güncelleniyor...';
+      var allCandles=await fetchOKXCandles(S.coin,tf.okx,false);
+      if(!allCandles||allCandles.length<2) throw new Error("Önce 📥 Mum Çek ile veri yükleyin.");
+      prices=filterByDateRange(allCandles,S.dateFrom,S.dateTo);
+      if(prices.length<20) throw new Error("Seçilen tarih aralığında yeterli veri yok ("+prices.length+" mum).");
       rsiArr=calcRSI(prices, S.rsiTP);
-      sourceLabel="OKX · "+tf.l+" mumlar";
+      sourceLabel=_cacheStatus||("💾 Önbellek · "+tf.l+" mumlar");
       mumCount=prices.length;
     } else {
-      /* Anında modu: sabit 1 dakikalık mumlar */
-      btn.innerHTML='<span class="spinner"></span> 1h mumlar çekiliyor...';
-      var needed1m=candleCount(S.days, INSTANT_BAR.minPerBar);
-      prices=await fetchOKXCandles(S.coin, INSTANT_BAR.okx, needed1m);
-      sourceLabel="OKX · 1h mumlar";
+      btn.innerHTML='<span class="spinner"></span> Güncelleniyor...';
+      var allCandles=await fetchOKXCandles(S.coin,INSTANT_BAR.okx,false);
+      if(!allCandles||allCandles.length<2) throw new Error("Önce 📥 Mum Çek ile veri yükleyin.");
+      prices=filterByDateRange(allCandles,S.dateFrom,S.dateTo);
+      if(prices.length<20) throw new Error("Seçilen tarih aralığında yeterli veri yok ("+prices.length+" mum).");
+      sourceLabel=_cacheStatus||"💾 Önbellek · 1m mumlar";
       mumCount=prices.length;
     }
 
-    if(prices.length < 20) throw new Error("Yeterli veri yok (" + prices.length + " mum).");
     setLoad(90);
-
     var result = backtest(prices, rsiArr);
-    render(result, sourceLabel, mumCount);
+    render(result, sourceLabel, mumCount, prices[0].date, prices[prices.length-1].date);
+    refreshCacheRange();
     goResult();
 
   } catch(e){
@@ -779,16 +1319,20 @@ async function run(){
 /* ═══════════════════════════════
    RENDER
 ═══════════════════════════════ */
-function render(res, source, mumCnt){
+function render(res, source, mumCnt, dateFrom, dateTo){
+  if(!_hasResult){
+    _hasResult=true;
+    document.getElementById("noResultState").style.display="none";
+    document.getElementById("resultContent").classList.remove("hidden");
+  }
   var stats=res.stats, deals=res.deals, openDeal=res.openDeal;
   var coin=COINS.find(function(c){return c.id===S.coin;});
-  var per =PERS.find(function(p){return p.d===S.days;});
   var pcT =stats.totalPnL>=0?"var(--green)":"var(--red)";
   var pcR =stats.realizedPnL>=0?"var(--green)":"var(--red)";
   var pcU =stats.unrealizedPnL>=0?"var(--green)":"var(--red)";
 
   var isBase=stats.isBase;
-  document.getElementById("hMeta").textContent=coin.sym+"/USDT · "+per.l+" · "+mumCnt.toLocaleString()+" mum"+(isBase?" · Base ₿":"");
+  document.getElementById("hMeta").textContent=coin.sym+"/USDT · "+dateFrom+" – "+dateTo+" · "+mumCnt.toLocaleString()+" mum"+(isBase?" · Base ₿":"");
   document.getElementById("hPct").textContent=fp(stats.totalPnLPct);
   document.getElementById("hPct").style.color=pcT;
   document.getElementById("hUsd").textContent="Toplam PnL: "+(stats.totalPnL>=0?"+":"")+fu(stats.totalPnL);
@@ -798,7 +1342,7 @@ function render(res, source, mumCnt){
   document.getElementById("hDD").textContent=fp(-stats.maxDrawdown);
   document.getElementById("hCycles").textContent=stats.completedCycles;
   document.getElementById("hCycles").style.color="var(--accent2)";
-  document.getElementById("srcBar").textContent="📡 Kaynak: "+source+" · "+mumCnt.toLocaleString()+" mum";
+  document.getElementById("srcBar").textContent="📡 "+source+" · "+dateFrom+" – "+dateTo+" · "+mumCnt.toLocaleString()+" mum";
 
   /* Start badge */
   var sb=document.getElementById("sBdg");
@@ -806,7 +1350,7 @@ function render(res, source, mumCnt){
   if(S.cond==="instant"){
     var extras=(S.reinvest&&!isBase?" · Reinvest":"")+(S.ttpEnabled?" · TTP "+f(S.ttpPct,2)+"%":"")+modeSfx;
     sb.style.cssText="margin-top:10px;display:inline-flex;align-items:center;gap:5px;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600;background:rgba(0,212,170,.1);color:var(--accent);border:1px solid rgba(0,212,170,.25)";
-    sb.textContent="⚡ Anında · 1h"+extras;
+    sb.textContent="⚡ Anında · 1m"+extras;
   } else {
     var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
     sb.style.cssText="margin-top:10px;display:inline-flex;align-items:center;gap:5px;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600;background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.25)";
@@ -941,22 +1485,8 @@ function render(res, source, mumCnt){
 /* ═══════════════════════════════
    NAVIGATION
 ═══════════════════════════════ */
-function goResult(){
-  document.getElementById("sPanel").classList.add("hidden");
-  document.getElementById("rPanel").classList.remove("hidden");
-  document.getElementById("fabW").classList.add("hidden");
-  document.getElementById("backBtn").classList.remove("hidden");
-  goTab("stats");
-}
-function goSettings(){
-  document.getElementById("rPanel").classList.add("hidden");
-  document.getElementById("sPanel").classList.remove("hidden");
-  document.getElementById("fabW").classList.remove("hidden");
-  document.getElementById("backBtn").classList.add("hidden");
-  var btn=document.getElementById("fabBtn");
-  btn.disabled=false; btn.textContent="▶ Backtest Başlat";
-  updateCap();
-}
+function goResult(){setTab("sonuclar");}
+function goSettings(){setTab("ayarlar");}
 function goTab(name){
   document.querySelectorAll(".tab-btn").forEach(function(b,i){
     b.className="tab-btn"+(["stats","deals"][i]===name?" on":"");
@@ -1046,24 +1576,16 @@ function buildProfitMode(){
 function buildMainChips(){
   var cc=document.getElementById("coinC");
   COINS.forEach(function(c){
-    var b=document.createElement("button");
-    b.className="chip"+(c.id===S.coin?" on":"");
-    b.textContent=c.e+" "+c.sym;
-    b.onclick=function(){S.coin=c.id;refreshMainChips();updateBadge();updateWarnTexts();buildProfitMode();saveState();};
-    cc.appendChild(b);
+    var o=document.createElement("option");
+    o.value=c.id;o.textContent=c.e+" "+c.sym;
+    cc.appendChild(o);
   });
-  var pc=document.getElementById("perC");
-  PERS.forEach(function(p){
-    var b=document.createElement("button");
-    b.className="chip"+(p.d===S.days?" on":"");
-    b.textContent=p.l;
-    b.onclick=function(){S.days=p.d;refreshMainChips();updateBadge();updateWarnTexts();saveState();};
-    pc.appendChild(b);
-  });
+  cc.value=S.coin;
+  if(!cc.value){S.coin=COINS[0].id;cc.value=S.coin;}
 }
+function selCoin(id){S.coin=id;S.dateFrom="";S.dateTo="";updateBadge();updateWarnTexts();buildProfitMode();saveState();refreshCacheRange();loadCandleRange();updateFetchBtnState();}
 function refreshMainChips(){
-  document.querySelectorAll("#coinC .chip").forEach(function(b,i){b.className="chip"+(COINS[i].id===S.coin?" on":"");});
-  document.querySelectorAll("#perC .chip").forEach(function(b,i){b.className="chip"+(PERS[i].d===S.days?" on":"");});
+  document.getElementById("coinC").value=S.coin;
 }
 
 function updateCap(){
@@ -1089,6 +1611,7 @@ function setCond(type){
   document.getElementById("instantSub").classList.toggle("hidden",isR);
   document.getElementById("rsiSub").classList.toggle("hidden",!isR);
   saveState();
+  loadCandleRange();
 }
 
 function setDir(dir){
@@ -1107,8 +1630,8 @@ function updateRsiSum(){
 }
 
 function updateBadge(){
-  var c=COINS.find(function(x){return x.id===S.coin;}),p=PERS.find(function(x){return x.d===S.days;});
-  document.getElementById("hdrBadge").textContent=c.e+" "+c.sym+" · "+p.l;
+  var c=COINS.find(function(x){return x.id===S.coin;});
+  document.getElementById("hdrBadge").textContent=c.e+" "+c.sym;
 }
 
 function toggleReinvestSub(){
@@ -1117,6 +1640,32 @@ function toggleReinvestSub(){
 function toggleTtpSub(){
   document.getElementById("ttpSubPanel").classList.toggle("hidden",!S.ttpEnabled);
 }
+
+/* ═══════════════════════════════
+   TAB NAVIGATION
+═══════════════════════════════ */
+function setTab(tab){
+  currentTab=tab;
+  ["Ayarlar","Sonuclar","Opt"].forEach(function(t){
+    var btn=document.getElementById("tab"+t);
+    if(btn)btn.className="mode-btn"+(tab===t.toLowerCase()?" on":"");
+  });
+  document.getElementById("sPanel").classList.toggle("hidden",tab!=="ayarlar");
+  document.getElementById("rPanel").classList.toggle("hidden",tab!=="sonuclar");
+  var optPanel=document.getElementById("optPanel");
+  if(optPanel)optPanel.classList.toggle("hidden",tab!=="opt");
+  document.getElementById("fabW").classList.toggle("hidden",tab!=="ayarlar");
+  document.getElementById("backBtn").classList.toggle("hidden",tab!=="sonuclar");
+  if(tab==="ayarlar"){
+    var btn=document.getElementById("fabBtn");
+    btn.disabled=false;btn.textContent="▶ Backtest Başlat";
+    var fb=document.getElementById("fetchBtn");
+    if(fb&&!fb.innerHTML.includes("Tarih")){fb.disabled=false;fb.innerHTML="📥 Mum Çek";}
+    updateCap();
+  }
+  if(tab==="sonuclar") goTab("stats");
+}
+
 
 /* ═══════════════════════════════
    SPLASH
@@ -1154,6 +1703,12 @@ document.getElementById("chkReinvest").checked = S.reinvest;
 document.getElementById("chkTtp").checked = S.ttpEnabled;
 toggleReinvestSub();
 toggleTtpSub();
+/* ── Google Drive: onGisLoad() otomatik bağlanır ── */
+refreshCacheRange();
+/* ── Tarih aralıklarını önbellekten yükle ── */
+loadCandleRange();
+updateFetchBtnState();
 </script>
+<div id="toast" class="toast" style="opacity:0"></div>
 </body>
 </html>
