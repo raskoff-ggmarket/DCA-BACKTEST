@@ -429,6 +429,22 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div><!-- /resultContent -->
 </div>
 
+<!-- OPTIMIZER PANEL -->
+<div id="optPanel" class="hidden">
+  <div style="padding:14px">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BAŞLANGIÇ SERMAYESİ (USDT)</div>
+      <input type="number" id="optCapital" value="1000" min="100" step="100"
+        style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:15px;font-weight:700;font-family:'Space Grotesk',sans-serif">
+    </div>
+    <button id="optBtn" onclick="runOptimizer()"
+      style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--accent);background:rgba(0,212,170,.12);color:var(--accent);font-size:14px;font-weight:800;font-family:'Space Grotesk',sans-serif;cursor:pointer;letter-spacing:.05em">
+      🔍 Tara
+    </button>
+    <div id="optStatus" style="margin-top:10px;font-size:12px;color:var(--text3);min-height:18px;text-align:center"></div>
+  </div>
+  <div id="optResults" style="padding:0 14px 80px"></div>
+</div>
 
 </div><!-- /body -->
 
@@ -1639,6 +1655,213 @@ function toggleReinvestSub(){
 }
 function toggleTtpSub(){
   document.getElementById("ttpSubPanel").classList.toggle("hidden",!S.ttpEnabled);
+}
+
+/* ═══════════════════════════════
+   OPTIMIZER
+═══════════════════════════════ */
+var OPT_PROFILES=[
+  {
+    id:"kisa",label:"⚡ Kısa Vade",color:"var(--accent2)",
+    ranges:{
+      maxSO:[2,5],priceStep:[1.0,2.5],stepMult:[1.0,1.5],
+      amtMult:[1.0,1.5],tpPct:[0.5,1.5],
+      reinvest:[false,true],reinvestPct:[50,100],
+      ttpEnabled:[false,true],ttpPct:[0.3,0.8]
+    }
+  },
+  {
+    id:"orta",label:"⚖️ Orta Vade",color:"var(--accent)",
+    ranges:{
+      maxSO:[4,10],priceStep:[1.5,4.0],stepMult:[1.0,1.8],
+      amtMult:[1.0,1.8],tpPct:[1.0,2.5],
+      reinvest:[false,true],reinvestPct:[50,100],
+      ttpEnabled:[false,true],ttpPct:[0.3,1.0]
+    }
+  },
+  {
+    id:"uzun",label:"🏔️ Uzun Vade",color:"var(--purple)",
+    ranges:{
+      maxSO:[8,15],priceStep:[2.5,6.0],stepMult:[1.0,2.0],
+      amtMult:[1.0,2.0],tpPct:[1.5,4.0],
+      reinvest:[false,true],reinvestPct:[50,100],
+      ttpEnabled:[false,true],ttpPct:[0.5,1.5]
+    }
+  }
+];
+
+function _rnd(min,max,dec){
+  var v=min+Math.random()*(max-min);
+  return dec?parseFloat(v.toFixed(dec)):Math.round(v);
+}
+
+function _sampleParams(profile,capital){
+  var r=profile.ranges;
+  var maxSO=_rnd(r.maxSO[0],r.maxSO[1]);
+  var priceStep=_rnd(r.priceStep[0],r.priceStep[1],2);
+  var stepMult=_rnd(r.stepMult[0],r.stepMult[1],2);
+  var amtMult=_rnd(r.amtMult[0],r.amtMult[1],2);
+  var tpPct=_rnd(r.tpPct[0],r.tpPct[1],2);
+  var reinvest=Math.random()<.5?r.reinvest[0]:r.reinvest[1];
+  var reinvestPct=_rnd(r.reinvestPct[0],r.reinvestPct[1],0);
+  var ttpEnabled=Math.random()<.5?r.ttpEnabled[0]:r.ttpEnabled[1];
+  var ttpPct=_rnd(r.ttpPct[0],r.ttpPct[1],2);
+
+  /* allocate initAmt and safeAmt so total fits capital (with 20% buffer) */
+  var budget=capital*0.8;
+  var totalOrders=1;
+  for(var n=0;n<maxSO;n++)totalOrders+=Math.pow(amtMult,n);
+  var unitAmt=Math.max(10,Math.floor(budget/totalOrders/10)*10);
+  var initAmt=unitAmt;
+  var safeAmt=unitAmt;
+
+  return{
+    startCapital:capital,
+    initAmt:initAmt,safeAmt:safeAmt,
+    priceStep:priceStep,stepMult:stepMult,amtMult:amtMult,
+    maxSO:maxSO,tpPct:tpPct,
+    reinvest:reinvest,reinvestPct:reinvestPct,
+    ttpEnabled:ttpEnabled,ttpPct:ttpPct,
+    cond:"instant",profitMode:"quote"
+  };
+}
+
+function backtestWithParams(prices,rsiArr,params){
+  var saved={};
+  var keys=Object.keys(params);
+  keys.forEach(function(k){saved[k]=S[k];S[k]=params[k];});
+  var result=null;
+  try{result=backtest(prices,rsiArr);}catch(e){}
+  keys.forEach(function(k){S[k]=saved[k];});
+  return result;
+}
+
+function _optScore(stats){
+  if(!stats||stats.completedCycles<3)return -Infinity;
+  return stats.arbitrageAPR*(1-stats.maxDrawdown/150);
+}
+
+async function runOptimizer(){
+  var btn=document.getElementById("optBtn");
+  var statusEl=document.getElementById("optStatus");
+  var resultsEl=document.getElementById("optResults");
+  var capital=parseFloat(document.getElementById("optCapital").value)||1000;
+  if(capital<100){statusEl.textContent="⚠ Minimum 100 USDT";return;}
+
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner" style="border-color:rgba(0,212,170,.2);border-top-color:var(--accent);width:13px;height:13px;border-width:2px;vertical-align:middle;margin-right:6px"></span> Taranıyor...';
+  statusEl.textContent="";
+  resultsEl.innerHTML="";
+  setLoad(3);
+
+  try{
+    var allCandles=await fetchOKXCandles(S.coin,INSTANT_BAR.okx,false);
+    if(!allCandles||allCandles.length<2)throw new Error("Önce 📥 Mum Çek ile veri yükleyin.");
+    var prices=filterByDateRange(allCandles,S.dateFrom,S.dateTo);
+    if(prices.length<20)throw new Error("Yeterli veri yok ("+prices.length+" mum).");
+
+    var SAMPLES=300;
+    var allProfileResults=[];
+
+    for(var pi=0;pi<OPT_PROFILES.length;pi++){
+      var profile=OPT_PROFILES[pi];
+      var top5=[];
+      statusEl.textContent="🔍 "+profile.label+" taranıyor… (0/"+SAMPLES+")";
+      setLoad(Math.round(5+pi*30));
+
+      for(var i=0;i<SAMPLES;i++){
+        var params=_sampleParams(profile,capital);
+        var res=backtestWithParams(prices,null,params);
+        var score=_optScore(res?res.stats:null);
+        if(score>-Infinity){
+          top5.push({params:params,stats:res.stats,score:score});
+          top5.sort(function(a,b){return b.score-a.score;});
+          if(top5.length>5)top5.pop();
+        }
+        if(i%50===49){
+          statusEl.textContent="🔍 "+profile.label+" taranıyor… ("+(i+1)+"/"+SAMPLES+")";
+          setLoad(Math.round(5+pi*30+(i+1)/SAMPLES*28));
+          await new Promise(function(res){setTimeout(res,0);});
+        }
+      }
+      allProfileResults.push({profile:profile,top5:top5});
+    }
+
+    setLoad(95);
+    _optLastResults=allProfileResults;
+    resultsEl.innerHTML="";
+    allProfileResults.forEach(function(pr){
+      resultsEl.innerHTML+=_renderOptProfile(pr.profile,pr.top5);
+    });
+    statusEl.textContent="✅ Tarama tamamlandı · "+SAMPLES+" × 3 kombinasyon";
+
+  }catch(e){
+    statusEl.textContent="⚠ "+e.message;
+  }
+  btn.disabled=false;
+  btn.innerHTML="🔍 Tara";
+  setLoad(100);setTimeout(function(){setLoad(0);},700);
+}
+
+function _renderOptProfile(profile,top5){
+  var html='<div style="margin-bottom:20px">';
+  html+='<div style="font-size:13px;font-weight:800;color:'+profile.color+';padding:10px 0 8px;letter-spacing:.04em">'+profile.label+'</div>';
+  if(!top5.length){
+    html+='<div style="font-size:12px;color:var(--text3);padding:10px 0">Bu profil için geçerli sonuç bulunamadı.</div>';
+    return html+'</div>';
+  }
+  top5.forEach(function(r,idx){
+    var s=r.stats,p=r.params;
+    var apr=s.arbitrageAPR,dd=s.maxDrawdown,cyc=s.completedCycles;
+    var aprColor=apr>=0?"var(--green)":"var(--red)";
+    html+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;position:relative">';
+    html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">';
+    html+='<div style="font-size:11px;color:var(--text3);font-weight:700">#'+(idx+1)+'</div>';
+    html+='<div style="text-align:right">';
+    html+='<div style="font-size:16px;font-weight:800;color:'+aprColor+'">'+fp(apr)+'</div>';
+    html+='<div style="font-size:10px;color:var(--text3)">APR · DD '+fp(-dd)+'</div>';
+    html+='</div></div>';
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;font-size:11px;margin-bottom:10px">';
+    html+='<div style="color:var(--text3)">BO <span style="color:var(--text);font-weight:700">$'+p.initAmt+'</span></div>';
+    html+='<div style="color:var(--text3)">SO <span style="color:var(--text);font-weight:700">$'+p.safeAmt+'</span></div>';
+    html+='<div style="color:var(--text3)">MaxSO <span style="color:var(--text);font-weight:700">'+p.maxSO+'</span></div>';
+    html+='<div style="color:var(--text3)">Step <span style="color:var(--text);font-weight:700">%'+p.priceStep+'</span></div>';
+    html+='<div style="color:var(--text3)">SM <span style="color:var(--text);font-weight:700">×'+p.stepMult+'</span></div>';
+    html+='<div style="color:var(--text3)">AM <span style="color:var(--text);font-weight:700">×'+p.amtMult+'</span></div>';
+    html+='<div style="color:var(--text3)">TP <span style="color:var(--text);font-weight:700">%'+p.tpPct+'</span></div>';
+    html+='<div style="color:var(--text3)">Döngü <span style="color:var(--accent2);font-weight:700">'+cyc+'</span></div>';
+    if(p.reinvest)html+='<div style="color:var(--text3)">Reinv <span style="color:var(--accent);font-weight:700">%'+p.reinvestPct+'</span></div>';
+    if(p.ttpEnabled)html+='<div style="color:var(--text3)">TTP <span style="color:var(--yellow);font-weight:700">%'+p.ttpPct+'</span></div>';
+    html+='</div>';
+    html+='<button onclick="applyOptParams('+idx+',\''+profile.id+'\')" '
+      +'style="width:100%;padding:8px;border-radius:8px;border:1px solid '+profile.color+'44;background:'+profile.color+'11;color:'+profile.color+';font-size:12px;font-weight:700;font-family:\'Space Grotesk\',sans-serif;cursor:pointer">'
+      +'Bu Parametreleri Uygula</button>';
+    html+='</div>';
+  });
+  return html+'</div>';
+}
+
+var _optLastResults=[];
+
+function applyOptParams(idx,profileId){
+  var pr=_optLastResults.find(function(r){return r.profile.id===profileId;});
+  if(!pr||!pr.top5[idx])return;
+  var p=pr.top5[idx].params;
+  var keys=["startCapital","initAmt","safeAmt","priceStep","stepMult","amtMult",
+            "maxSO","tpPct","reinvest","reinvestPct","ttpEnabled","ttpPct","cond","profitMode"];
+  keys.forEach(function(k){if(p[k]!==undefined)S[k]=p[k];});
+  saveState();
+  /* Rebuild UI steppers */
+  STEPPERS.forEach(function(cfg){
+    var inp=document.getElementById("inp-"+cfg.k);
+    if(inp)inp.value=S[cfg.k];
+  });
+  document.getElementById("chkReinvest").checked=S.reinvest;
+  document.getElementById("chkTtp").checked=S.ttpEnabled;
+  toggleReinvestSub();toggleTtpSub();
+  updateCap();updateBadge();updateWarnTexts();
+  showToast("✓ Parametreler uygulandı — Ayarlar sekmesine geç");
+  setTab("ayarlar");
 }
 
 /* ═══════════════════════════════
