@@ -433,11 +433,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
   <div class="tp" id="tp-stats"><div class="sg" id="statsG"></div></div>
   <div class="tp" id="tp-deals"><div class="dl" id="dealL"></div></div>
-  <div style="padding:12px 14px 90px;display:flex;justify-content:center">
-    <button onclick="saveReport()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px">
-      📋 Raporu Kaydet
-    </button>
-  </div>
   </div><!-- /resultContent -->
 </div>
 
@@ -517,6 +512,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div style="display:flex;gap:8px">
     <button class="fab-fetch" id="fetchBtn" onclick="fetchCandlesRun()">📥 Mum Çek</button>
     <button class="fab" id="fabBtn" onclick="run()" style="flex:1">▶ Backtest Başlat</button>
+    <button class="fab-fetch" onclick="saveSettings()" title="Ayarları indir" style="min-width:42px;padding:0 12px">💾</button>
   </div>
 </div>
 </div>
@@ -655,7 +651,6 @@ var BAR_MS={"1m":60000,"3m":180000,"5m":300000,"15m":900000,"30m":1800000,"1H":3
 var HISTORY_START_TS=new Date("2022-01-01T00:00:00Z").getTime();
 var _cacheStatus="";
 var _hasResult=false;
-var _lastRender=null;
 var _db=null;
 
 function openDB(){
@@ -1467,7 +1462,7 @@ function render(res, source, mumCnt, dateFrom, dateTo){
   }
   var stats=res.stats, deals=res.deals, openDeal=res.openDeal;
   var coin=COINS.find(function(c){return c.id===S.coin;});
-  _lastRender={stats:stats,coin:coin,source:source,mumCnt:mumCnt,dateFrom:dateFrom,dateTo:dateTo,S:JSON.parse(JSON.stringify(S))};
+
   var pcT =stats.totalPnL>=0?"var(--green)":"var(--red)";
   var pcR =stats.realizedPnL>=0?"var(--green)":"var(--red)";
   var pcU =stats.unrealizedPnL>=0?"var(--green)":"var(--red)";
@@ -1629,72 +1624,34 @@ function render(res, source, mumCnt, dateFrom, dateTo){
 function goResult(){setTab("sonuclar");}
 function goSettings(){setTab("ayarlar");}
 
-function saveReport(){
-  if(!_lastRender){showToast("Önce backtest çalıştırın.");return;}
-  var r=_lastRender, s=r.stats, p=r.S, c=r.coin;
-  var sep="═══════════════════════════════════════";
-  var sep2="───────────────────────────────────────";
+function saveSettings(){
+  var coin=COINS.find(function(c){return c.id===S.coin;})||{sym:"BTC"};
   var now=new Date().toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
-  var lines=[];
-  lines.push(sep);
-  lines.push("  DCA BACKTEST RAPORU — "+now);
-  lines.push(sep);
-  lines.push("");
-
-  /* ── AYARLAR ── */
-  lines.push("⚙️  AYARLAR");
-  lines.push(sep2);
-  lines.push("Sembol          : "+c.sym+"/USDT");
-  lines.push("Dönem           : "+r.dateFrom+" – "+r.dateTo);
-  lines.push("Mum Sayısı      : "+r.mumCnt.toLocaleString());
-  lines.push("Strateji        : "+(p.cond==="rsi"?"RSI("+p.rsiTP+") "+(p.rsiDir==="lt"?"< ">": ")+p.rsiThr+" · "+p.rsiTf:"Anında (1m)"));
-  lines.push("Başlangıç Ser.  : $"+p.startCapital);
-  lines.push("BO Miktarı      : $"+p.initAmt);
-  lines.push("SO Miktarı      : $"+p.safeAmt);
-  lines.push("Max SO          : "+p.maxSO);
-  lines.push("Fiyat Adımı     : %"+p.priceStep);
-  lines.push("Adım Çarpanı    : ×"+p.stepMult);
-  lines.push("Miktar Çarpanı  : ×"+p.amtMult);
-  lines.push("Kâr Oranı       : %"+p.tpPct);
-  lines.push("Kâr Modu        : "+(p.profitMode==="base"?c.sym+" (Base)":"Quote (USDT)"));
-  lines.push("Reinvest        : "+(p.reinvest?"Evet (%"+p.reinvestPct+")":"Hayır"));
-  lines.push("TTP             : "+(p.ttpEnabled?"Evet (%"+p.ttpPct+")":"Hayır"));
-  lines.push("");
-
-  /* ── BACKTEST SONUCU ── */
-  lines.push("📊  BACKTEST SONUCU");
-  lines.push(sep2);
-  lines.push("Toplam PnL      : "+(s.totalPnL>=0?"+":"")+s.totalPnL.toFixed(2)+" $ ("+(s.totalPnL>=0?"+":"")+s.totalPnLPct.toFixed(2)+"%)");
-  lines.push("Arbitraged PnL  : "+(s.realizedPnL>=0?"+":"")+s.realizedPnL.toFixed(2)+" $");
-  lines.push("Floating PnL    : "+(s.unrealizedPnL>=0?"+":"")+s.unrealizedPnL.toFixed(2)+" $");
-  lines.push("Son Sermaye     : $"+s.finalCapital.toFixed(2));
-  lines.push("Arbitrage APR   : "+(s.arbitrageAPR>=0?"+":"")+s.arbitrageAPR.toFixed(2)+"%");
-  lines.push("Toplam APR      : "+(s.totalAPR>=0?"+":"")+s.totalAPR.toFixed(2)+"%");
-  lines.push("Max Drawdown    : -"+s.maxDrawdown.toFixed(2)+"%");
-  lines.push("Win Rate        : "+s.winRate.toFixed(1)+"%");
-  lines.push("Döngü           : "+s.completedCycles);
-  lines.push("Kaynak          : "+r.source);
-  lines.push("");
-
-  /* ── AI YORUMU ── */
-  var aiEl=document.getElementById("aiText");
-  var aiTxt=aiEl?aiEl.innerText.trim():"";
-  if(aiTxt&&aiTxt!=="Claude değerlendiriyor…"){
-    lines.push("🤖  AI YORUMU");
-    lines.push(sep2);
-    lines.push(aiTxt);
-    lines.push("");
-  }
-
-  lines.push(sep);
-  var txt=lines.join("\n");
-  var blob=new Blob([txt],{type:"text/plain;charset=utf-8"});
+  var lines=[
+    "DCA Backtest Ayarları — "+now,
+    "══════════════════════════════════",
+    "Sembol          : "+coin.sym+"/USDT",
+    "Dönem           : "+S.dateFrom+" – "+S.dateTo,
+    "Strateji        : "+(S.cond==="rsi"?"RSI("+S.rsiTP+") "+(S.rsiDir==="lt"?"< ":"> ")+S.rsiThr+" · "+S.rsiTf:"Anında (1m)"),
+    "Başlangıç Ser.  : $"+S.startCapital,
+    "BO Miktarı      : $"+S.initAmt,
+    "SO Miktarı      : $"+S.safeAmt,
+    "Max SO          : "+S.maxSO,
+    "Fiyat Adımı     : %"+S.priceStep,
+    "Adım Çarpanı    : ×"+S.stepMult,
+    "Miktar Çarpanı  : ×"+S.amtMult,
+    "Kâr Oranı       : %"+S.tpPct,
+    "Kâr Modu        : "+(S.profitMode==="base"?coin.sym+" (Base)":"Quote (USDT)"),
+    "Reinvest        : "+(S.reinvest?"Evet (%"+S.reinvestPct+")":"Hayır"),
+    "TTP             : "+(S.ttpEnabled?"Evet (%"+S.ttpPct+")":"Hayır"),
+  ];
+  var blob=new Blob([lines.join("\n")],{type:"text/plain;charset=utf-8"});
   var a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download="dca-backtest-"+r.dateFrom+"-"+r.dateTo+".txt";
+  a.download="dca-ayarlar-"+new Date().toISOString().slice(0,10)+".txt";
   a.click();
   URL.revokeObjectURL(a.href);
-  showToast("✓ Rapor indirildi");
+  showToast("✓ Ayarlar indirildi");
 }
 function goTab(name){
   document.querySelectorAll(".tab-btn").forEach(function(b,i){
