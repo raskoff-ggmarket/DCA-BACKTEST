@@ -71,6 +71,13 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
      padding:16px;cursor:pointer;font-family:'Space Grotesk',sans-serif;
      box-shadow:0 6px 24px rgba(0,212,170,.3)}
 .fab:disabled{background:var(--bg4);color:var(--text3);box-shadow:none;cursor:not-allowed}
+@keyframes fabShimmer{0%{background-position:200% center}100%{background-position:-200% center}}
+.fab-running{background:linear-gradient(90deg,var(--accent),var(--accent2),#fff8,var(--accent2),var(--accent))!important;
+  background-size:300% auto!important;animation:fabShimmer .9s linear infinite!important;
+  color:#000!important;box-shadow:0 6px 28px rgba(0,212,170,.5)!important;cursor:wait!important}
+@keyframes dotPulse{0%,80%,100%{opacity:.2}40%{opacity:1}}
+.dot1,.dot2,.dot3{display:inline-block;animation:dotPulse 1.2s ease-in-out infinite}
+.dot2{animation-delay:.2s}.dot3{animation-delay:.4s}
 .cap-info{padding:9px 16px;display:flex;gap:7px;align-items:center;font-size:12px;font-weight:600}
 .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .cond-btn{width:100%;display:flex;align-items:center;justify-content:space-between;
@@ -437,6 +444,59 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <input type="number" id="optCapital" value="1000" min="100" step="100"
         style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:15px;font-weight:700;font-family:'Space Grotesk',sans-serif">
     </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">CLAUDE API KEY <span style="font-weight:400;color:var(--purple)">(tarayıcıda saklanır)</span></div>
+      <input type="password" id="claudeKeyInp" placeholder="sk-ant-api03-..."
+        style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:'Space Grotesk',sans-serif"
+        oninput="setClaudeKey(this.value)">
+      <div id="claudeKeyStatus" style="font-size:11px;color:var(--text3);margin-top:5px"></div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px;font-weight:600;letter-spacing:.05em">GELİŞMİŞ AYARLAR</div>
+      <!-- Kâr Modu -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-size:13px;color:var(--text);font-weight:600">Kâr Modu</div>
+          <div id="optProfitDesc" style="font-size:11px;color:var(--text3);margin-top:2px">TP kârı USDT olarak tahakkuk eder</div>
+        </div>
+        <div style="display:flex;gap:6px" id="optProfitGroup">
+          <button class="chip on" id="optProfitQuote" onclick="setOptProfitMode('quote')" style="padding:6px 14px">USDT</button>
+          <button class="chip" id="optProfitBase" onclick="setOptProfitMode('base')" style="padding:6px 14px">Coin</button>
+        </div>
+      </div>
+      <!-- Reinvest -->
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:13px;color:var(--text);font-weight:600">Reinvest</div>
+          <div style="display:flex;gap:6px">
+            <button class="chip" id="optReinvestOff" onclick="setOptReinvest(false)" style="padding:5px 12px">Kapalı</button>
+            <button class="chip on" id="optReinvestOn" onclick="setOptReinvest(true)" style="padding:5px 12px">Açık</button>
+          </div>
+        </div>
+        <div id="optReinvestSub" style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--text3)">Kâr reinvest oranı</span>
+          <input type="number" id="optReinvestPct" value="100" min="1" max="100" step="5"
+            style="width:70px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;color:var(--text);font-size:13px;font-weight:700;font-family:'Space Grotesk',sans-serif;text-align:right">
+          <span style="font-size:12px;color:var(--text3)">%</span>
+        </div>
+      </div>
+      <!-- TTP -->
+      <div style="border-top:1px solid var(--border);padding-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:13px;color:var(--text);font-weight:600">Trailing TP</div>
+          <div style="display:flex;gap:6px">
+            <button class="chip on" id="optTtpOff" onclick="setOptTtp(false)" style="padding:5px 12px">Kapalı</button>
+            <button class="chip" id="optTtpOn" onclick="setOptTtp(true)" style="padding:5px 12px">Açık</button>
+          </div>
+        </div>
+        <div id="optTtpSub" style="display:none;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--text3)">TTP sapma</span>
+          <input type="number" id="optTtpPct" value="0.5" min="0.1" max="5" step="0.1"
+            style="width:70px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;color:var(--text);font-size:13px;font-weight:700;font-family:'Space Grotesk',sans-serif;text-align:right">
+          <span style="font-size:12px;color:var(--text3)">%</span>
+        </div>
+      </div>
+    </div>
     <button id="optBtn" onclick="runOptimizer()"
       style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--accent);background:rgba(0,212,170,.12);color:var(--accent);font-size:14px;font-weight:800;font-family:'Space Grotesk',sans-serif;cursor:pointer;letter-spacing:.05em">
       🔍 Tara
@@ -712,6 +772,26 @@ var _gFileIds={},_gMem={};
 var _gManualClient=null; /* click anında sadece requestAccessToken çağrılır */
 
 var GOOGLE_CLIENT_ID="242410638546-lh3kladojlfbt9nemvg6ldp9oct87roj.apps.googleusercontent.com";
+function getClaudeKey(){return localStorage.getItem("claude_api_key")||"";}
+function setClaudeKey(k){
+  k=k.trim();
+  localStorage.setItem("claude_api_key",k);
+  var st=document.getElementById("claudeKeyStatus");
+  if(st)st.textContent=k?"✅ Key kaydedildi":"Key girilmedi";
+  if(k&&gdriveConnected()) gdPut("_settings",{claude_api_key:k}).catch(function(){});
+}
+async function _syncSettingsFromDrive(){
+  try{
+    var s=await gdGet("_settings");
+    if(s&&s.claude_api_key){
+      localStorage.setItem("claude_api_key",s.claude_api_key);
+      var inp=document.getElementById("claudeKeyInp");
+      var st=document.getElementById("claudeKeyStatus");
+      if(inp)inp.value=s.claude_api_key;
+      if(st)st.textContent="✅ Key Drive'dan yüklendi";
+    }
+  }catch(e){}
+}
 function gdriveConnected(){return !!_gToken&&Date.now()<_gTokenExp;}
 
 function _gCallback(resp,showFeedback){
@@ -729,7 +809,9 @@ function _gCallback(resp,showFeedback){
     refreshCacheRange();
     loadCandleRange();
     updateFetchBtnState();
-    if(showFeedback){showToast("✓ Google Drive bağlandı");syncLocalToDrive();}
+    _syncSettingsFromDrive();
+    syncDriveToLocal();
+    if(showFeedback){showToast("✓ Google Drive bağlandı");}
   } else if(showFeedback&&resp.error!=="popup_closed_by_user"){
     showToast("⚠ Google bağlantı hatası: "+resp.error);
   }
@@ -798,12 +880,12 @@ async function gdGet(key){
     if(!r.ok)return null;
     var j=await r.json();
     if(j.files&&j.files.length)_gFileIds[key]=j.files[0].id;
-    else return [];
+    else return null;
   }
   var r2=await fetch(
     "https://www.googleapis.com/drive/v3/files/"+_gFileIds[key]+"?alt=media",
     {headers:{Authorization:"Bearer "+_gToken}});
-  if(!r2.ok)return [];
+  if(!r2.ok)return null;
   var data=await r2.json();
   _gMem[key]=data;return data;
 }
@@ -845,12 +927,44 @@ async function gdClearAll(){
 
 /* Aktif backend seçimi */
 async function stGet(key){
-  if(gdriveConnected()){try{var d=await gdGet(key);if(d!==null)return d;}catch(e){}}
+  if(gdriveConnected()){
+    if(_gMem[key]&&_gMem[key].length>0)return _gMem[key];
+    try{var d=await gdGet(key);if(d&&d.length>0){try{await cPut(key,d);}catch(e){}return d;}}catch(e){}
+  }
   try{return await cGet(key);}catch(e){return [];}
 }
 async function stPut(key,candles){
+  try{await cPut(key,candles);}catch(e){}
   if(gdriveConnected()){try{await gdPut(key,candles);}catch(e){}}
-  else{try{await cPut(key,candles);}catch(e){}}
+}
+
+async function syncDriveToLocal(){
+  if(!gdriveConnected())return;
+  try{
+    var r=await fetch(
+      "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name)&pageSize=100",
+      {headers:{Authorization:"Bearer "+_gToken}});
+    if(!r.ok)return;
+    var j=await r.json();
+    var files=(j.files||[]).filter(function(f){
+      return f.name.endsWith(".json")&&f.name!=="settings.json"&&f.name!=="_settings.json";
+    });
+    var loaded=0;
+    for(var i=0;i<files.length;i++){
+      var fname=files[i].name;
+      var key=fname.replace(/\.json$/,"");
+      if(_gMem[key]&&_gMem[key].length>0)continue;
+      _gFileIds[key]=files[i].id;
+      try{
+        var d=await gdGet(key);
+        if(d&&d.length>0){try{await cPut(key,d);}catch(e){}loaded++;}
+      }catch(e){}
+    }
+    if(loaded>0)showToast("✓ Drive'dan "+loaded+" mum seti yüklendi");
+    loadCandleRange();
+    refreshCacheRange();
+    updateFetchBtnState();
+  }catch(e){}
 }
 async function stClear(){
   if(gdriveConnected())return gdClearAll();
@@ -1289,9 +1403,11 @@ function backtest(prices, rsiArr){
 async function run(){
   var btn=document.getElementById("fabBtn");
   btn.disabled=true;
-  btn.innerHTML='<span class="spinner"></span> Yükleniyor...';
+  btn.classList.add("fab-running");
+  btn.innerHTML='Hesaplanıyor<span class="dot1">•</span><span class="dot2">•</span><span class="dot3">•</span>';
   document.getElementById("errBox").classList.add("hidden");
-  setLoad(3);
+  setLoad(10);
+  var _t0=Date.now();
 
   try {
     var prices, rsiArr=null, sourceLabel, mumCount;
@@ -1299,26 +1415,26 @@ async function run(){
     if(S.cond==="rsi"){
       var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
       if(!tf) throw new Error("Geçersiz RSI zaman dilimi.");
-      btn.innerHTML='<span class="spinner"></span> Güncelleniyor...';
-      var allCandles=await fetchOKXCandles(S.coin,tf.okx,false);
+      var allCandles=await stGet(S.coin+"_"+tf.okx);
       if(!allCandles||allCandles.length<2) throw new Error("Önce 📥 Mum Çek ile veri yükleyin.");
       prices=filterByDateRange(allCandles,S.dateFrom,S.dateTo);
       if(prices.length<20) throw new Error("Seçilen tarih aralığında yeterli veri yok ("+prices.length+" mum).");
       rsiArr=calcRSI(prices, S.rsiTP);
-      sourceLabel=_cacheStatus||("💾 Önbellek · "+tf.l+" mumlar");
+      sourceLabel="💾 Önbellek · "+tf.l+" mumlar";
       mumCount=prices.length;
     } else {
-      btn.innerHTML='<span class="spinner"></span> Güncelleniyor...';
-      var allCandles=await fetchOKXCandles(S.coin,INSTANT_BAR.okx,false);
+      var allCandles=await stGet(S.coin+"_"+INSTANT_BAR.okx);
       if(!allCandles||allCandles.length<2) throw new Error("Önce 📥 Mum Çek ile veri yükleyin.");
       prices=filterByDateRange(allCandles,S.dateFrom,S.dateTo);
       if(prices.length<20) throw new Error("Seçilen tarih aralığında yeterli veri yok ("+prices.length+" mum).");
-      sourceLabel=_cacheStatus||"💾 Önbellek · 1m mumlar";
+      sourceLabel="💾 Önbellek · 1m mumlar";
       mumCount=prices.length;
     }
 
     setLoad(90);
     var result = backtest(prices, rsiArr);
+    var _elapsed=Date.now()-_t0;
+    await new Promise(function(r){setTimeout(r,Math.max(0,400-_elapsed));});
     render(result, sourceLabel, mumCount, prices[0].date, prices[prices.length-1].date);
     refreshCacheRange();
     goResult();
@@ -1326,8 +1442,10 @@ async function run(){
   } catch(e){
     document.getElementById("errBox").textContent="⚠ "+e.message;
     document.getElementById("errBox").classList.remove("hidden");
-    btn.disabled=false; btn.textContent="▶ Backtest Başlat";
   }
+  btn.classList.remove("fab-running");
+  btn.disabled=false;
+  btn.textContent="▶ Backtest Başlat";
   setLoad(100);
   setTimeout(function(){setLoad(0);},700);
 }
@@ -1599,7 +1717,7 @@ function buildMainChips(){
   cc.value=S.coin;
   if(!cc.value){S.coin=COINS[0].id;cc.value=S.coin;}
 }
-function selCoin(id){S.coin=id;S.dateFrom="";S.dateTo="";updateBadge();updateWarnTexts();buildProfitMode();saveState();refreshCacheRange();loadCandleRange();updateFetchBtnState();}
+function selCoin(id){S.coin=id;S.dateFrom="";S.dateTo="";updateBadge();updateWarnTexts();buildProfitMode();setOptProfitMode(_optProfitMode);saveState();refreshCacheRange();loadCandleRange();updateFetchBtnState();}
 function refreshMainChips(){
   document.getElementById("coinC").value=S.coin;
 }
@@ -1660,14 +1778,40 @@ function toggleTtpSub(){
 /* ═══════════════════════════════
    OPTIMIZER
 ═══════════════════════════════ */
+var _optProfitMode="quote";
+var _optReinvest=true;
+var _optTtp=false;
+function _getOptProfitMode(){return _optProfitMode;}
+function setOptReinvest(on){
+  _optReinvest=on;
+  document.getElementById("optReinvestOn").className="chip"+(on?" on":"");
+  document.getElementById("optReinvestOff").className="chip"+(!on?" on":"");
+  document.getElementById("optReinvestSub").style.display=on?"flex":"none";
+}
+function setOptTtp(on){
+  _optTtp=on;
+  document.getElementById("optTtpOn").className="chip"+(on?" on":"");
+  document.getElementById("optTtpOff").className="chip"+(!on?" on":"");
+  document.getElementById("optTtpSub").style.display=on?"flex":"none";
+}
+function setOptProfitMode(mode){
+  _optProfitMode=mode;
+  var coin=COINS.find(function(c){return c.id===S.coin;})||{sym:"Coin"};
+  document.getElementById("optProfitQuote").className="chip"+(mode==="quote"?" on":"");
+  document.getElementById("optProfitBase").className="chip"+(mode==="base"?" on":"");
+  document.getElementById("optProfitBase").textContent=coin.sym;
+  var desc=document.getElementById("optProfitDesc");
+  if(desc)desc.textContent=mode==="base"
+    ?"TP'de yatırım geri alınır, kâr "+coin.sym+" olarak birikir"
+    :"TP kârı USDT olarak tahakkuk eder";
+}
+
 var OPT_PROFILES=[
   {
     id:"kisa",label:"⚡ Kısa Vade",color:"var(--accent2)",
     ranges:{
       maxSO:[2,5],priceStep:[1.0,2.5],stepMult:[1.0,1.5],
       amtMult:[1.0,1.5],tpPct:[0.5,1.5],
-      reinvest:[false,true],reinvestPct:[50,100],
-      ttpEnabled:[false,true],ttpPct:[0.3,0.8]
     }
   },
   {
@@ -1675,8 +1819,6 @@ var OPT_PROFILES=[
     ranges:{
       maxSO:[4,10],priceStep:[1.5,4.0],stepMult:[1.0,1.8],
       amtMult:[1.0,1.8],tpPct:[1.0,2.5],
-      reinvest:[false,true],reinvestPct:[50,100],
-      ttpEnabled:[false,true],ttpPct:[0.3,1.0]
     }
   },
   {
@@ -1684,8 +1826,6 @@ var OPT_PROFILES=[
     ranges:{
       maxSO:[8,15],priceStep:[2.5,6.0],stepMult:[1.0,2.0],
       amtMult:[1.0,2.0],tpPct:[1.5,4.0],
-      reinvest:[false,true],reinvestPct:[50,100],
-      ttpEnabled:[false,true],ttpPct:[0.5,1.5]
     }
   }
 ];
@@ -1702,27 +1842,24 @@ function _sampleParams(profile,capital){
   var stepMult=_rnd(r.stepMult[0],r.stepMult[1],2);
   var amtMult=_rnd(r.amtMult[0],r.amtMult[1],2);
   var tpPct=_rnd(r.tpPct[0],r.tpPct[1],2);
-  var reinvest=Math.random()<.5?r.reinvest[0]:r.reinvest[1];
-  var reinvestPct=_rnd(r.reinvestPct[0],r.reinvestPct[1],0);
-  var ttpEnabled=Math.random()<.5?r.ttpEnabled[0]:r.ttpEnabled[1];
-  var ttpPct=_rnd(r.ttpPct[0],r.ttpPct[1],2);
+  /* reinvest + TTP: kullanıcı manuel belirledi */
+  var reinvestPct=parseFloat(document.getElementById("optReinvestPct").value)||100;
+  var ttpPct=parseFloat(document.getElementById("optTtpPct").value)||0.5;
 
-  /* allocate initAmt and safeAmt so total fits capital (with 20% buffer) */
-  var budget=capital*0.8;
+  /* initAmt + safeAmt: sermayeye sığacak şekilde */
+  var budget=capital;
   var totalOrders=1;
   for(var n=0;n<maxSO;n++)totalOrders+=Math.pow(amtMult,n);
   var unitAmt=Math.max(10,Math.floor(budget/totalOrders/10)*10);
-  var initAmt=unitAmt;
-  var safeAmt=unitAmt;
 
   return{
     startCapital:capital,
-    initAmt:initAmt,safeAmt:safeAmt,
+    initAmt:unitAmt,safeAmt:unitAmt,
     priceStep:priceStep,stepMult:stepMult,amtMult:amtMult,
     maxSO:maxSO,tpPct:tpPct,
-    reinvest:reinvest,reinvestPct:reinvestPct,
-    ttpEnabled:ttpEnabled,ttpPct:ttpPct,
-    cond:"instant",profitMode:"quote"
+    reinvest:_optReinvest,reinvestPct:reinvestPct,
+    ttpEnabled:_optTtp,ttpPct:ttpPct,
+    cond:"instant",profitMode:_getOptProfitMode()
   };
 }
 
@@ -1755,45 +1892,54 @@ async function runOptimizer(){
   setLoad(3);
 
   try{
-    var allCandles=await fetchOKXCandles(S.coin,INSTANT_BAR.okx,false);
-    if(!allCandles||allCandles.length<2)throw new Error("Önce 📥 Mum Çek ile veri yükleyin.");
-    var prices=filterByDateRange(allCandles,S.dateFrom,S.dateTo);
-    if(prices.length<20)throw new Error("Yeterli veri yok ("+prices.length+" mum).");
+    /* Önbellekten oku — tarih filtresi yok */
+    var prices=await stGet(S.coin+"_"+INSTANT_BAR.okx);
+    if(!prices||prices.length<20)throw new Error("Önce 📥 Mum Çek ile veri yükleyin.");
 
     var SAMPLES=300;
     var allProfileResults=[];
 
     for(var pi=0;pi<OPT_PROFILES.length;pi++){
       var profile=OPT_PROFILES[pi];
-      var top5=[];
+      var best=null;
       statusEl.textContent="🔍 "+profile.label+" taranıyor… (0/"+SAMPLES+")";
-      setLoad(Math.round(5+pi*30));
+      setLoad(Math.round(5+pi*28));
 
       for(var i=0;i<SAMPLES;i++){
         var params=_sampleParams(profile,capital);
         var res=backtestWithParams(prices,null,params);
         var score=_optScore(res?res.stats:null);
-        if(score>-Infinity){
-          top5.push({params:params,stats:res.stats,score:score});
-          top5.sort(function(a,b){return b.score-a.score;});
-          if(top5.length>5)top5.pop();
+        if(score>-Infinity&&(!best||score>best.score)){
+          best={params:params,stats:res.stats,score:score};
         }
         if(i%50===49){
           statusEl.textContent="🔍 "+profile.label+" taranıyor… ("+(i+1)+"/"+SAMPLES+")";
-          setLoad(Math.round(5+pi*30+(i+1)/SAMPLES*28));
-          await new Promise(function(res){setTimeout(res,0);});
+          setLoad(Math.round(5+pi*28+(i+1)/SAMPLES*26));
+          await new Promise(function(r){setTimeout(r,0);});
         }
       }
-      allProfileResults.push({profile:profile,top5:top5});
+      allProfileResults.push({profile:profile,best:best});
     }
 
-    setLoad(95);
+    setLoad(88);
     _optLastResults=allProfileResults;
     resultsEl.innerHTML="";
     allProfileResults.forEach(function(pr){
-      resultsEl.innerHTML+=_renderOptProfile(pr.profile,pr.top5);
+      resultsEl.innerHTML+=_renderOptProfile(pr.profile,pr.best);
     });
-    statusEl.textContent="✅ Tarama tamamlandı · "+SAMPLES+" × 3 kombinasyon";
+    statusEl.textContent="✅ Tarama tamamlandı · "+SAMPLES+" × 3 profil · Tarih: "+(prices[0].date||"")+" – "+(prices[prices.length-1].date||"");
+
+    /* Claude analizi — key varsa */
+    if(!getClaudeKey()){
+      resultsEl.innerHTML+='<div style="margin-top:12px;font-size:12px;color:var(--text3);text-align:center">💡 Claude analizi için API key girin</div>';
+    } else
+    resultsEl.innerHTML+='<div id="aiCard" style="margin-top:16px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.3);border-radius:12px;padding:14px">'
+      +'<div style="font-size:12px;font-weight:700;color:var(--purple);margin-bottom:8px">🤖 Claude Analizi</div>'
+      +'<div id="aiText" style="font-size:12px;color:var(--text2);line-height:1.7">'
+      +'<span class="spinner" style="border-color:rgba(139,92,246,.2);border-top-color:var(--purple);width:12px;height:12px;border-width:2px;vertical-align:middle;margin-right:6px"></span>'
+      +'Claude değerlendiriyor…</div></div>';
+
+    if(getClaudeKey()) _callClaudeAnalysis(allProfileResults,prices,capital);
 
   }catch(e){
     statusEl.textContent="⚠ "+e.message;
@@ -1803,50 +1949,97 @@ async function runOptimizer(){
   setLoad(100);setTimeout(function(){setLoad(0);},700);
 }
 
-function _renderOptProfile(profile,top5){
-  var html='<div style="margin-bottom:20px">';
-  html+='<div style="font-size:13px;font-weight:800;color:'+profile.color+';padding:10px 0 8px;letter-spacing:.04em">'+profile.label+'</div>';
-  if(!top5.length){
-    html+='<div style="font-size:12px;color:var(--text3);padding:10px 0">Bu profil için geçerli sonuç bulunamadı.</div>';
+async function _callClaudeAnalysis(results,prices,capital){
+  var el=document.getElementById("aiText");
+  if(!el)return;
+  try{
+    var coin=COINS.find(function(c){return c.id===S.coin;})||{sym:"BTC"};
+    var period=(prices[0].date||"")+" – "+(prices[prices.length-1].date||"");
+    var lines=[];
+    results.forEach(function(pr){
+      var b=pr.best;
+      if(!b){lines.push(pr.profile.label+": geçerli sonuç bulunamadı.");return;}
+      var p=b.params,s=b.stats;
+      lines.push(
+        pr.profile.label+":\n"+
+        "  APR: "+f(s.arbitrageAPR,1)+"% | Max Drawdown: "+f(s.maxDrawdown,1)+"% | Döngü: "+s.completedCycles+" | Skor: "+f(b.score,2)+"\n"+
+        "  BO: $"+p.initAmt+" | SO: $"+p.safeAmt+" | MaxSO: "+p.maxSO+" | Step: %"+p.priceStep+" | SM: ×"+p.stepMult+" | AM: ×"+p.amtMult+" | TP: %"+p.tpPct+
+        (p.reinvest?" | Reinvest: %"+p.reinvestPct:"")+
+        (p.ttpEnabled?" | TTP: %"+p.ttpPct:"")
+      );
+    });
+    var prompt=
+      "DCA backtest optimizasyon sonuçları aşağıda. Lütfen değerlendir.\n\n"+
+      "Sembol: "+coin.sym+"/USDT\n"+
+      "Backtest dönemi: "+period+" ("+prices.length.toLocaleString()+" mum)\n"+
+      "Başlangıç sermayesi: $"+capital+"\n\n"+
+      lines.join("\n\n")+"\n\n"+
+      "Bu üç profili karşılaştır. Hangi profil en iyi sonucu veriyor ve neden? "+
+      "Her parametrenin (BO, SO, MaxSO, Step, SM, AM, TP, Reinvest, TTP) bu sonucu nasıl etkilediğini kısaca açıkla. "+
+      "Genel bir yatırım tavsiyesi değil, sadece bu backtest verilerini yorumla. Türkçe cevap ver. Maksimum 250 kelime.";
+
+    var r=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{
+        "x-api-key":getClaudeKey(),
+        "anthropic-version":"2023-06-01",
+        "content-type":"application/json",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body:JSON.stringify({
+        model:"claude-haiku-4-5-20251001",
+        max_tokens:600,
+        messages:[{role:"user",content:prompt}]
+      })
+    });
+    if(!r.ok){var e=await r.json();throw new Error(e.error&&e.error.message||r.status);}
+    var j=await r.json();
+    var txt=(j.content&&j.content[0]&&j.content[0].text)||"Yanıt alınamadı.";
+    el.innerHTML=txt.replace(/\n/g,"<br>");
+  }catch(e){
+    if(el)el.innerHTML='<span style="color:var(--red)">⚠ Claude hatası: '+e.message+'</span>';
+  }
+}
+
+function _renderOptProfile(profile,best){
+  var html='<div style="margin-bottom:12px">';
+  html+='<div style="font-size:12px;font-weight:800;color:'+profile.color+';padding:8px 0 6px;letter-spacing:.04em">'+profile.label+'</div>';
+  if(!best){
+    html+='<div style="font-size:12px;color:var(--text3);padding:6px 0">Geçerli sonuç bulunamadı.</div>';
     return html+'</div>';
   }
-  top5.forEach(function(r,idx){
-    var s=r.stats,p=r.params;
-    var apr=s.arbitrageAPR,dd=s.maxDrawdown,cyc=s.completedCycles;
-    var aprColor=apr>=0?"var(--green)":"var(--red)";
-    html+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;position:relative">';
-    html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">';
-    html+='<div style="font-size:11px;color:var(--text3);font-weight:700">#'+(idx+1)+'</div>';
-    html+='<div style="text-align:right">';
-    html+='<div style="font-size:16px;font-weight:800;color:'+aprColor+'">'+fp(apr)+'</div>';
-    html+='<div style="font-size:10px;color:var(--text3)">APR · DD '+fp(-dd)+'</div>';
-    html+='</div></div>';
-    html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;font-size:11px;margin-bottom:10px">';
-    html+='<div style="color:var(--text3)">BO <span style="color:var(--text);font-weight:700">$'+p.initAmt+'</span></div>';
-    html+='<div style="color:var(--text3)">SO <span style="color:var(--text);font-weight:700">$'+p.safeAmt+'</span></div>';
-    html+='<div style="color:var(--text3)">MaxSO <span style="color:var(--text);font-weight:700">'+p.maxSO+'</span></div>';
-    html+='<div style="color:var(--text3)">Step <span style="color:var(--text);font-weight:700">%'+p.priceStep+'</span></div>';
-    html+='<div style="color:var(--text3)">SM <span style="color:var(--text);font-weight:700">×'+p.stepMult+'</span></div>';
-    html+='<div style="color:var(--text3)">AM <span style="color:var(--text);font-weight:700">×'+p.amtMult+'</span></div>';
-    html+='<div style="color:var(--text3)">TP <span style="color:var(--text);font-weight:700">%'+p.tpPct+'</span></div>';
-    html+='<div style="color:var(--text3)">Döngü <span style="color:var(--accent2);font-weight:700">'+cyc+'</span></div>';
-    if(p.reinvest)html+='<div style="color:var(--text3)">Reinv <span style="color:var(--accent);font-weight:700">%'+p.reinvestPct+'</span></div>';
-    if(p.ttpEnabled)html+='<div style="color:var(--text3)">TTP <span style="color:var(--yellow);font-weight:700">%'+p.ttpPct+'</span></div>';
-    html+='</div>';
-    html+='<button onclick="applyOptParams('+idx+',\''+profile.id+'\')" '
-      +'style="width:100%;padding:8px;border-radius:8px;border:1px solid '+profile.color+'44;background:'+profile.color+'11;color:'+profile.color+';font-size:12px;font-weight:700;font-family:\'Space Grotesk\',sans-serif;cursor:pointer">'
-      +'Bu Parametreleri Uygula</button>';
-    html+='</div>';
-  });
+  var s=best.stats,p=best.params;
+  var apr=s.arbitrageAPR,dd=s.maxDrawdown,cyc=s.completedCycles;
+  var aprColor=apr>=0?"var(--green)":"var(--red)";
+  html+='<div style="background:var(--bg2);border:1px solid '+profile.color+'33;border-radius:10px;padding:12px 14px">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
+  html+='<div style="font-size:20px;font-weight:800;color:'+aprColor+'">'+fp(apr)+'</div>';
+  html+='<div style="text-align:right;font-size:11px;color:var(--text3)">DD '+fp(-dd)+'<br>'+cyc+' döngü</div>';
+  html+='</div>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px;font-size:11px;margin-bottom:10px">';
+  html+='<div style="color:var(--text3)">BO <span style="color:var(--text);font-weight:700">$'+p.initAmt+'</span></div>';
+  html+='<div style="color:var(--text3)">SO <span style="color:var(--text);font-weight:700">$'+p.safeAmt+'</span></div>';
+  html+='<div style="color:var(--text3)">MaxSO <span style="color:var(--text);font-weight:700">'+p.maxSO+'</span></div>';
+  html+='<div style="color:var(--text3)">Step <span style="color:var(--text);font-weight:700">%'+p.priceStep+'</span></div>';
+  html+='<div style="color:var(--text3)">SM <span style="color:var(--text);font-weight:700">×'+p.stepMult+'</span></div>';
+  html+='<div style="color:var(--text3)">AM <span style="color:var(--text);font-weight:700">×'+p.amtMult+'</span></div>';
+  html+='<div style="color:var(--text3)">TP <span style="color:var(--text);font-weight:700">%'+p.tpPct+'</span></div>';
+  if(p.reinvest)html+='<div style="color:var(--text3)">Reinv <span style="color:var(--accent);font-weight:700">%'+p.reinvestPct+'</span></div>';
+  if(p.ttpEnabled)html+='<div style="color:var(--text3)">TTP <span style="color:var(--yellow);font-weight:700">%'+p.ttpPct+'</span></div>';
+  html+='</div>';
+  html+='<button onclick="applyOptParams(\''+profile.id+'\')" '
+    +'style="width:100%;padding:8px;border-radius:8px;border:1px solid '+profile.color+'44;background:'+profile.color+'11;color:'+profile.color+';font-size:12px;font-weight:700;font-family:\'Space Grotesk\',sans-serif;cursor:pointer">'
+    +'Bu Parametreleri Uygula</button>';
+  html+='</div>';
   return html+'</div>';
 }
 
 var _optLastResults=[];
 
-function applyOptParams(idx,profileId){
+function applyOptParams(profileId){
   var pr=_optLastResults.find(function(r){return r.profile.id===profileId;});
-  if(!pr||!pr.top5[idx])return;
-  var p=pr.top5[idx].params;
+  if(!pr||!pr.best)return;
+  var p=pr.best.params;
   var keys=["startCapital","initAmt","safeAmt","priceStep","stepMult","amtMult",
             "maxSO","tpPct","reinvest","reinvestPct","ttpEnabled","ttpPct","cond","profitMode"];
   keys.forEach(function(k){if(p[k]!==undefined)S[k]=p[k];});
@@ -1907,6 +2100,7 @@ loadState();
 STEPPERS.forEach(function(cfg){buildStepper(cfg.k);});
 buildMainChips();
 buildProfitMode();
+setOptProfitMode(_optProfitMode);
 
 /* RSI TF chip'leri */
 buildChipGroup("tfC", RSI_TFS,
@@ -1926,6 +2120,14 @@ document.getElementById("chkReinvest").checked = S.reinvest;
 document.getElementById("chkTtp").checked = S.ttpEnabled;
 toggleReinvestSub();
 toggleTtpSub();
+/* ── Claude key input doldur ── */
+(function(){
+  var k=getClaudeKey();
+  var inp=document.getElementById("claudeKeyInp");
+  var st=document.getElementById("claudeKeyStatus");
+  if(inp&&k){inp.value=k;}
+  if(st)st.textContent=k?"✅ Key kayıtlı":"Key girilmedi — AI analizi çalışmaz";
+})();
 /* ── Google Drive: onGisLoad() otomatik bağlanır ── */
 refreshCacheRange();
 /* ── Tarih aralıklarını önbellekten yükle ── */
