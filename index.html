@@ -1028,7 +1028,7 @@ async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
   var coin=COINS.find(function(c){return c.id===coinId;});
   var instId=coin.sym+"-USDT";
   var after=afterTs?String(afterTs):"";
-  var all=[],totalFetched=0,reqCount=0,maxReq=500;
+  var all=[],totalFetched=0,reqCount=0,maxReq=100;
   while(reqCount<maxReq){
     var url="https://www.okx.com/api/v5/market/history-candles?instId="+instId+
             "&bar="+okxBar+"&limit=300";
@@ -1115,7 +1115,7 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
       var bn=0,pend=[];
       await _fetchHistorical(
         coinId,okxBar,oldestTs,
-        function(ts,n){showFetchProgress(ts,n,300000);},
+        function(ts,n){showFetchProgress(ts,n,30000);},
         async function(batch,bOldest){
           var cap=oldestTs;
           var p=parseRawCandles(batch).filter(function(c){return c.ts<cap&&c.ts>=HISTORY_START_TS&&!tsSet.has(c.ts);});
@@ -1123,9 +1123,8 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
           if(p.length){
             pend=p.concat(pend);histAdded+=p.length;changed=true;
             if(++bn%20===0){
-              var m=pend.concat(cached);
-              try{await cPut(key,m);}catch(e){}
-              cached=m;pend=[];
+              try{await cPut(key,pend);}catch(e){}  /* sadece yeni batch'i yaz */
+              cached=pend.concat(cached);pend=[];
               if(cached.length)oldestTs=cached[0].ts;
             }
           }
