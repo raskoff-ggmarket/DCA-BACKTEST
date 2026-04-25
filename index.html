@@ -290,7 +290,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
 
   <div class="card">
-    <div class="card-head">⚙️ Bot Parametreleri</div>
+    <div class="card-head" style="display:flex;justify-content:space-between;align-items:center">
+      <span>⚙️ Bot Parametreleri</span>
+      <button onclick="saveSettings()" title="Parametreleri indir" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:3px 9px;border-radius:7px;font-size:11px;cursor:pointer;line-height:1.4">💾 Kaydet</button>
+    </div>
     <div class="row" id="row-initAmt"><div><div class="rl">İlk alım miktarı ($)</div><div class="rs">Her döngünün ilk alım emri büyüklüğü</div></div></div>
     <div class="row" id="row-safeAmt"><div><div class="rl">Güvenlik emri miktarı ($)</div><div class="rs">Her güvenlik emrinin başlangıç büyüklüğü</div></div></div>
     <div class="row" id="row-priceStep"><div><div class="rl">Fiyat adımı (%)</div><div class="rs">Güvenlik emrinin tetikleneceği fiyat düşüşü</div></div></div>
@@ -400,7 +403,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div class="rl">Google Drive</div>
         <div class="rs" id="gdSub">Bağlı değil · cihaz önbelleği kullanılıyor</div>
         <div id="cacheInfo" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
-
       </div>
       <button class="gd-btn gd-off" id="gdBtn" onclick="gToggle()" style="flex-shrink:0">Bağlan</button>
     </div>
@@ -1014,11 +1016,8 @@ function showFetchProgress(ts,fetched,total){
 
 function _timedFetch(url){
   var ctrl=new AbortController();
-  var id=setTimeout(function(){ctrl.abort();},20000);
-  return fetch(url,{signal:ctrl.signal}).then(
-    function(r){clearTimeout(id);return r;},
-    function(e){clearTimeout(id);throw e;}
-  );
+  var id=setTimeout(function(){ctrl.abort();},15000);
+  return fetch(url,{signal:ctrl.signal}).finally(function(){clearTimeout(id);});
 }
 
 async function _fetchHistorical(coinId,okxBar,neededCount,afterTs,onProgress){
@@ -1201,11 +1200,9 @@ async function fetchCandlesRun(){
     refreshCacheRange();
     showToast(_cacheStatus||"✓ Mumlar güncellendi");
   }catch(e){
-    var msg="⚠ "+e.message;
-    document.getElementById("errBox").textContent=msg;
+    document.getElementById("errBox").textContent="⚠ Mum çekme hatası: "+e.message;
     document.getElementById("errBox").classList.remove("hidden");
-    showToast(msg);
-    console.error("fetchCandlesRun:",e);
+    console.error("fetchCandlesRun error:",e);
   }
   var btn2=document.getElementById("fetchBtn");
   if(btn2){btn2.disabled=false;btn2.innerHTML="📥 Mum Çek";btn2.style.color="";btn2.style.borderColor="";}
@@ -1229,10 +1226,10 @@ async function updateFetchBtnState(){
     complete=d&&d.length>0&&d[0].ts<=HISTORY_START_TS;
   }catch(e){}
   if(complete){
-    btn.innerHTML="✅ Mum Çek";
+    btn.innerHTML="✅ Tarih Tamam";
     btn.style.color="var(--accent)";
     btn.style.borderColor="rgba(0,212,170,.3)";
-    btn.disabled=false;
+    btn.disabled=true;
   } else {
     btn.innerHTML="📥 Mum Çek";
     btn.style.color="";
