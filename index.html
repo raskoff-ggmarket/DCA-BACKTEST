@@ -349,6 +349,17 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         </div>
       </div>
     </div>
+    <!-- Kaldıraç -->
+    <div class="row" style="border-top:1px solid var(--border)">
+      <div><div class="rl">Kaldıraç</div><div class="rs">Futures çarpanı · 1× = spot</div></div>
+      <div style="display:flex;gap:5px">
+        <button class="chip" id="lev1"  onclick="setLev(1)"  style="padding:6px 10px">1×</button>
+        <button class="chip" id="lev2"  onclick="setLev(2)"  style="padding:6px 10px">2×</button>
+        <button class="chip" id="lev3"  onclick="setLev(3)"  style="padding:6px 10px">3×</button>
+        <button class="chip" id="lev5"  onclick="setLev(5)"  style="padding:6px 10px">5×</button>
+        <button class="chip" id="lev10" onclick="setLev(10)" style="padding:6px 10px">10×</button>
+      </div>
+    </div>
   </div>
 
   <!-- Başlatma Koşulu -->
@@ -475,6 +486,19 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
           <span style="font-size:12px;color:var(--text3)">%</span>
         </div>
       </div>
+      <!-- Kaldıraç -->
+      <div style="border-top:1px solid var(--border);padding-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:13px;color:var(--text);font-weight:600">Kaldıraç</div>
+          <div style="display:flex;gap:5px">
+            <button class="chip" id="optLev1"  onclick="setOptLev(1)"  style="padding:5px 10px">1×</button>
+            <button class="chip" id="optLev2"  onclick="setOptLev(2)"  style="padding:5px 10px">2×</button>
+            <button class="chip" id="optLev3"  onclick="setOptLev(3)"  style="padding:5px 10px">3×</button>
+            <button class="chip" id="optLev5"  onclick="setOptLev(5)"  style="padding:5px 10px">5×</button>
+            <button class="chip" id="optLev10" onclick="setOptLev(10)" style="padding:5px 10px">10×</button>
+          </div>
+        </div>
+      </div>
     </div>
     <button id="optBtn" onclick="runOptimizer()"
       style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--accent);background:rgba(0,212,170,.12);color:var(--accent);font-size:14px;font-weight:800;font-family:'Space Grotesk',sans-serif;cursor:pointer;letter-spacing:.05em">
@@ -543,6 +567,7 @@ var DEFAULTS = {
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
   dateFrom:"", dateTo:"",
+  leverage:1,
 };
 var S = Object.assign({}, DEFAULTS);
 var currentTab='ayarlar';
@@ -1266,15 +1291,18 @@ function backtest(prices, rsiArr){
   }
 
   function closeDealAt(price,date,why){
+    var lev=S.leverage||1;
     var profit, bProfit=0;
     if(isBase){
-      bProfit=deal.totalQty-deal.totalCost/price;
+      bProfit=(deal.totalQty-deal.totalCost/price)*lev;
       profit=bProfit*price;
       cash+=deal.totalCost;
       accumBase+=bProfit;
     } else {
-      profit=deal.totalQty*price-deal.totalCost;
-      cash+=deal.totalQty*price;
+      var spotPnl=deal.totalQty*price-deal.totalCost;
+      profit=spotPnl*lev;
+      if(profit<-deal.totalCost)profit=-deal.totalCost;
+      cash+=deal.totalCost+profit;
       applyReinvest(profit);
     }
     deals.push(Object.assign({},deal,{
@@ -1287,8 +1315,15 @@ function backtest(prices, rsiArr){
   }
 
   function eqVal(price){
+    var lev=S.leverage||1;
     var bv=isBase?accumBase*price:0;
-    return bv+(inDeal?cash+deal.totalQty*price:cash);
+    if(inDeal){
+      var spotPnl=deal.totalQty*price-deal.totalCost;
+      var levPnl=spotPnl*lev;
+      if(levPnl<-deal.totalCost)levPnl=-deal.totalCost;
+      return bv+cash+deal.totalCost+levPnl;
+    }
+    return bv+cash;
   }
 
   for(var i=0;i<prices.length;i++){
@@ -1322,6 +1357,12 @@ function backtest(prices, rsiArr){
       inDeal=true;
 
     } else {
+      var lev=S.leverage||1;
+      if(lev>1&&price<=deal.avgCost*(1-1/lev)){
+        closeDealAt(price,date,"LIQ");
+        equity.push({date:date,value:eqVal(price),price:price});continue;
+      }
+
       var tpPrice=deal.avgCost*(1+S.tpPct/100);
 
       if(S.ttpEnabled){
@@ -1379,7 +1420,7 @@ function backtest(prices, rsiArr){
   var firstTs=prices[0].ts||0,lastTs=prices[prices.length-1].ts||0;
   var daysEl=lastTs&&firstTs?(lastTs-firstTs)/86400000:S.days;
 
-  var closedDeals=deals.filter(function(d){return d.why==="TP"||d.why==="TTP";});
+  var closedDeals=deals.filter(function(d){return d.why==="TP"||d.why==="TTP"||d.why==="LIQ";});
   var realizedPnL,unrealizedPnL;
   if(isBase){
     realizedPnL=accumBase*lastPrice;
@@ -1828,6 +1869,24 @@ function setOptProfitMode(mode){
     :"TP kârı USDT olarak tahakkuk eder";
 }
 
+function setLev(v){
+  S.leverage=v;
+  [1,2,3,5,10].forEach(function(x){
+    var el=document.getElementById("lev"+x);
+    if(el)el.className="chip"+(x===v?" on-b":"");
+  });
+  saveState();
+}
+
+var _optLeverage=1;
+function setOptLev(v){
+  _optLeverage=v;
+  [1,2,3,5,10].forEach(function(x){
+    var el=document.getElementById("optLev"+x);
+    if(el)el.className="chip"+(x===v?" on-b":"");
+  });
+}
+
 var OPT_PROFILES=[
   {
     id:"kisa",label:"⚡ Kısa Vade",color:"var(--accent2)",
@@ -1881,7 +1940,8 @@ function _sampleParams(profile,capital){
     maxSO:maxSO,tpPct:tpPct,
     reinvest:_optReinvest,reinvestPct:reinvestPct,
     ttpEnabled:_optTtp,ttpPct:ttpPct,
-    cond:"instant",profitMode:_getOptProfitMode()
+    cond:"instant",profitMode:_getOptProfitMode(),
+    leverage:_optLeverage
   };
 }
 
@@ -2086,6 +2146,8 @@ STEPPERS.forEach(function(cfg){buildStepper(cfg.k);});
 buildMainChips();
 buildProfitMode();
 setOptProfitMode(_optProfitMode);
+setLev(S.leverage||1);
+setOptLev(1);
 
 S.cond="instant";
 updateBadge();
