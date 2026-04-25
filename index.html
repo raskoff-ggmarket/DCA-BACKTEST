@@ -403,6 +403,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div class="rl">Google Drive</div>
         <div class="rs" id="gdSub">Bağlı değil · cihaz önbelleği kullanılıyor</div>
         <div id="cacheInfo" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
+        <div style="margin-top:4px"><span onclick="clearAllData()" style="font-size:10px;color:var(--red);cursor:pointer;text-decoration:underline">önbelleği sıfırla</span></div>
       </div>
       <button class="gd-btn gd-off" id="gdBtn" onclick="gToggle()" style="flex-shrink:0">Bağlan</button>
     </div>
@@ -1016,8 +1017,11 @@ function showFetchProgress(ts,fetched,total){
 
 function _timedFetch(url){
   var ctrl=new AbortController();
-  var id=setTimeout(function(){ctrl.abort();},15000);
-  return fetch(url,{signal:ctrl.signal}).finally(function(){clearTimeout(id);});
+  var id=setTimeout(function(){ctrl.abort();},20000);
+  return fetch(url,{signal:ctrl.signal}).then(
+    function(r){clearTimeout(id);return r;},
+    function(e){clearTimeout(id);throw e;}
+  );
 }
 
 async function _fetchHistorical(coinId,okxBar,neededCount,afterTs,onProgress){
@@ -1226,10 +1230,10 @@ async function updateFetchBtnState(){
     complete=d&&d.length>0&&d[0].ts<=HISTORY_START_TS;
   }catch(e){}
   if(complete){
-    btn.innerHTML="✅ Tarih Tamam";
+    btn.innerHTML="✅ Mum Çek";
     btn.style.color="var(--accent)";
     btn.style.borderColor="rgba(0,212,170,.3)";
-    btn.disabled=true;
+    btn.disabled=false;
   } else {
     btn.innerHTML="📥 Mum Çek";
     btn.style.color="";
