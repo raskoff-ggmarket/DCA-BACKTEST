@@ -1020,12 +1020,16 @@ function _timedFetch(url){
   return fetch(url,{signal:ctrl.signal}).finally(function(){clearTimeout(id);});
 }
 
-async function _fetchHistorical(coinId,okxBar,neededCount,afterTs,onProgress){
+/* afterTs: ms timestamp — bu ts'den daha eski mumları çek ("" = şimdiden başla)
+   onProgress(oldestTs, totalFetched)
+   onBatch(rawBatch, oldestTs) → true döndürürse dur
+   onBatch verilmezse tüm veriyi döndürür (backtest modu) */
+async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
   var coin=COINS.find(function(c){return c.id===coinId;});
   var instId=coin.sym+"-USDT";
-  var all=[],after=afterTs?String(afterTs):"",reqCount=0,maxReq=100;
-  var target=Math.min(neededCount,maxReq*300);
-  while(all.length<target&&reqCount<maxReq){
+  var after=afterTs?String(afterTs):"";
+  var all=[],totalFetched=0,reqCount=0,maxReq=500;
+  while(reqCount<maxReq){
     var url="https://www.okx.com/api/v5/market/history-candles?instId="+instId+
             "&bar="+okxBar+"&limit=300";
     if(after)url+="&after="+after;
@@ -1034,12 +1038,17 @@ async function _fetchHistorical(coinId,okxBar,neededCount,afterTs,onProgress){
     if(!r.ok)throw new Error("OKX API hata: "+r.status);
     var j=await r.json();
     if(!j.data||!j.data.length)break;
-    all=all.concat(j.data);
-    after=j.data[j.data.length-1][0];
-    if(onProgress)onProgress(parseInt(after),all.length,target);
+    var batch=j.data;
+    totalFetched+=batch.length;
+    if(!onBatch)all=all.concat(batch);
+    after=batch[batch.length-1][0];
     reqCount++;
-    if(j.data.length<300)break;
-    await new Promise(function(res){setTimeout(res,150);});
+    var oldest=parseInt(after);
+    if(onProgress)onProgress(oldest,totalFetched);
+    if(onBatch){var stop=await onBatch(batch,oldest);if(stop)break;}
+    if(oldest<=HISTORY_START_TS)break;
+    if(batch.length<300)break;
+    await new Promise(function(res){setTimeout(res,50);});
   }
   return all;
 }
@@ -1059,7 +1068,7 @@ async function _fetchNew(coinId,okxBar,latestTs){
     all=all.concat(j.data);
     reqCount++;
     if(j.data.length<300)break;
-    before=j.data[j.data.length-1][0];
+    before=j.data[0][0];
   }
   return all;
 }
@@ -1069,74 +1078,91 @@ async function _fetchNew(coinId,okxBar,latestTs){
 async function fetchOKXCandles(coinId,okxBar,histFetch){
   var key=coinId+"_"+okxBar;
   var barMs=BAR_MS[okxBar]||3600000;
-  var cached=[];
-  try{
-    var idbCheck=await cGet(key);
-    if(idbCheck&&idbCheck.length>0){
-      cached=idbCheck;
-    } else if(gdriveConnected()&&_gFileIds[key]){
-      showToast("☁️ Drive'dan yükleniyor…");
-      cached=await stGet(key);
-      if(cached&&cached.length>0)showToast("✓ Drive'dan "+cached.length.toLocaleString()+" mum yüklendi");
-    }
-  }catch(e){}
+  var cached=[],changed=false;
 
-  if(cached.length>0){
-    /* 1. Yeni mumları ileri çek */
-    var latestTs=cached[cached.length-1].ts;
-    var newCnt=0;
-    if(Date.now()-latestTs>barMs){
-      try{
-        var newRaw=await _fetchNew(coinId,okxBar,latestTs);
-        if(newRaw.length){
-          var newC=parseRawCandles(newRaw).filter(function(c){return c.ts>latestTs;});
-          if(newC.length){
-            cached=cached.concat(newC);newCnt=newC.length;
-            try{await stPut(key,cached);}catch(e){}
-          }
-        }
-      }catch(e){}
-    }
-
-    /* 2. Tarihsel çekim — sadece histFetch=true VE 2022-01-01'e ulaşılmamışsa */
-    var histAdded=0;
-    if(histFetch&&cached[0].ts>HISTORY_START_TS){
-      var oldestTs=cached[0].ts;
-      var progCb=function(ts,fetched,total){showFetchProgress(ts,fetched,total);};
-      var histRaw=await _fetchHistorical(coinId,okxBar,30000,oldestTs,progCb);
-      if(histRaw.length){
-        var histC=parseRawCandles(histRaw).filter(function(c){return c.ts<oldestTs&&c.ts>=HISTORY_START_TS;});
-        if(histC.length){
-          cached=histC.concat(cached);histAdded=histC.length;
-          try{await stPut(key,cached);}catch(e){}
-        }
-      }
-    }
-
-    /* Durum mesajı */
-    var histDone=cached[0].ts<=HISTORY_START_TS;
-    if(histFetch){
-      if(histDone)
-        _cacheStatus="✅ 2022-01-01'den bugüne tamam · "+cached.length.toLocaleString()+" mum"+(newCnt?" (+" +newCnt+" yeni)":"");
-      else
-        _cacheStatus="📡 "+histAdded.toLocaleString()+" tarihsel mum eklendi · toplam "+cached.length.toLocaleString()+(newCnt?" (+" +newCnt+" yeni)":"");
-    } else {
-      _cacheStatus=newCnt>0?"💾 Önbellek + "+newCnt+" yeni mum":"💾 Önbellekten · "+cached.length.toLocaleString()+" mum";
-    }
-    if(!cached.length)throw new Error("OKX'ten veri gelmedi.");
-    try{document.getElementById("cacheInfo").textContent=_cacheStatus;}catch(e){}
-    return cached;
+  /* 1. IDB'den yükle; boşsa Drive'dan lazy-load */
+  try{cached=await cGet(key);}catch(e){}
+  if(!cached.length&&gdriveConnected()&&_gFileIds[key]){
+    showToast("☁️ Drive'dan yükleniyor…");
+    try{var d=await stGet(key);if(d&&d.length){cached=d;showToast("✓ Drive'dan "+d.length.toLocaleString()+" mum yüklendi");}}catch(e){}
   }
 
-  /* İlk çekim — hiç veri yok */
-  var progCb0=histFetch?function(ts,fetched,total){showFetchProgress(ts,fetched,total);}:null;
-  var raw=await _fetchHistorical(coinId,okxBar,30000,"",progCb0);
-  if(!raw.length)throw new Error("OKX'ten veri gelmedi.");
-  var candles=parseRawCandles(raw).filter(function(c){return c.ts>=HISTORY_START_TS;});
-  try{await stPut(key,candles);}catch(e){}
-  _cacheStatus="📡 OKX'ten çekildi · "+candles.length.toLocaleString()+" mum";
+  /* 2. Yineleme önleme seti */
+  var tsSet=new Set();
+  cached.forEach(function(c){tsSet.add(c.ts);});
+
+  /* 3. Yeni mumları ileri çek */
+  var newCnt=0;
+  if(cached.length>0&&Date.now()-cached[cached.length-1].ts>barMs){
+    try{
+      var latestTs=cached[cached.length-1].ts;
+      var newRaw=await _fetchNew(coinId,okxBar,latestTs);
+      if(newRaw.length){
+        var newC=parseRawCandles(newRaw).filter(function(c){return c.ts>latestTs&&!tsSet.has(c.ts);});
+        if(newC.length){
+          newC.forEach(function(c){tsSet.add(c.ts);});
+          cached=cached.concat(newC);newCnt=newC.length;changed=true;
+        }
+      }
+    }catch(e){}
+  }
+
+  /* 4. Mum Çek: geriye artımlı çekim (her 20 batch'te IDB'ye kaydet) */
+  var histAdded=0;
+  if(histFetch){
+    var oldestTs=cached.length>0?cached[0].ts:Date.now();
+    if(oldestTs>HISTORY_START_TS){
+      var bn=0,pend=[];
+      await _fetchHistorical(
+        coinId,okxBar,oldestTs,
+        function(ts,n){showFetchProgress(ts,n,300000);},
+        async function(batch,bOldest){
+          var cap=oldestTs;
+          var p=parseRawCandles(batch).filter(function(c){return c.ts<cap&&c.ts>=HISTORY_START_TS&&!tsSet.has(c.ts);});
+          p.forEach(function(c){tsSet.add(c.ts);});
+          if(p.length){
+            pend=p.concat(pend);histAdded+=p.length;changed=true;
+            if(++bn%20===0){
+              var m=pend.concat(cached);
+              try{await cPut(key,m);}catch(e){}
+              cached=m;pend=[];
+              if(cached.length)oldestTs=cached[0].ts;
+            }
+          }
+          return bOldest<=HISTORY_START_TS;
+        }
+      );
+      if(pend.length){cached=pend.concat(cached);changed=true;}
+    }
+  }
+
+  /* 5. Hiç veri yoksa ilk çekim (backtest modu) */
+  if(!cached.length){
+    var raw=await _fetchHistorical(coinId,okxBar,"",null,null);
+    if(!raw.length)throw new Error("OKX'ten veri gelmedi.");
+    cached=parseRawCandles(raw).filter(function(c){return c.ts>=HISTORY_START_TS;});
+    changed=true;
+  }
+
+  if(!cached.length)throw new Error("OKX'ten veri gelmedi.");
+
+  /* 6. Kaydet (IDB her zaman hızlı; Drive sadece değişiklik varsa) */
+  if(changed){
+    try{await cPut(key,cached);}catch(e){}
+    if(gdriveConnected()){try{await gdPut(key,cached);}catch(e){}}
+  }
+
+  /* 7. Durum mesajı */
+  var histDone=cached[0].ts<=HISTORY_START_TS;
+  if(histFetch){
+    _cacheStatus=histDone
+      ?"✅ 2022-01-01'den bugüne tamam · "+cached.length.toLocaleString()+" mum"+(newCnt?" (+"+newCnt+" yeni)":"")
+      :"📡 "+histAdded.toLocaleString()+" mum eklendi · toplam "+cached.length.toLocaleString()+(newCnt?" (+"+newCnt+" yeni)":"");
+  }else{
+    _cacheStatus=newCnt?"💾 Önbellek + "+newCnt+" yeni mum":"💾 Önbellekten · "+cached.length.toLocaleString()+" mum";
+  }
   try{document.getElementById("cacheInfo").textContent=_cacheStatus;}catch(e){}
-  return candles;
+  return cached;
 }
 
 async function loadCandleRange(){
@@ -1183,10 +1209,12 @@ async function loadCandleRange(){
 
 async function fetchCandlesRun(){
   var btn=document.getElementById("fetchBtn");
-  if(!btn||btn.disabled)return;
+  if(!btn)return;
+  if(btn.disabled){showToast("⌛ Çekiliyor, lütfen bekleyin…");return;}
   btn.disabled=true;
-  btn.innerHTML='<span class="spinner" style="border-color:rgba(255,255,255,.2);border-top-color:var(--text2)"></span>';
+  btn.innerHTML='<span class="spinner" style="border-color:rgba(255,255,255,.2);border-top-color:var(--text2)"></span> Bağlanıyor…';
   document.getElementById("errBox").classList.add("hidden");
+  showToast("📡 OKX'e bağlanıyor…");
   setLoad(3);
   try{
     if(S.cond==="rsi"){
