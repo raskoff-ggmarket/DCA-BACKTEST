@@ -416,6 +416,21 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:15px;font-weight:700;font-family:'Space Grotesk',sans-serif">
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;font-weight:600;letter-spacing:.05em">TARİH ARALIĞI</div>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:5px">Başlangıç</div>
+          <input type="date" id="optDateFrom" class="date-inp" style="width:100%">
+        </div>
+        <div style="color:var(--text3);font-size:14px;padding-bottom:10px">–</div>
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:5px">Bitiş</div>
+          <input type="date" id="optDateTo" class="date-inp" style="width:100%">
+        </div>
+      </div>
+      <div id="optDateInfo" style="font-size:11px;color:var(--text3);margin-top:7px;line-height:1.4"></div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
       <div style="font-size:12px;color:var(--text3);margin-bottom:12px;font-weight:600;letter-spacing:.05em">GELİŞMİŞ AYARLAR</div>
       <!-- Kâr Modu -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -1885,6 +1900,28 @@ function _optScore(stats){
   return stats.arbitrageAPR*(1-stats.maxDrawdown/150);
 }
 
+async function loadOptDateRange(){
+  try{
+    var d=[];
+    try{d=await cGet(S.coin+"_"+INSTANT_BAR.okx);}catch(e){}
+    var fInp=document.getElementById("optDateFrom");
+    var tInp=document.getElementById("optDateTo");
+    var el=document.getElementById("optDateInfo");
+    if(!fInp||!tInp)return;
+    if(d&&d.length>0){
+      var from=tsToDateInput(d[0].ts);
+      var to=tsToDateInput(d[d.length-1].ts);
+      fInp.min=from;fInp.max=to;
+      tInp.min=from;tInp.max=to;
+      if(!fInp.value||fInp.value<from||fInp.value>to)fInp.value=from;
+      if(!tInp.value||tInp.value>to||tInp.value<from)tInp.value=to;
+      if(el)el.textContent=d.length.toLocaleString()+" mum · "+from+" – "+to;
+    } else {
+      if(el)el.textContent="Veri yok — 📥 MUM İNDİR ile yükleyin";
+    }
+  }catch(e){}
+}
+
 async function runOptimizer(){
   var btn=document.getElementById("optBtn");
   var statusEl=document.getElementById("optStatus");
@@ -1899,9 +1936,12 @@ async function runOptimizer(){
   setLoad(3);
 
   try{
-    /* Önbellekten oku — tarih filtresi yok */
     var prices=await stGet(S.coin+"_"+INSTANT_BAR.okx);
-    if(!prices||prices.length<20)throw new Error("Önce 📥 Mum Çek ile veri yükleyin.");
+    if(!prices||prices.length<20)throw new Error("Önce 📥 MUM İNDİR ile veri yükleyin.");
+    var dateFrom=document.getElementById("optDateFrom").value;
+    var dateTo=document.getElementById("optDateTo").value;
+    if(dateFrom||dateTo)prices=filterByDateRange(prices,dateFrom,dateTo);
+    if(!prices||prices.length<20)throw new Error("Seçilen tarih aralığında yeterli veri yok.");
 
     var SAMPLES=300;
     var allProfileResults=[];
@@ -2014,6 +2054,7 @@ function setTab(tab){
   document.getElementById("rPanel").classList.toggle("hidden",tab!=="sonuclar");
   var optPanel=document.getElementById("optPanel");
   if(optPanel)optPanel.classList.toggle("hidden",tab!=="opt");
+  if(tab==="opt")loadOptDateRange();
   document.getElementById("fabW").classList.toggle("hidden",tab!=="ayarlar");
   document.getElementById("backBtn").classList.toggle("hidden",tab!=="sonuclar");
   if(tab==="ayarlar"){
