@@ -404,7 +404,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div class="rs" id="gdSub">Bağlı değil · cihaz önbelleği kullanılıyor</div>
         <div id="cacheInfo" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
       </div>
-      <button class="gd-btn gd-off" id="gdBtn" onclick="gToggle()" style="flex-shrink:0">Bağlan</button>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="gd-btn" style="background:transparent;border:1px solid var(--border2);color:var(--red);font-size:11px;padding:6px 10px;border-radius:8px;cursor:pointer" onclick="clearAllData()" title="Tüm mumları sil">🗑</button>
+        <button class="gd-btn gd-off" id="gdBtn" onclick="gToggle()">Bağlan</button>
+      </div>
     </div>
   </div>
   <div class="err hidden" id="errBox"></div>
@@ -765,6 +768,20 @@ function showToast(msg){
   var t=document.getElementById("toast");
   t.textContent=msg;t.style.opacity="1";
   clearTimeout(t._tid);t._tid=setTimeout(function(){t.style.opacity="0";},2500);
+}
+async function clearAllData(){
+  if(!confirm("Tüm mumlar silinsin mi?\n(Drive + cihaz önbelleği)"))return;
+  showToast("🗑 Siliniyor…");
+  try{await cClearAll();}catch(e){}
+  if(gdriveConnected()){
+    try{await gdClearAll();}catch(e){}
+  }
+  _gMem={};_gFileIds={};
+  document.getElementById("cacheInfo").textContent="–";
+  refreshCacheRange();
+  loadCandleRange();
+  updateFetchBtnState();
+  showToast("✓ Tüm mumlar silindi");
 }
 function clearCache(){
   stClear()
