@@ -292,7 +292,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div class="card">
     <div class="card-head" style="display:flex;justify-content:space-between;align-items:center">
       <span>⚙️ Bot Parametreleri</span>
-      <button onclick="saveSettings()" title="Parametreleri indir" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:3px 9px;border-radius:7px;font-size:11px;cursor:pointer;line-height:1.4">💾 Kaydet</button>
+      <button onclick="saveSettings()" title="Parametreleri indir" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:3px 9px;border-radius:7px;font-size:11px;cursor:pointer;line-height:1.4">📋 Kopyala</button>
     </div>
     <div class="row" id="row-initAmt"><div><div class="rl">İlk alım miktarı ($)</div><div class="rs">Her döngünün ilk alım emri büyüklüğü</div></div></div>
     <div class="row" id="row-safeAmt"><div><div class="rl">Güvenlik emri miktarı ($)</div><div class="rs">Her güvenlik emrinin başlangıç büyüklüğü</div></div></div>
@@ -746,20 +746,39 @@ async function syncLocalToDrive(){
 async function refreshCacheRange(){
   var el=document.getElementById("cacheInfo");
   if(!el)return;
-  el.textContent="…";
   function fmt(cached,coin){
     if(!cached||!cached.length)return null;
     var c=COINS.find(function(x){return x.id===coin;});
     return(c?c.sym:coin)+" · "+cached[0].date+" – "+cached[cached.length-1].date+" · "+cached.length.toLocaleString()+" mum";
   }
   var lines=[];
-  try{var d=await stGet(S.coin+"_"+INSTANT_BAR.okx);var t=fmt(d,S.coin);if(t)lines.push("DCA: "+t);}catch(e){}
+  try{
+    var key=S.coin+"_"+INSTANT_BAR.okx;
+    var d=await cGet(key);
+    var t=fmt(d,S.coin);
+    if(t)lines.push("DCA: "+t);
+    else if(_gFileIds[key])lines.push("DCA: ☁️ Drive'da mevcut");
+  }catch(e){}
   el.textContent=lines.length?lines.join("  |  "):"Henüz veri yok";
 }
 function showToast(msg){
   var t=document.getElementById("toast");
   t.textContent=msg;t.style.opacity="1";
   clearTimeout(t._tid);t._tid=setTimeout(function(){t.style.opacity="0";},2500);
+}
+async function clearAllData(){
+  if(!confirm("Tüm mumlar silinsin mi?\n(Drive + cihaz önbelleği)"))return;
+  showToast("🗑 Siliniyor…");
+  try{await cClearAll();}catch(e){}
+  if(gdriveConnected()){
+    try{await gdClearAll();}catch(e){}
+  }
+  _gMem={};_gFileIds={};
+  document.getElementById("cacheInfo").textContent="–";
+  refreshCacheRange();
+  loadCandleRange();
+  updateFetchBtnState();
+  showToast("✓ Tüm mumlar silindi");
 }
 function clearCache(){
   stClear()
@@ -930,11 +949,22 @@ async function gdClearAll(){
 
 /* Aktif backend seçimi */
 async function stGet(key){
+  /* 1. IDB — hızlı, ağ yok */
+  var idb=[];
+  try{idb=await cGet(key);}catch(e){}
+  if(idb&&idb.length>0)return idb;
+  /* 2. IDB boş → Drive'dan indir (kullanıcı backtest/mum-çek bastığında) */
   if(gdriveConnected()){
     if(_gMem[key]&&_gMem[key].length>0)return _gMem[key];
-    try{var d=await gdGet(key);if(d&&d.length>0){try{await cPut(key,d);}catch(e){}return d;}}catch(e){}
+    try{
+      var d=await gdGet(key);
+      if(d&&d.length>0){
+        try{await cPut(key,d);}catch(e){}
+        return d;
+      }
+    }catch(e){}
   }
-  try{return await cGet(key);}catch(e){return [];}
+  return [];
 }
 async function stPut(key,candles){
   try{await cPut(key,candles);}catch(e){}
@@ -949,21 +979,14 @@ async function syncDriveToLocal(){
       {headers:{Authorization:"Bearer "+_gToken}});
     if(!r.ok)return;
     var j=await r.json();
-    var files=(j.files||[]).filter(function(f){
-      return f.name.endsWith(".json")&&f.name!=="settings.json"&&f.name!=="_settings.json";
+    var count=0;
+    (j.files||[]).forEach(function(f){
+      if(!f.name.endsWith(".json")||f.name==="settings.json"||f.name==="_settings.json")return;
+      var key=f.name.replace(/\.json$/,"");
+      _gFileIds[key]=f.id;
+      count++;
     });
-    var loaded=0;
-    for(var i=0;i<files.length;i++){
-      var fname=files[i].name;
-      var key=fname.replace(/\.json$/,"");
-      if(_gMem[key]&&_gMem[key].length>0)continue;
-      _gFileIds[key]=files[i].id;
-      try{
-        var d=await gdGet(key);
-        if(d&&d.length>0){try{await cPut(key,d);}catch(e){}loaded++;}
-      }catch(e){}
-    }
-    if(loaded>0)showToast("✓ Drive'dan "+loaded+" mum seti yüklendi");
+    if(count>0)showToast("☁️ Drive'da "+count+" mum seti mevcut");
     loadCandleRange();
     refreshCacheRange();
     updateFetchBtnState();
@@ -991,6 +1014,12 @@ function showFetchProgress(ts,fetched,total){
   setLoad(pct);
 }
 
+function _timedFetch(url){
+  var ctrl=new AbortController();
+  var id=setTimeout(function(){ctrl.abort();},15000);
+  return fetch(url,{signal:ctrl.signal}).finally(function(){clearTimeout(id);});
+}
+
 async function _fetchHistorical(coinId,okxBar,neededCount,afterTs,onProgress){
   var coin=COINS.find(function(c){return c.id===coinId;});
   var instId=coin.sym+"-USDT";
@@ -1001,12 +1030,7 @@ async function _fetchHistorical(coinId,okxBar,neededCount,afterTs,onProgress){
             "&bar="+okxBar+"&limit=300";
     if(after)url+="&after="+after;
     var r;
-    try{
-      r=await fetch(url,{signal:AbortSignal.timeout(12000)});
-    }catch(e){
-      /* Timeout veya ağ hatası — çekilen kadar döndür, sonraki basışta devam edilir */
-      break;
-    }
+    try{r=await _timedFetch(url);}catch(e){break;}
     if(!r.ok)throw new Error("OKX API hata: "+r.status);
     var j=await r.json();
     if(!j.data||!j.data.length)break;
@@ -1027,7 +1051,8 @@ async function _fetchNew(coinId,okxBar,latestTs){
   while(reqCount<maxReq){
     var url="https://www.okx.com/api/v5/market/history-candles?instId="+instId+
             "&bar="+okxBar+"&limit=300&before="+before;
-    var r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+    var r;
+    try{r=await _timedFetch(url);}catch(e){break;}
     if(!r.ok)break;
     var j=await r.json();
     if(!j.data||!j.data.length)break;
@@ -1045,7 +1070,16 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
   var key=coinId+"_"+okxBar;
   var barMs=BAR_MS[okxBar]||3600000;
   var cached=[];
-  try{cached=await stGet(key);}catch(e){}
+  try{
+    var idbCheck=await cGet(key);
+    if(idbCheck&&idbCheck.length>0){
+      cached=idbCheck;
+    } else if(gdriveConnected()&&_gFileIds[key]){
+      showToast("☁️ Drive'dan yükleniyor…");
+      cached=await stGet(key);
+      if(cached&&cached.length>0)showToast("✓ Drive'dan "+cached.length.toLocaleString()+" mum yüklendi");
+    }
+  }catch(e){}
 
   if(cached.length>0){
     /* 1. Yeni mumları ileri çek */
@@ -1118,7 +1152,9 @@ async function loadCandleRange(){
     var inpTo=document.getElementById("inpDateTo");
     var infoEl=document.getElementById("dcRangeInfo");
     if(!inpFrom||!inpTo||!infoEl)return;
-    var cached=await stGet(key);
+    /* IDB'yi doğrudan sorgula — Drive indir yok */
+    var cached=[];
+    try{cached=await cGet(key);}catch(e){}
     if(cached&&cached.length>0){
       var from=tsToDateInput(cached[0].ts);
       var to=tsToDateInput(cached[cached.length-1].ts);
@@ -1131,6 +1167,12 @@ async function loadCandleRange(){
       var histDone=cached[0].ts<=HISTORY_START_TS;
       infoEl.textContent=(histDone?"✅ ":"⏳ ")+cached.length.toLocaleString()+" mum · "+from+" – "+to+(histDone?"":" · Geçmiş eksik — Mum Çek ile tamamlayın");
       saveState();
+    } else if(_gFileIds[key]){
+      /* Drive'da var, IDB boş → kullanıcı tetiklediğinde yüklenecek */
+      infoEl.textContent="☁️ Drive'da mevcut · Backtest veya Mum Çek ile yükleyin";
+      if(!S.dateFrom)S.dateFrom=tsToDateInput(HISTORY_START_TS);
+      if(!S.dateTo)S.dateTo=tsToDateInput(Date.now());
+      inpFrom.value=S.dateFrom; inpTo.value=S.dateTo;
     } else {
       inpFrom.value=""; inpTo.value="";
       infoEl.textContent="Veri yok — 📥 Mum Çek ile yükleyin";
@@ -1158,9 +1200,12 @@ async function fetchCandlesRun(){
     refreshCacheRange();
     showToast(_cacheStatus||"✓ Mumlar güncellendi");
   }catch(e){
-    document.getElementById("errBox").textContent="⚠ "+e.message;
+    document.getElementById("errBox").textContent="⚠ Mum çekme hatası: "+e.message;
     document.getElementById("errBox").classList.remove("hidden");
+    console.error("fetchCandlesRun error:",e);
   }
+  var btn2=document.getElementById("fetchBtn");
+  if(btn2){btn2.disabled=false;btn2.innerHTML="📥 Mum Çek";btn2.style.color="";btn2.style.borderColor="";}
   await updateFetchBtnState();
   setLoad(100);setTimeout(function(){setLoad(0);},700);
 }
@@ -1177,7 +1222,7 @@ async function updateFetchBtnState(){
   }
   var complete=false;
   try{
-    var d=await stGet(key);
+    var d=await cGet(key);
     complete=d&&d.length>0&&d[0].ts<=HISTORY_START_TS;
   }catch(e){}
   if(complete){
@@ -1647,13 +1692,10 @@ function saveSettings(){
     "Reinvest        : "+(S.reinvest?"Evet (%"+S.reinvestPct+")":"Hayır"),
     "TTP             : "+(S.ttpEnabled?"Evet (%"+S.ttpPct+")":"Hayır"),
   ];
-  var blob=new Blob([lines.join("\n")],{type:"text/plain;charset=utf-8"});
-  var a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="dca-ayarlar-"+new Date().toISOString().slice(0,10)+".txt";
-  a.click();
-  URL.revokeObjectURL(a.href);
-  showToast("✓ Ayarlar indirildi");
+  var txt=lines.join("\n");
+  navigator.clipboard.writeText(txt)
+    .then(function(){showToast("✓ Panoya kopyalandı");})
+    .catch(function(){showToast("⚠ Kopyalanamadı");});
 }
 function goTab(name){
   document.querySelectorAll(".tab-btn").forEach(function(b,i){
