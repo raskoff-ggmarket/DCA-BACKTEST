@@ -290,10 +290,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
 
   <div class="card">
-    <div class="card-head" style="display:flex;justify-content:space-between;align-items:center">
-      <span>⚙️ Bot Parametreleri</span>
-      <button onclick="saveSettings()" title="Parametreleri indir" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:3px 9px;border-radius:7px;font-size:11px;cursor:pointer;line-height:1.4">📋 Kopyala</button>
-    </div>
+    <div class="card-head">⚙️ Bot Parametreleri</div>
     <div class="row" id="row-initAmt"><div><div class="rl">İlk alım miktarı ($)</div><div class="rs">Her döngünün ilk alım emri büyüklüğü</div></div></div>
     <div class="row" id="row-safeAmt"><div><div class="rl">Güvenlik emri miktarı ($)</div><div class="rs">Her güvenlik emrinin başlangıç büyüklüğü</div></div></div>
     <div class="row" id="row-priceStep"><div><div class="rl">Fiyat adımı (%)</div><div class="rs">Güvenlik emrinin tetikleneceği fiyat düşüşü</div></div></div>
@@ -1204,9 +1201,11 @@ async function fetchCandlesRun(){
     refreshCacheRange();
     showToast(_cacheStatus||"✓ Mumlar güncellendi");
   }catch(e){
-    document.getElementById("errBox").textContent="⚠ Mum çekme hatası: "+e.message;
+    var msg="⚠ "+e.message;
+    document.getElementById("errBox").textContent=msg;
     document.getElementById("errBox").classList.remove("hidden");
-    console.error("fetchCandlesRun error:",e);
+    showToast(msg);
+    console.error("fetchCandlesRun:",e);
   }
   var btn2=document.getElementById("fetchBtn");
   if(btn2){btn2.disabled=false;btn2.innerHTML="📥 Mum Çek";btn2.style.color="";btn2.style.borderColor="";}
