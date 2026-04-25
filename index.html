@@ -404,10 +404,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div class="rs" id="gdSub">Bağlı değil · cihaz önbelleği kullanılıyor</div>
         <div id="cacheInfo" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
       </div>
-      <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="gd-btn" style="background:transparent;border:1px solid var(--border2);color:var(--red);font-size:11px;padding:6px 10px;border-radius:8px;cursor:pointer" onclick="clearAllData()" title="Tüm mumları sil">🗑</button>
-        <button class="gd-btn gd-off" id="gdBtn" onclick="gToggle()">Bağlan</button>
-      </div>
+      <button class="gd-btn gd-off" id="gdBtn" onclick="gToggle()" style="flex-shrink:0">Bağlan</button>
     </div>
   </div>
   <div class="err hidden" id="errBox"></div>
