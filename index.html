@@ -290,7 +290,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
 
   <div class="card">
-    <div class="card-head">⚙️ Bot Parametreleri</div>
+    <div class="card-head" style="display:flex;justify-content:space-between;align-items:center">
+      <span>⚙️ Bot Parametreleri</span>
+      <button onclick="saveSettings()" title="Parametreleri indir" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:3px 9px;border-radius:7px;font-size:11px;cursor:pointer;line-height:1.4">💾 Kaydet</button>
+    </div>
     <div class="row" id="row-initAmt"><div><div class="rl">İlk alım miktarı ($)</div><div class="rs">Her döngünün ilk alım emri büyüklüğü</div></div></div>
     <div class="row" id="row-safeAmt"><div><div class="rl">Güvenlik emri miktarı ($)</div><div class="rs">Her güvenlik emrinin başlangıç büyüklüğü</div></div></div>
     <div class="row" id="row-priceStep"><div><div class="rl">Fiyat adımı (%)</div><div class="rs">Güvenlik emrinin tetikleneceği fiyat düşüşü</div></div></div>
@@ -512,7 +515,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div style="display:flex;gap:8px">
     <button class="fab-fetch" id="fetchBtn" onclick="fetchCandlesRun()">📥 Mum Çek</button>
     <button class="fab" id="fabBtn" onclick="run()" style="flex:1">▶ Backtest Başlat</button>
-    <button class="fab-fetch" onclick="saveSettings()" title="Ayarları indir" style="min-width:42px;padding:0 12px">💾</button>
   </div>
 </div>
 </div>
