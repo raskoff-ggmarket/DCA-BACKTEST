@@ -349,17 +349,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         </div>
       </div>
     </div>
-    <!-- Kaldıraç -->
-    <div class="row" style="border-top:1px solid var(--border)">
-      <div><div class="rl">Kaldıraç</div><div class="rs">Futures çarpanı · 1× = spot</div></div>
-      <div style="display:flex;gap:5px">
-        <button class="chip" id="lev1"  onclick="setLev(1)"  style="padding:6px 10px">1×</button>
-        <button class="chip" id="lev2"  onclick="setLev(2)"  style="padding:6px 10px">2×</button>
-        <button class="chip" id="lev3"  onclick="setLev(3)"  style="padding:6px 10px">3×</button>
-        <button class="chip" id="lev5"  onclick="setLev(5)"  style="padding:6px 10px">5×</button>
-        <button class="chip" id="lev10" onclick="setLev(10)" style="padding:6px 10px">10×</button>
-      </div>
-    </div>
+
   </div>
 
   <!-- Başlatma Koşulu -->
@@ -486,19 +476,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
           <span style="font-size:12px;color:var(--text3)">%</span>
         </div>
       </div>
-      <!-- Kaldıraç -->
-      <div style="border-top:1px solid var(--border);padding-top:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:13px;color:var(--text);font-weight:600">Kaldıraç</div>
-          <div style="display:flex;gap:5px">
-            <button class="chip" id="optLev1"  onclick="setOptLev(1)"  style="padding:5px 10px">1×</button>
-            <button class="chip" id="optLev2"  onclick="setOptLev(2)"  style="padding:5px 10px">2×</button>
-            <button class="chip" id="optLev3"  onclick="setOptLev(3)"  style="padding:5px 10px">3×</button>
-            <button class="chip" id="optLev5"  onclick="setOptLev(5)"  style="padding:5px 10px">5×</button>
-            <button class="chip" id="optLev10" onclick="setOptLev(10)" style="padding:5px 10px">10×</button>
-          </div>
-        </div>
-      </div>
+
     </div>
     <button id="optBtn" onclick="runOptimizer()"
       style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--accent);background:rgba(0,212,170,.12);color:var(--accent);font-size:14px;font-weight:800;font-family:'Space Grotesk',sans-serif;cursor:pointer;letter-spacing:.05em">
@@ -567,7 +545,6 @@ var DEFAULTS = {
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
   dateFrom:"", dateTo:"",
-  leverage:1,
 };
 var S = Object.assign({}, DEFAULTS);
 var currentTab='ayarlar';
@@ -698,6 +675,7 @@ function parseRawCandles(raw){
       ts:parseInt(k[0]),
       price:parseFloat(k[4]),
       date:new Date(parseInt(k[0])).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"}),
+      time:new Date(parseInt(k[0])).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}),
     };
   }).sort(function(a,b){return a.ts-b.ts;});
 }
@@ -1290,23 +1268,20 @@ function backtest(prices, rsiArr){
     dynSafeAmt=parseFloat((dynSafeAmt*ratio).toFixed(8));
   }
 
-  function closeDealAt(price,date,why){
-    var lev=S.leverage||1;
+  function closeDealAt(price,date,time,why){
     var profit, bProfit=0;
     if(isBase){
-      bProfit=(deal.totalQty-deal.totalCost/price)*lev;
+      bProfit=deal.totalQty-deal.totalCost/price;
       profit=bProfit*price;
       cash+=deal.totalCost;
       accumBase+=bProfit;
     } else {
-      var spotPnl=deal.totalQty*price-deal.totalCost;
-      profit=spotPnl*lev;
-      if(profit<-deal.totalCost)profit=-deal.totalCost;
+      profit=deal.totalQty*price-deal.totalCost;
       cash+=deal.totalCost+profit;
       applyReinvest(profit);
     }
     deals.push(Object.assign({},deal,{
-      endDate:date,exitPrice:price,
+      endDate:date,endTime:time,exitPrice:price,
       profit:profit,profitPct:profit/deal.totalCost*100,
       baseProfit:bProfit,why:why
     }));
@@ -1315,19 +1290,13 @@ function backtest(prices, rsiArr){
   }
 
   function eqVal(price){
-    var lev=S.leverage||1;
     var bv=isBase?accumBase*price:0;
-    if(inDeal){
-      var spotPnl=deal.totalQty*price-deal.totalCost;
-      var levPnl=spotPnl*lev;
-      if(levPnl<-deal.totalCost)levPnl=-deal.totalCost;
-      return bv+cash+deal.totalCost+levPnl;
-    }
+    if(inDeal){return bv+cash+deal.totalQty*price;}
     return bv+cash;
   }
 
   for(var i=0;i<prices.length;i++){
-    var price=prices[i].price, date=prices[i].date;
+    var price=prices[i].price, date=prices[i].date, time=prices[i].time||"";
 
     if(waitRSI&&!inDeal&&cdLeft===0){
       var rv=rsiArr?rsiArr[i]:null;
@@ -1348,7 +1317,7 @@ function backtest(prices, rsiArr){
         so.push({price:lvlPrice,amt:dynSafeAmt*Math.pow(S.amtMult,n),filled:false});
         stepNow*=S.stepMult;lvlPrice*=(1-stepNow/100);
       }
-      deal={startDate:date,initPrice:price,
+      deal={startDate:date,startTime:time,initPrice:price,
             orders:[{date:date,price:price,size:dynInitAmt,qty:dynInitAmt/price}],
             totalCost:dynInitAmt,totalQty:dynInitAmt/price,
             avgCost:price,safetyCount:0,so:so,
@@ -1357,12 +1326,6 @@ function backtest(prices, rsiArr){
       inDeal=true;
 
     } else {
-      var lev=S.leverage||1;
-      if(lev>1&&price<=deal.avgCost*(1-1/lev)){
-        closeDealAt(price,date,"LIQ");
-        equity.push({date:date,value:eqVal(price),price:price});continue;
-      }
-
       var tpPrice=deal.avgCost*(1+S.tpPct/100);
 
       if(S.ttpEnabled){
@@ -1370,13 +1333,13 @@ function backtest(prices, rsiArr){
         if(deal.ttpActive){
           if(price>deal.ttpPeak)deal.ttpPeak=price;
           if(price<=deal.ttpPeak*(1-S.ttpPct/100)){
-            closeDealAt(price,date,"TTP");
+            closeDealAt(price,date,time,"TTP");
             equity.push({date:date,value:eqVal(price),price:price});continue;
           }
         }
       } else {
         if(price>=tpPrice){
-          closeDealAt(price,date,"TP");
+          closeDealAt(price,date,time,"TP");
           equity.push({date:date,value:eqVal(price),price:price});continue;
         }
       }
@@ -1401,7 +1364,7 @@ function backtest(prices, rsiArr){
     var lp=prices[prices.length-1].price;
     var unrealProfit=deal.totalQty*lp-deal.totalCost;
     openDeal=Object.assign({},deal,{
-      endDate:prices[prices.length-1].date,exitPrice:lp,
+      endDate:prices[prices.length-1].date,endTime:prices[prices.length-1].time||"",exitPrice:lp,
       profit:unrealProfit,profitPct:unrealProfit/deal.totalCost*100,
       baseProfit:0,why:"OPEN"
     });
@@ -1420,7 +1383,7 @@ function backtest(prices, rsiArr){
   var firstTs=prices[0].ts||0,lastTs=prices[prices.length-1].ts||0;
   var daysEl=lastTs&&firstTs?(lastTs-firstTs)/86400000:S.days;
 
-  var closedDeals=deals.filter(function(d){return d.why==="TP"||d.why==="TTP"||d.why==="LIQ";});
+  var closedDeals=deals.filter(function(d){return d.why==="TP"||d.why==="TTP";});
   var realizedPnL,unrealizedPnL;
   if(isBase){
     realizedPnL=accumBase*lastPrice;
@@ -1659,7 +1622,7 @@ function render(res, source, mumCnt, dateFrom, dateTo){
       '<div class="dc" style="border-color:'+bc+';animation-delay:'+Math.min(i*.02,.3)+'s">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
       '<div>'+
-      '<div class="dm">#'+(i+1)+' '+d.startDate+' → '+d.endDate+
+      '<div class="dm">#'+(i+1)+' '+d.startDate+(d.startTime?' <span style="color:var(--text3);font-weight:400">'+d.startTime+'</span>':'')+' → '+d.endDate+(d.endTime?' <span style="color:var(--text3);font-weight:400">'+d.endTime+'</span>':'')+
         (isOpen?' <span style="color:var(--yellow);font-size:10px">⏳ AÇIK</span>':"")+
         (d.why==="TTP"?' <span style="color:var(--purple);font-size:10px">🎯 TTP</span>':"")+
         baseLbl+
@@ -1869,23 +1832,6 @@ function setOptProfitMode(mode){
     :"TP kârı USDT olarak tahakkuk eder";
 }
 
-function setLev(v){
-  S.leverage=v;
-  [1,2,3,5,10].forEach(function(x){
-    var el=document.getElementById("lev"+x);
-    if(el)el.className="chip"+(x===v?" on-b":"");
-  });
-  saveState();
-}
-
-var _optLeverage=1;
-function setOptLev(v){
-  _optLeverage=v;
-  [1,2,3,5,10].forEach(function(x){
-    var el=document.getElementById("optLev"+x);
-    if(el)el.className="chip"+(x===v?" on-b":"");
-  });
-}
 
 var OPT_PROFILES=[
   {
@@ -1940,8 +1886,7 @@ function _sampleParams(profile,capital){
     maxSO:maxSO,tpPct:tpPct,
     reinvest:_optReinvest,reinvestPct:reinvestPct,
     ttpEnabled:_optTtp,ttpPct:ttpPct,
-    cond:"instant",profitMode:_getOptProfitMode(),
-    leverage:_optLeverage
+    cond:"instant",profitMode:_getOptProfitMode()
   };
 }
 
@@ -2146,8 +2091,6 @@ STEPPERS.forEach(function(cfg){buildStepper(cfg.k);});
 buildMainChips();
 buildProfitMode();
 setOptProfitMode(_optProfitMode);
-setLev(S.leverage||1);
-setOptLev(1);
 
 S.cond="instant";
 updateBadge();
