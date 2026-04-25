@@ -208,7 +208,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .date-inp:focus{border-color:var(--accent)}
 .fab-fetch{background:var(--bg4);color:var(--text2);border:1px solid var(--border2);box-shadow:none;
            font-weight:700;font-size:14px;border-radius:14px;padding:16px 18px;
-           cursor:pointer;font-family:'Space Grotesk',sans-serif;white-space:nowrap;flex-shrink:0}
+           cursor:pointer;font-family:'Space Grotesk',sans-serif;white-space:nowrap;
+           flex:1;overflow:hidden;text-overflow:ellipsis}
 .fab-fetch:disabled{color:var(--text3);cursor:not-allowed}
 </style>
 </head>
@@ -513,8 +514,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
 <div class="fab-wrap" id="fabW">
   <div style="display:flex;gap:8px">
-    <button class="fab-fetch" id="fetchBtn" onclick="fetchCandlesRun()">📥 Mum Çek</button>
-    <button class="fab" id="fabBtn" onclick="run()" style="flex:1">▶ Backtest Başlat</button>
+    <button class="fab-fetch" id="fetchBtn" onclick="fetchCandlesRun()">📥 MUM İNDİR</button>
+    <button class="fab" id="fabBtn" onclick="run()" style="flex:1">▶ BACKTEST</button>
   </div>
 </div>
 </div>
@@ -1232,7 +1233,7 @@ async function fetchCandlesRun(){
     console.error("fetchCandlesRun error:",e);
   }
   var btn2=document.getElementById("fetchBtn");
-  if(btn2){btn2.disabled=false;btn2.innerHTML="📥 Mum Çek";btn2.style.color="";btn2.style.borderColor="";}
+  if(btn2){btn2.disabled=false;btn2.innerHTML="📥 MUM İNDİR";btn2.style.color="";btn2.style.borderColor="";}
   await updateFetchBtnState();
   setLoad(100);setTimeout(function(){setLoad(0);},700);
 }
@@ -1258,7 +1259,7 @@ async function updateFetchBtnState(){
     btn.style.borderColor="rgba(0,212,170,.3)";
     btn.disabled=true;
   } else {
-    btn.innerHTML="📥 Mum Çek";
+    btn.innerHTML="📥 MUM İNDİR";
     btn.style.color="";
     btn.style.borderColor="";
     btn.disabled=false;
@@ -1520,7 +1521,7 @@ async function run(){
   }
   btn.classList.remove("fab-running");
   btn.disabled=false;
-  btn.textContent="▶ Backtest Başlat";
+  btn.textContent="▶ BACKTEST";
   setLoad(100);
   setTimeout(function(){setLoad(0);},700);
 }
@@ -1833,7 +1834,7 @@ function updateCap(){
   document.getElementById("capT").style.color=ok?"var(--green)":"var(--red)";
   document.getElementById("capT").textContent=ok?"✓ Yeterli — $"+Math.ceil(t)+" gerekli":"⚠ Tek döngü maks: $"+Math.ceil(t)+" — yetersiz";
   var btn=document.getElementById("fabBtn");
-  btn.disabled=!ok; btn.textContent=ok?"▶ Backtest Başlat":"⚠ Sermaye Yetersiz";
+  btn.disabled=!ok; btn.textContent=ok?"▶ BACKTEST":"⚠ Sermaye Yetersiz";
 }
 
 function setCond(type){
@@ -2177,9 +2178,9 @@ function setTab(tab){
   document.getElementById("backBtn").classList.toggle("hidden",tab!=="sonuclar");
   if(tab==="ayarlar"){
     var btn=document.getElementById("fabBtn");
-    btn.disabled=false;btn.textContent="▶ Backtest Başlat";
+    btn.disabled=false;btn.textContent="▶ BACKTEST";
     var fb=document.getElementById("fetchBtn");
-    if(fb&&!fb.innerHTML.includes("Tarih")){fb.disabled=false;fb.innerHTML="📥 Mum Çek";}
+    if(fb&&!fb.innerHTML.includes("Tarih")){fb.disabled=false;fb.innerHTML="📥 MUM İNDİR";}
     updateCap();
   }
   if(tab==="sonuclar") goTab("stats");
