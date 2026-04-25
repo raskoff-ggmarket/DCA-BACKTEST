@@ -1281,7 +1281,7 @@ function backtest(prices, rsiArr){
       applyReinvest(profit);
     }
     deals.push(Object.assign({},deal,{
-      endDate:date,endTime:time,exitPrice:price,
+      endDate:date,exitPrice:price,
       profit:profit,profitPct:profit/deal.totalCost*100,
       baseProfit:bProfit,why:why
     }));
@@ -1297,8 +1297,6 @@ function backtest(prices, rsiArr){
 
   for(var i=0;i<prices.length;i++){
     var price=prices[i].price, date=prices[i].date;
-    var ts=prices[i].ts;
-    var time=prices[i].time||(ts?new Date(ts).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):"");
 
     if(waitRSI&&!inDeal&&cdLeft===0){
       var rv=rsiArr?rsiArr[i]:null;
@@ -1319,7 +1317,7 @@ function backtest(prices, rsiArr){
         so.push({price:lvlPrice,amt:dynSafeAmt*Math.pow(S.amtMult,n),filled:false});
         stepNow*=S.stepMult;lvlPrice*=(1-stepNow/100);
       }
-      deal={startDate:date,startTime:time,initPrice:price,
+      deal={startDate:date,initPrice:price,
             orders:[{date:date,price:price,size:dynInitAmt,qty:dynInitAmt/price}],
             totalCost:dynInitAmt,totalQty:dynInitAmt/price,
             avgCost:price,safetyCount:0,so:so,
@@ -1366,7 +1364,7 @@ function backtest(prices, rsiArr){
     var lp=prices[prices.length-1].price;
     var unrealProfit=deal.totalQty*lp-deal.totalCost;
     openDeal=Object.assign({},deal,{
-      endDate:prices[prices.length-1].date,endTime:(function(){var lts=prices[prices.length-1];return lts.time||(lts.ts?new Date(lts.ts).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):"");}()),exitPrice:lp,
+      endDate:prices[prices.length-1].date,exitPrice:lp,
       profit:unrealProfit,profitPct:unrealProfit/deal.totalCost*100,
       baseProfit:0,why:"OPEN"
     });
@@ -1624,7 +1622,7 @@ function render(res, source, mumCnt, dateFrom, dateTo){
       '<div class="dc" style="border-color:'+bc+';animation-delay:'+Math.min(i*.02,.3)+'s">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
       '<div>'+
-      '<div class="dm">#'+(i+1)+' '+d.startDate+(d.startTime?' <span style="color:var(--text3);font-weight:400">'+d.startTime+'</span>':'')+' → '+d.endDate+(d.endTime?' <span style="color:var(--text3);font-weight:400">'+d.endTime+'</span>':'')+
+      '<div class="dm">#'+(i+1)+' '+d.startDate+' → '+d.endDate+
         (isOpen?' <span style="color:var(--yellow);font-size:10px">⏳ AÇIK</span>':"")+
         (d.why==="TTP"?' <span style="color:var(--purple);font-size:10px">🎯 TTP</span>':"")+
         baseLbl+
