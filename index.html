@@ -355,45 +355,12 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div class="card" style="border-color:rgba(0,153,255,.25);margin-bottom:0">
     <div class="card-head" style="color:var(--accent2)">🚀 Başlatma Koşulu</div>
 
-    <!-- Anında -->
-    <button class="cond-btn" id="btnInstant" onclick="setCond('instant')">
-      <div><div class="ct" id="lblInstant">⚡ Anında</div><div class="cs">Döngü başlayınca hemen gir</div></div>
-      <div class="radio" id="radInstant"></div>
-    </button>
-    <!-- Anında: sabit 1m -->
-    <div id="instantSub" class="hidden" style="background:var(--bg3);border-top:1px solid var(--border)">
-      <div style="padding:11px 16px;display:flex;align-items:center;gap:8px">
-        <div style="background:rgba(0,212,170,.12);border:1px solid rgba(0,212,170,.3);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:700;color:var(--accent)">1m</div>
-        <div style="font-size:12px;color:var(--text3)">Backtest 1 dakikalık mumlarla çalışır · Drive'da birikimli</div>
-      </div>
-      <div style="margin:0 14px 12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:10px;padding:9px 12px;font-size:11px;color:var(--yellow);line-height:1.5">
-⚠ Seans başına 30.000 mum döndürülür (~20 gün). Drive ile her çalıştırmada yeni mumlar eklenir, zamanla tam geçmiş birikir.
-      </div>
+    <div style="padding:11px 16px;display:flex;align-items:center;gap:8px">
+      <div style="background:rgba(0,212,170,.12);border:1px solid rgba(0,212,170,.3);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:700;color:var(--accent)">1m</div>
+      <div><div class="ct" style="font-size:14px">⚡ Anında</div><div class="cs">Döngü başlayınca hemen gir · 1 dakikalık mumlarla backtest</div></div>
     </div>
-
-    <!-- RSI Sinyali -->
-    <button class="cond-btn" id="btnRsi" onclick="setCond('rsi')" style="border-bottom:none">
-      <div><div class="ct" id="lblRsi">📉 RSI Sinyali</div><div class="cs">RSI koşulu sağlanınca gir — aynı mumlarla backtest</div></div>
-      <div class="radio" id="radRsi"></div>
-    </button>
-    <!-- RSI detay -->
-    <div id="rsiSub" class="hidden" style="background:var(--bg3);border-top:1px solid var(--border)">
-      <div class="row" id="row-rsiTP" style="background:var(--bg3)">
-        <div><div class="rl">RSI Periyodu</div><div class="rs">Öneri: 14</div></div>
-      </div>
-      <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:9px;font-weight:600;letter-spacing:.08em">RSI ZAMAN DİLİMİ — Backtest bu mumlarla çalışır</div>
-        <div class="chips" id="tfC" style="padding:0;gap:6px"></div>
-      </div>
-      <div class="dir-row">
-        <button class="dir-btn" id="dLt" onclick="setDir('lt')">RSI &lt; eşik</button>
-        <button class="dir-btn" id="dGt" onclick="setDir('gt')">RSI &gt; eşik</button>
-      </div>
-      <div class="row" id="row-rsiThr" style="background:var(--bg3)">
-        <div><div class="rl">Eşik Değeri</div></div>
-      </div>
-      <div class="rsi-sum" id="rsiSum"></div>
-      <div id="rsiWarn" class="warn hidden" style="margin:0 14px 12px;font-size:11px"></div>
+    <div style="margin:0 14px 12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:10px;padding:9px 12px;font-size:11px;color:var(--yellow);line-height:1.5">
+⚠ Seans başına 30.000 mum döndürülür (~20 gün). Drive ile her çalıştırmada yeni mumlar eklenir, zamanla tam geçmiş birikir.
     </div>
   </div>
 
@@ -447,13 +414,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BAŞLANGIÇ SERMAYESİ (USDT)</div>
       <input type="number" id="optCapital" value="1000" min="100" step="100"
         style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:15px;font-weight:700;font-family:'Space Grotesk',sans-serif">
-    </div>
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">CLAUDE API KEY <span style="font-weight:400;color:var(--purple)">(tarayıcıda saklanır)</span></div>
-      <input type="password" id="claudeKeyInp" placeholder="sk-ant-api03-..."
-        style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:'Space Grotesk',sans-serif"
-        oninput="setClaudeKey(this.value)">
-      <div id="claudeKeyStatus" style="font-size:11px;color:var(--text3);margin-top:5px"></div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
       <div style="font-size:12px;color:var(--text3);margin-bottom:12px;font-weight:600;letter-spacing:.05em">GELİŞMİŞ AYARLAR</div>
@@ -622,15 +582,7 @@ function fetchWarnText(days, minPerBar){
   return "";
 }
 
-function updateWarnTexts(){
-  /* RSI uyarı — sadece RSI modunda göster */
-  var rTf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
-  if(rTf){
-    var w=fetchWarnText(S.days, rTf.minPerBar);
-    var el=document.getElementById("rsiWarn");
-    el.textContent=w; el.classList.toggle("hidden",!w);
-  }
-}
+function updateWarnTexts(){}
 
 function tsToDateInput(ts){
   var d=new Date(ts);
@@ -795,26 +747,7 @@ var _gFileIds={},_gMem={};
 var _gManualClient=null; /* click anında sadece requestAccessToken çağrılır */
 
 var GOOGLE_CLIENT_ID="242410638546-lh3kladojlfbt9nemvg6ldp9oct87roj.apps.googleusercontent.com";
-function getClaudeKey(){return localStorage.getItem("claude_api_key")||"";}
-function setClaudeKey(k){
-  k=k.trim();
-  localStorage.setItem("claude_api_key",k);
-  var st=document.getElementById("claudeKeyStatus");
-  if(st)st.textContent=k?"✅ Key kaydedildi":"Key girilmedi";
-  if(k&&gdriveConnected()) gdPut("_settings",{claude_api_key:k}).catch(function(){});
-}
-async function _syncSettingsFromDrive(){
-  try{
-    var s=await gdGet("_settings");
-    if(s&&s.claude_api_key){
-      localStorage.setItem("claude_api_key",s.claude_api_key);
-      var inp=document.getElementById("claudeKeyInp");
-      var st=document.getElementById("claudeKeyStatus");
-      if(inp)inp.value=s.claude_api_key;
-      if(st)st.textContent="✅ Key Drive'dan yüklendi";
-    }
-  }catch(e){}
-}
+
 function gdriveConnected(){return !!_gToken&&Date.now()<_gTokenExp;}
 
 function _gCallback(resp,showFeedback){
@@ -832,7 +765,6 @@ function _gCallback(resp,showFeedback){
     refreshCacheRange();
     loadCandleRange();
     updateFetchBtnState();
-    _syncSettingsFromDrive();
     syncDriveToLocal();
     if(showFeedback){showToast("✓ Google Drive bağlandı");}
   } else if(showFeedback&&resp.error!=="popup_closed_by_user"){
@@ -1749,7 +1681,7 @@ function buildStepper(k){
     var val=parseFloat(v)||0;
     val=Math.max(cfg.min,Math.min(cfg.max!==undefined?cfg.max:999999,val));
     val=cfg.dec?parseFloat(val.toFixed(cfg.dec)):Math.round(val);
-    S[k]=val; inp.value=val; updateCap(); updateRsiSum(); updateWarnTexts(); saveState();
+    S[k]=val; inp.value=val; updateCap(); saveState();
   }
   db.onclick=function(){upd(S[k]-cfg.step);}; ib.onclick=function(){upd(S[k]+cfg.step);};
   inp.onchange=function(){upd(inp.value);};
@@ -1772,7 +1704,7 @@ function buildChipGroup(containerId, items, getActive, setActive, cls){
       el.querySelectorAll(".chip").forEach(function(c,ci){
         c.className="chip"+(items[ci].v===getActive()?" "+cls:"");
       });
-      updateWarnTexts(); saveState();
+      saveState();
     };
     el.appendChild(b);
   });
@@ -1821,7 +1753,7 @@ function buildMainChips(){
   cc.value=S.coin;
   if(!cc.value){S.coin=COINS[0].id;cc.value=S.coin;}
 }
-function selCoin(id){S.coin=id;S.dateFrom="";S.dateTo="";updateBadge();updateWarnTexts();buildProfitMode();setOptProfitMode(_optProfitMode);saveState();refreshCacheRange();loadCandleRange();updateFetchBtnState();}
+function selCoin(id){S.coin=id;S.dateFrom="";S.dateTo="";updateBadge();buildProfitMode();setOptProfitMode(_optProfitMode);saveState();refreshCacheRange();loadCandleRange();updateFetchBtnState();}
 function refreshMainChips(){
   document.getElementById("coinC").value=S.coin;
 }
@@ -1837,35 +1769,6 @@ function updateCap(){
   btn.disabled=!ok; btn.textContent=ok?"▶ BACKTEST":"⚠ Sermaye Yetersiz";
 }
 
-function setCond(type){
-  S.cond=type; var isR=type==="rsi";
-  var iR=document.getElementById("radInstant"),rR=document.getElementById("radRsi");
-  iR.style.cssText="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:"+(isR?"transparent":"var(--accent)")+";border:2px solid "+(isR?"var(--border2)":"var(--accent)")+";color:#000";
-  iR.textContent=isR?"":"✓";
-  document.getElementById("lblInstant").style.color=isR?"var(--text3)":"var(--text)";
-  rR.style.cssText="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:"+(isR?"var(--purple)":"transparent")+";border:2px solid "+(isR?"var(--purple)":"var(--border2)")+";color:#000";
-  rR.textContent=isR?"✓":"";
-  document.getElementById("lblRsi").style.color=isR?"var(--purple)":"var(--text3)";
-  document.getElementById("instantSub").classList.toggle("hidden",isR);
-  document.getElementById("rsiSub").classList.toggle("hidden",!isR);
-  saveState();
-  loadCandleRange();
-}
-
-function setDir(dir){
-  S.rsiDir=dir;
-  document.getElementById("dLt").className="dir-btn"+(dir==="lt"?" on":"");
-  document.getElementById("dGt").className="dir-btn"+(dir==="gt"?" on":"");
-  updateRsiSum(); saveState();
-}
-
-function updateRsiSum(){
-  var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
-  document.getElementById("rsiSum").innerHTML=
-    "RSI("+S.rsiTP+") · "+(tf?tf.l:S.rsiTf)+" mumlarında "+
-    "<strong style='color:var(--purple)'>"+(S.rsiDir==="lt"?"< ":"> ")+S.rsiThr+"</strong> olunca deal aç — "+
-    "<span style='color:var(--accent2)'>backtest aynı mumlarla çalışır</span>";
-}
 
 function updateBadge(){
   var c=COINS.find(function(x){return x.id===S.coin;});
@@ -2033,18 +1936,6 @@ async function runOptimizer(){
     });
     statusEl.textContent="✅ Tarama tamamlandı · "+SAMPLES+" × 3 profil · Tarih: "+(prices[0].date||"")+" – "+(prices[prices.length-1].date||"");
 
-    /* Claude analizi — key varsa */
-    if(!getClaudeKey()){
-      resultsEl.innerHTML+='<div style="margin-top:12px;font-size:12px;color:var(--text3);text-align:center">💡 Claude analizi için API key girin</div>';
-    } else
-    resultsEl.innerHTML+='<div id="aiCard" style="margin-top:16px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.3);border-radius:12px;padding:14px">'
-      +'<div style="font-size:12px;font-weight:700;color:var(--purple);margin-bottom:8px">🤖 Claude Analizi</div>'
-      +'<div id="aiText" style="font-size:12px;color:var(--text2);line-height:1.7">'
-      +'<span class="spinner" style="border-color:rgba(139,92,246,.2);border-top-color:var(--purple);width:12px;height:12px;border-width:2px;vertical-align:middle;margin-right:6px"></span>'
-      +'Claude değerlendiriyor…</div></div>';
-
-    if(getClaudeKey()) _callClaudeAnalysis(allProfileResults,prices,capital);
-
   }catch(e){
     statusEl.textContent="⚠ "+e.message;
   }
@@ -2053,57 +1944,6 @@ async function runOptimizer(){
   setLoad(100);setTimeout(function(){setLoad(0);},700);
 }
 
-async function _callClaudeAnalysis(results,prices,capital){
-  var el=document.getElementById("aiText");
-  if(!el)return;
-  try{
-    var coin=COINS.find(function(c){return c.id===S.coin;})||{sym:"BTC"};
-    var period=(prices[0].date||"")+" – "+(prices[prices.length-1].date||"");
-    var lines=[];
-    results.forEach(function(pr){
-      var b=pr.best;
-      if(!b){lines.push(pr.profile.label+": geçerli sonuç bulunamadı.");return;}
-      var p=b.params,s=b.stats;
-      lines.push(
-        pr.profile.label+":\n"+
-        "  APR: "+f(s.arbitrageAPR,1)+"% | Max Drawdown: "+f(s.maxDrawdown,1)+"% | Döngü: "+s.completedCycles+" | Skor: "+f(b.score,2)+"\n"+
-        "  BO: $"+p.initAmt+" | SO: $"+p.safeAmt+" | MaxSO: "+p.maxSO+" | Step: %"+p.priceStep+" | SM: ×"+p.stepMult+" | AM: ×"+p.amtMult+" | TP: %"+p.tpPct+
-        (p.reinvest?" | Reinvest: %"+p.reinvestPct:"")+
-        (p.ttpEnabled?" | TTP: %"+p.ttpPct:"")
-      );
-    });
-    var prompt=
-      "DCA backtest optimizasyon sonuçları aşağıda. Lütfen değerlendir.\n\n"+
-      "Sembol: "+coin.sym+"/USDT\n"+
-      "Backtest dönemi: "+period+" ("+prices.length.toLocaleString()+" mum)\n"+
-      "Başlangıç sermayesi: $"+capital+"\n\n"+
-      lines.join("\n\n")+"\n\n"+
-      "Bu üç profili karşılaştır. Hangi profil en iyi sonucu veriyor ve neden? "+
-      "Her parametrenin (BO, SO, MaxSO, Step, SM, AM, TP, Reinvest, TTP) bu sonucu nasıl etkilediğini kısaca açıkla. "+
-      "Genel bir yatırım tavsiyesi değil, sadece bu backtest verilerini yorumla. Türkçe cevap ver. Maksimum 250 kelime.";
-
-    var r=await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",
-      headers:{
-        "x-api-key":getClaudeKey(),
-        "anthropic-version":"2023-06-01",
-        "content-type":"application/json",
-        "anthropic-dangerous-direct-browser-access":"true"
-      },
-      body:JSON.stringify({
-        model:"claude-haiku-4-5-20251001",
-        max_tokens:600,
-        messages:[{role:"user",content:prompt}]
-      })
-    });
-    if(!r.ok){var e=await r.json();throw new Error(e.error&&e.error.message||r.status);}
-    var j=await r.json();
-    var txt=(j.content&&j.content[0]&&j.content[0].text)||"Yanıt alınamadı.";
-    el.innerHTML=txt.replace(/\n/g,"<br>");
-  }catch(e){
-    if(el)el.innerHTML='<span style="color:var(--red)">⚠ Claude hatası: '+e.message+'</span>';
-  }
-}
 
 function _renderOptProfile(profile,best){
   var html='<div style="margin-bottom:12px">';
@@ -2156,7 +1996,7 @@ function applyOptParams(profileId){
   document.getElementById("chkReinvest").checked=S.reinvest;
   document.getElementById("chkTtp").checked=S.ttpEnabled;
   toggleReinvestSub();toggleTtpSub();
-  updateCap();updateBadge();updateWarnTexts();
+  updateCap();updateBadge();
   showToast("✓ Parametreler uygulandı — Ayarlar sekmesine geç");
   setTab("ayarlar");
 }
@@ -2206,32 +2046,15 @@ buildMainChips();
 buildProfitMode();
 setOptProfitMode(_optProfitMode);
 
-/* RSI TF chip'leri */
-buildChipGroup("tfC", RSI_TFS,
-  function(){return S.rsiTf;},
-  function(v){S.rsiTf=v; updateRsiSum();},
-  "on-p"
-);
-
-setCond(S.cond);
-setDir(S.rsiDir);
+S.cond="instant";
 updateBadge();
 updateCap();
-updateRsiSum();
-updateWarnTexts();
 /* Toggle başlangıç durumları */
 document.getElementById("chkReinvest").checked = S.reinvest;
 document.getElementById("chkTtp").checked = S.ttpEnabled;
 toggleReinvestSub();
 toggleTtpSub();
-/* ── Claude key input doldur ── */
-(function(){
-  var k=getClaudeKey();
-  var inp=document.getElementById("claudeKeyInp");
-  var st=document.getElementById("claudeKeyStatus");
-  if(inp&&k){inp.value=k;}
-  if(st)st.textContent=k?"✅ Key kayıtlı":"Key girilmedi — AI analizi çalışmaz";
-})();
+
 /* ── Google Drive: onGisLoad() otomatik bağlanır ── */
 refreshCacheRange();
 /* ── Tarih aralıklarını önbellekten yükle ── */
