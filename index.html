@@ -995,9 +995,9 @@ async function syncDriveToLocal(){
           var infoEl=document.getElementById("dcRangeInfo");
           if(infoEl)infoEl.textContent="☁️ Drive'dan indiriliyor… %0";
           var rd=await gdGet(rKey,function(recv,tot){
-            var pct=tot>0?Math.round(recv/tot*100):0;
             var kb=Math.round(recv/1024);
-            if(infoEl)infoEl.textContent="☁️ Drive'dan indiriliyor… %"+pct+" ("+kb+"KB)";
+            var pct=tot>0?(" %"+Math.round(recv/tot*100)):"";
+            if(infoEl)infoEl.textContent="☁️ Drive'dan indiriliyor…"+pct+" "+kb+"KB";
           });
           if(rd&&rd.length){
             try{await cPut(rKey,rd);}catch(e){}
