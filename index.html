@@ -844,45 +844,70 @@ function updateGdriveUI(connected){
 }
 
 async function gdGet(key){
-  if(!gdriveConnected())return null;
+  if(!gdriveConnected()){console.warn("[Drive] gdGet: bağlı değil");return null;}
   if(_gMem[key])return _gMem[key];
   if(!_gFileIds[key]){
+    console.log("[Drive] Dosya aranıyor:",key+".json");
     var r=await fetch(
       "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27"+encodeURIComponent(key)+".json%27&fields=files(id)",
       {headers:{Authorization:"Bearer "+_gToken}});
-    if(!r.ok)return null;
+    if(!r.ok){console.error("[Drive] Arama hatası:",r.status);return null;}
     var j=await r.json();
-    if(j.files&&j.files.length)_gFileIds[key]=j.files[0].id;
-    else return null;
+    if(j.files&&j.files.length){_gFileIds[key]=j.files[0].id;console.log("[Drive] Dosya bulundu:",_gFileIds[key]);}
+    else{console.log("[Drive] Drive'da dosya yok:",key);return null;}
   }
+  console.log("[Drive] İndiriliyor:",key);
   var r2=await fetch(
     "https://www.googleapis.com/drive/v3/files/"+_gFileIds[key]+"?alt=media",
     {headers:{Authorization:"Bearer "+_gToken}});
-  if(!r2.ok)return null;
-  var data=await r2.json();
+  if(!r2.ok){console.error("[Drive] İndirme hatası:",r2.status);return null;}
+  var raw=await r2.json();
+  /* Eski format: [{ts,price,...}]  Yeni compact format: [[ts,price],...] */
+  var data=raw.map(function(d){
+    if(Array.isArray(d)){
+      var ts=d[0];
+      return {ts:ts,price:d[1],date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
+    }
+    return d;
+  });
+  console.log("[Drive] İndirildi:",data.length,"mum →",key);
   _gMem[key]=data;return data;
 }
 
 async function gdPut(key,candles){
   if(!gdriveConnected())return;
+  /* Compact format: [[ts,price],...] — boyutu ~3× küçültür */
+  var compact=candles.map(function(c){return [c.ts,c.price];});
   _gMem[key]=candles;
-  var boundary="dcabnd";
+  var dataStr=JSON.stringify(compact);
   var isUpdate=!!_gFileIds[key];
-  var meta=isUpdate
+  var metaStr=isUpdate
     ?JSON.stringify({name:key+".json"})
     :JSON.stringify({name:key+".json",parents:["appDataFolder"]});
-  var body="--"+boundary+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+
-    meta+"\r\n--"+boundary+"\r\nContent-Type: application/json\r\n\r\n"+
-    JSON.stringify(candles)+"\r\n--"+boundary+"--";
-  var url=isUpdate
-    ?"https://www.googleapis.com/upload/drive/v3/files/"+_gFileIds[key]+"?uploadType=multipart"
-    :"https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
-  var r=await fetch(url,{
+  console.log("[Drive] Upload başlatılıyor:",key,compact.length,"mum,",(dataStr.length/1024).toFixed(0)+"KB");
+  /* Resumable upload — 5MB multipart limitini aşar */
+  var initUrl=isUpdate
+    ?"https://www.googleapis.com/upload/drive/v3/files/"+_gFileIds[key]+"?uploadType=resumable"
+    :"https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable";
+  var initR=await fetch(initUrl,{
     method:isUpdate?"PATCH":"POST",
-    headers:{Authorization:"Bearer "+_gToken,"Content-Type":"multipart/related; boundary="+boundary},
-    body:body
+    headers:{
+      Authorization:"Bearer "+_gToken,
+      "Content-Type":"application/json; charset=UTF-8",
+      "X-Upload-Content-Type":"application/json"
+    },
+    body:metaStr
   });
-  if(r.ok){var j=await r.json();_gFileIds[key]=j.id;}
+  if(!initR.ok){console.error("[Drive] Upload başlatma hatası:",initR.status,await initR.text());return;}
+  var uploadUri=initR.headers.get("Location");
+  if(!uploadUri){console.error("[Drive] Upload URI alınamadı");return;}
+  var uploadR=await fetch(uploadUri,{
+    method:"PUT",
+    headers:{"Content-Type":"application/json"},
+    body:dataStr
+  });
+  if(uploadR.ok){var j=await uploadR.json();_gFileIds[key]=j.id;console.log("[Drive] Upload OK:",key,"fileId:",j.id);}
+  else{console.error("[Drive] Upload hatası:",uploadR.status,await uploadR.text());}
 }
 
 async function gdClearAll(){
