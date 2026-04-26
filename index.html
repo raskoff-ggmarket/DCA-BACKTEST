@@ -776,7 +776,9 @@ async function exportCandles(){
   var url=URL.createObjectURL(blob);
   var a=document.createElement("a");
   a.href=url;
-  a.download=key+"_"+new Date().toISOString().slice(0,10)+".json";
+  var d1=new Date(data[0].ts).toISOString().slice(0,10);
+  var d2=new Date(data[data.length-1].ts).toISOString().slice(0,10);
+  a.download=key+"_"+d1+"_"+d2+".json";
   a.click();
   URL.revokeObjectURL(url);
   showToast("✅ "+data.length.toLocaleString()+" mum indirildi");
