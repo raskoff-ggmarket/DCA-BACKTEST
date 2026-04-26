@@ -973,12 +973,16 @@ async function syncDriveToLocal(){
       try{
         var idb=await cGet(rKey);
         if(!idb||!idb.length){
-          showToast("☁️ Drive'dan otomatik yükleniyor…");
+          showToast("☁️ Drive'dan indiriliyor…");
+          var infoEl=document.getElementById("dcRangeInfo");
+          if(infoEl)infoEl.textContent="☁️ Drive'dan indiriliyor…";
           var rd=await gdGet(rKey);
           if(rd&&rd.length){
             try{await cPut(rKey,rd);}catch(e){}
             showToast("✓ Drive'dan "+rd.length.toLocaleString()+" mum yüklendi");
             loadCandleRange();refreshCacheRange();
+          } else {
+            if(infoEl)infoEl.textContent="⚠ Drive'dan indirilemedi";
           }
         }
       }catch(e){console.error("[Drive] Otomatik yükleme hatası:",rKey,e);}
@@ -1191,8 +1195,7 @@ async function loadCandleRange(){
       infoEl.textContent=(histDone?"✅ ":"⏳ ")+cached.length.toLocaleString()+" mum · "+from+" – "+to+(histDone?"":" · Geçmiş eksik — Mum Çek ile tamamlayın");
       saveState();
     } else if(_gFileIds[key]){
-      /* Drive'da var, IDB boş → kullanıcı tetiklediğinde yüklenecek */
-      infoEl.textContent="☁️ Drive'da mevcut · Backtest veya Mum Çek ile yükleyin";
+      infoEl.textContent="☁️ Drive'dan indiriliyor…";
       if(!S.dateFrom)S.dateFrom=tsToDateInput(HISTORY_START_TS);
       if(!S.dateTo)S.dateTo=tsToDateInput(Date.now());
       inpFrom.value=S.dateFrom; inpTo.value=S.dateTo;
