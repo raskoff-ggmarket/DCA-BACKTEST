@@ -1043,13 +1043,13 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
   cached.forEach(function(c){tsSet.add(c.ts);});
 
   /* 3. Yeni mumları ileri çek */
-  var newCnt=0;
+  var newCnt=0, newC=[];
   if(cached.length>0&&Date.now()-cached[cached.length-1].ts>barMs){
     try{
       var latestTs=cached[cached.length-1].ts;
       var newRaw=await _fetchNew(coinId,okxBar,latestTs);
       if(newRaw.length){
-        var newC=parseRawCandles(newRaw).filter(function(c){return c.ts>latestTs&&!tsSet.has(c.ts);});
+        newC=parseRawCandles(newRaw).filter(function(c){return c.ts>latestTs&&!tsSet.has(c.ts);});
         if(newC.length){
           newC.forEach(function(c){tsSet.add(c.ts);});
           cached=cached.concat(newC);newCnt=newC.length;changed=true;
@@ -1096,9 +1096,14 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
 
   if(!cached.length)throw new Error("OKX'ten veri gelmedi.");
 
-  /* 6. Kaydet (IDB her zaman hızlı; Drive sadece değişiklik varsa) */
+  /* 6. Kaydet — sadece YENİ mumları yaz, tüm önbelleği değil */
   if(changed){
-    try{await cPut(key,cached);}catch(e){}
+    /* Artımlı kayıtlar (her 20 batch) zaten yapıldı.
+       Burada sadece: kalan pend + ileri-çekim newC yazılır.
+       İlk çekim durumunda (toWrite boş) tüm cached yazılır. */
+    var toWrite=(pend&&pend.length?pend:[]).concat(newC.length?newC:[]);
+    if(toWrite.length){try{await cPut(key,toWrite);}catch(e){}}
+    else{try{await cPut(key,cached);}catch(e){}}
     if(gdriveConnected()){try{await gdPut(key,cached);}catch(e){}}
   }
 
