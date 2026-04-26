@@ -11,7 +11,6 @@
 <meta name="apple-mobile-web-app-title" content="Backtest"/>
 <link rel="apple-touch-icon" href="android-chrome-192x192.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<script src="https://accounts.google.com/gsi/client" async defer onload="onGisLoad()"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -197,11 +196,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
        background:var(--bg4);border:1px solid var(--border2);border-radius:10px;
        padding:10px 18px;font-size:13px;font-weight:600;color:var(--text);
        z-index:100;pointer-events:none;transition:opacity .3s;white-space:nowrap}
-.gd-btn{padding:8px 14px;border-radius:9px;font-size:12px;font-weight:700;
-        border:1px solid;cursor:pointer;font-family:'Space Grotesk',sans-serif;flex-shrink:0}
-.gd-off{border-color:var(--border2);background:var(--bg4);color:var(--text2)}
-.gd-on{border-color:rgba(74,144,226,.5);background:rgba(74,144,226,.12);color:#4a90e2}
-.gd-dis{border-color:rgba(255,79,109,.4);background:rgba(255,79,109,.08);color:var(--red)}
 .date-inp{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;
           color:var(--text);font-size:13px;font-weight:600;padding:9px 12px;
           font-family:'Space Grotesk',sans-serif;outline:none;color-scheme:dark}
@@ -361,23 +355,14 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <div><div class="ct" style="font-size:14px">⚡ Anında</div><div class="cs">Döngü başlayınca hemen gir · 1 dakikalık mumlarla backtest</div></div>
     </div>
     <div style="margin:0 14px 12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:10px;padding:9px 12px;font-size:11px;color:var(--yellow);line-height:1.5">
-⚠ Seans başına 30.000 mum döndürülür (~20 gün). Drive ile her çalıştırmada yeni mumlar eklenir, zamanla tam geçmiş birikir.
+⚠ Seans başına 30.000 mum döndürülür (~20 gün). Her çalıştırmada yeni mumlar eklenir, zamanla tam geçmiş birikir.
     </div>
   </div>
 
   <div class="card" style="margin-bottom:4px">
-    <div class="card-head">☁️ Veri Depolama</div>
-    <div class="row" style="border:none">
-      <div style="min-width:0">
-        <div class="rl">Google Drive</div>
-        <div class="rs" id="gdSub">Bağlı değil · cihaz önbelleği kullanılıyor</div>
-        <div id="cacheInfo" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
-      </div>
-      <button class="gd-btn gd-off" id="gdBtn" onclick="gToggle()" style="flex-shrink:0">Bağlan</button>
-    </div>
-    <div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)">
+    <div class="card-head">💾 Veri Depolama</div>
+    <div style="display:flex;gap:8px">
       <button onclick="exportCandles()" style="flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer">📤 Dışa Aktar</button>
-      <button onclick="exportFromDrive()" id="driveExportBtn" style="flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer">☁️ Drive→Dosya</button>
       <label style="flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer;display:block;text-align:center">📂 İçe Aktar<input type="file" accept=".json" style="display:none" onchange="importCandles(this)"></label>
     </div>
   </div>
@@ -534,7 +519,7 @@ var RSI_TFS = [
   {l:"4h", v:"4h",  okx:"4H",  minPerBar:240},
 ];
 
-/* DCA anında modu: 1 dakikalık mumlar (Drive önbelleğiyle birikimli) */
+/* DCA anında modu: 1 dakikalık mumlar */
 var INSTANT_BAR = {okx:"1m", minPerBar:1};
 
 /* ═══════════════════════════════
@@ -684,41 +669,6 @@ function parseRawCandles(raw){
     };
   }).sort(function(a,b){return a.ts-b.ts;});
 }
-async function syncLocalToDrive(){
-  if(!gdriveConnected())return;
-  /* IDB'deki tüm benzersiz key'leri bul */
-  var db=await openDB();
-  var idbKeys=await new Promise(function(res,rej){
-    var tx=db.transaction("c","readonly");
-    var req=tx.objectStore("c").index("k").getAllKeys();
-    req.onsuccess=function(){
-      var u=[];req.result.forEach(function(k){if(u.indexOf(k)<0)u.push(k);});res(u);
-    };
-    req.onerror=function(){rej(req.error);};
-  });
-  if(!idbKeys.length)return;
-  showToast("☁️ Drive'a yükleniyor…");
-  var synced=0;
-  for(var i=0;i<idbKeys.length;i++){
-    var key=idbKeys[i];
-    try{
-      var local=await cGet(key);
-      if(!local.length)continue;
-      /* Drive'daki mevcut veriyle birleştir (daha kapsamlı olanı sakla) */
-      var remote=await gdGet(key)||[];
-      var merged=local.slice();
-      if(remote.length){
-        var tsSet={};merged.forEach(function(c){tsSet[c.ts]=1;});
-        remote.forEach(function(c){if(!tsSet[c.ts])merged.push(c);});
-        merged.sort(function(a,b){return a.ts-b.ts;});
-      }
-      await gdPut(key,merged);
-      synced++;
-    }catch(e){}
-  }
-  refreshCacheRange();
-  showToast(synced?"✓ "+synced+" set Drive'a yüklendi":"✓ Drive güncel");
-}
 async function refreshCacheRange(){
   var el=document.getElementById("cacheInfo");
   if(!el)return;
@@ -733,7 +683,6 @@ async function refreshCacheRange(){
     var d=await cGet(key);
     var t=fmt(d,S.coin);
     if(t)lines.push("DCA: "+t);
-    else if(_gFileIds[key])lines.push("DCA: ☁️ Drive'da mevcut");
   }catch(e){}
   el.textContent=lines.length?lines.join("  |  "):"Henüz veri yok";
 }
@@ -743,14 +692,9 @@ function showToast(msg){
   clearTimeout(t._tid);t._tid=setTimeout(function(){t.style.opacity="0";},2500);
 }
 async function clearAllData(){
-  if(!confirm("Tüm mumlar silinsin mi?\n(Drive + cihaz önbelleği)"))return;
+  if(!confirm("Tüm mumlar silinsin mi?"))return;
   showToast("🗑 Siliniyor…");
   try{await cClearAll();}catch(e){}
-  if(gdriveConnected()){
-    try{await gdClearAll();}catch(e){}
-  }
-  _gMem={};_gFileIds={};
-  document.getElementById("cacheInfo").textContent="–";
   refreshCacheRange();
   loadCandleRange();
   updateFetchBtnState();
@@ -762,186 +706,6 @@ function clearCache(){
     .catch(function(){showToast("⚠ Temizleme başarısız");});
 }
 
-/* ═══════════════════════════════
-   GOOGLE DRIVE STORAGE
-═══════════════════════════════ */
-var _gToken=null,_gTokenExp=0;
-var _gFileIds={},_gMem={};
-var _gManualClient=null; /* click anında sadece requestAccessToken çağrılır */
-
-var GOOGLE_CLIENT_ID="242410638546-lh3kladojlfbt9nemvg6ldp9oct87roj.apps.googleusercontent.com";
-
-function gdriveConnected(){return !!_gToken&&Date.now()<_gTokenExp;}
-
-function _gCallback(resp,showFeedback){
-  if(resp.access_token&&!resp.error){
-    _gToken=resp.access_token;
-    _gTokenExp=Date.now()+((resp.expires_in||3600)-60)*1000;
-    _gMem={};
-    localStorage.setItem("g_connected","1");
-    /* Email'i kaydet → sonraki sessiz bağlantılarda login_hint olarak kullan */
-    fetch("https://www.googleapis.com/oauth2/v3/userinfo",{headers:{Authorization:"Bearer "+_gToken}})
-      .then(function(r){return r.json();})
-      .then(function(j){if(j.email)localStorage.setItem("g_hint",j.email);})
-      .catch(function(){});
-    updateGdriveUI(true);
-    refreshCacheRange();
-    loadCandleRange();
-    updateFetchBtnState();
-    syncDriveToLocal();
-    if(showFeedback){showToast("✓ Google Drive bağlandı");}
-  } else if(showFeedback&&resp.error!=="popup_closed_by_user"){
-    showToast("⚠ Google bağlantı hatası: "+resp.error);
-  }
-}
-
-/* GIS yüklenince client'ı hazırla + sessiz yeniden bağlan */
-var _GD_SCOPE="https://www.googleapis.com/auth/drive.appdata email";
-function onGisLoad(){
-  /* Manuel bağlantı için client'ı önceden oluştur
-     (click anında initTokenClient çağrılmaz → popup engellenmez) */
-  _gManualClient=google.accounts.oauth2.initTokenClient({
-    client_id:GOOGLE_CLIENT_ID,
-    scope:_GD_SCOPE,
-    callback:function(resp){_gCallback(resp,true);}
-  });
-  /* Daha önce bağlıysa sessiz token yenile (login_hint → hesap seçici atlanır) */
-  if(localStorage.getItem("g_connected")){
-    try{
-      google.accounts.oauth2.initTokenClient({
-        client_id:GOOGLE_CLIENT_ID,
-        scope:_GD_SCOPE,
-        prompt:"",
-        login_hint:localStorage.getItem("g_hint")||"",
-        callback:function(resp){_gCallback(resp,false);}
-      }).requestAccessToken({prompt:""});
-    }catch(e){}
-  }
-}
-
-/* Click handler — sadece requestAccessToken, popup engellenmez */
-function gToggle(){
-  if(gdriveConnected()){
-    var tok=_gToken;
-    _gToken=null;_gTokenExp=0;_gMem={};
-    localStorage.removeItem("g_connected");
-    try{google.accounts.oauth2.revoke(tok,function(){});}catch(e){}
-    updateGdriveUI(false);
-    showToast("Google Drive bağlantısı kesildi");
-    return;
-  }
-  if(!_gManualClient){
-    showToast("⚠ Google API henüz yüklenmedi, bir saniye bekleyip tekrar dene.");return;
-  }
-  _gManualClient.requestAccessToken();
-}
-
-function updateGdriveUI(connected){
-  var sub=document.getElementById("gdSub");
-  var btn=document.getElementById("gdBtn");
-  if(connected){
-    sub.textContent="Bağlı · Mumlar Drive'a kaydediliyor";
-    btn.className="gd-btn gd-dis";btn.textContent="Bağlantıyı Kes";
-  } else {
-    sub.textContent="Bağlı değil · Cihaz önbelleği kullanılıyor";
-    btn.className="gd-btn gd-off";btn.textContent="Bağlan";
-  }
-}
-
-async function gdGet(key,onProgress){
-  if(!gdriveConnected()){console.warn("[Drive] gdGet: bağlı değil");return null;}
-  if(_gMem[key])return _gMem[key];
-  if(!_gFileIds[key]){
-    console.log("[Drive] Dosya aranıyor:",key+".json");
-    var r=await fetch(
-      "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27"+encodeURIComponent(key)+".json%27&fields=files(id)",
-      {headers:{Authorization:"Bearer "+_gToken}});
-    if(!r.ok){console.error("[Drive] Arama hatası:",r.status);return null;}
-    var j=await r.json();
-    if(j.files&&j.files.length){_gFileIds[key]=j.files[0].id;console.log("[Drive] Dosya bulundu:",_gFileIds[key]);}
-    else{console.log("[Drive] Drive'da dosya yok:",key);return null;}
-  }
-  console.log("[Drive] İndiriliyor:",key);
-  var r2=await fetch(
-    "https://www.googleapis.com/drive/v3/files/"+_gFileIds[key]+"?alt=media",
-    {headers:{Authorization:"Bearer "+_gToken}});
-  if(!r2.ok){console.error("[Drive] İndirme hatası:",r2.status);return null;}
-  /* Stream okuyarak byte bazlı ilerleme takibi */
-  var total=parseInt(r2.headers.get("Content-Length")||"0");
-  var reader=r2.body.getReader();
-  var chunks=[],received=0;
-  while(true){
-    var _ref=await reader.read(),done=_ref.done,value=_ref.value;
-    if(done)break;
-    chunks.push(value);
-    received+=value.length;
-    if(onProgress)onProgress(received,total);
-  }
-  var buf=new Uint8Array(received),pos=0;
-  for(var ci=0;ci<chunks.length;ci++){buf.set(chunks[ci],pos);pos+=chunks[ci].length;}
-  var raw=JSON.parse(new TextDecoder().decode(buf));
-  /* Eski format: [{ts,price,...}]  Yeni compact format: [[ts,price],...] */
-  var data=raw.map(function(d){
-    if(Array.isArray(d)){
-      var ts=d[0];
-      return {ts:ts,price:d[1],date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
-    }
-    return d;
-  });
-  console.log("[Drive] İndirildi:",data.length,"mum →",key);
-  _gMem[key]=data;return data;
-}
-
-async function gdPut(key,candles){
-  if(!gdriveConnected())return;
-  /* Compact format: [[ts,price],...] — boyutu ~3× küçültür */
-  var compact=candles.map(function(c){return [c.ts,c.price];});
-  _gMem[key]=candles;
-  var dataStr=JSON.stringify(compact);
-  var isUpdate=!!_gFileIds[key];
-  var metaStr=isUpdate
-    ?JSON.stringify({name:key+".json"})
-    :JSON.stringify({name:key+".json",parents:["appDataFolder"]});
-  console.log("[Drive] Upload başlatılıyor:",key,compact.length,"mum,",(dataStr.length/1024).toFixed(0)+"KB");
-  /* Resumable upload — 5MB multipart limitini aşar */
-  var initUrl=isUpdate
-    ?"https://www.googleapis.com/upload/drive/v3/files/"+_gFileIds[key]+"?uploadType=resumable"
-    :"https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable";
-  var initR=await fetch(initUrl,{
-    method:isUpdate?"PATCH":"POST",
-    headers:{
-      Authorization:"Bearer "+_gToken,
-      "Content-Type":"application/json; charset=UTF-8",
-      "X-Upload-Content-Type":"application/json"
-    },
-    body:metaStr
-  });
-  if(!initR.ok){console.error("[Drive] Upload başlatma hatası:",initR.status,await initR.text());return;}
-  var uploadUri=initR.headers.get("Location");
-  if(!uploadUri){console.error("[Drive] Upload URI alınamadı");return;}
-  var uploadR=await fetch(uploadUri,{
-    method:"PUT",
-    headers:{"Content-Type":"application/json"},
-    body:dataStr
-  });
-  if(uploadR.ok){var j=await uploadR.json();_gFileIds[key]=j.id;console.log("[Drive] Upload OK:",key,"fileId:",j.id);}
-  else{console.error("[Drive] Upload hatası:",uploadR.status,await uploadR.text());}
-}
-
-async function gdClearAll(){
-  if(!gdriveConnected())return;
-  var r=await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id)",
-    {headers:{Authorization:"Bearer "+_gToken}});
-  if(!r.ok)return;
-  var j=await r.json();
-  for(var i=0;i<(j.files||[]).length;i++){
-    await fetch("https://www.googleapis.com/drive/v3/files/"+j.files[i].id,
-      {method:"DELETE",headers:{Authorization:"Bearer "+_gToken}});
-  }
-  _gFileIds={};_gMem={};
-}
-
-/* Aktif backend seçimi */
 /* ═══════════════════════════════
    OPFS — tarayıcı cache temizliğinden bağımsız yerel depo
 ═══════════════════════════════ */
@@ -996,116 +760,12 @@ async function stGet(key){
     try{await cPut(key,opfsData);}catch(e){}
     return opfsData;
   }
-  /* 3. IDB boş → Drive'dan indir (kullanıcı backtest/mum-çek bastığında) */
-  if(gdriveConnected()){
-    if(_gMem[key]&&_gMem[key].length>0)return _gMem[key];
-    try{
-      var d=await gdGet(key);
-      if(d&&d.length>0){
-        try{await cPut(key,d);}catch(e){}
-        return d;
-      }
-    }catch(e){}
-  }
   return [];
 }
 async function stPut(key,candles){
   try{await cPut(key,candles);}catch(e){}
-  if(gdriveConnected()){try{await gdPut(key,candles);}catch(e){}}
 }
 
-async function syncDriveToLocal(){
-  if(!gdriveConnected())return;
-  try{
-    var r=await fetch(
-      "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name)&pageSize=100",
-      {headers:{Authorization:"Bearer "+_gToken}});
-    if(!r.ok)return;
-    var j=await r.json();
-    var count=0,toRestore=[];
-    (j.files||[]).forEach(function(f){
-      if(!f.name.endsWith(".json")||f.name==="settings.json"||f.name==="_settings.json")return;
-      var key=f.name.replace(/\.json$/,"");
-      _gFileIds[key]=f.id;
-      toRestore.push(key);
-      count++;
-    });
-    if(count>0)showToast("☁️ Drive'da "+count+" mum seti bulundu");
-    else if(gdriveConnected())showToast("☁️ Drive bağlı — henüz mum yok, Mum Çek ile kaydet");
-    loadCandleRange();
-    refreshCacheRange();
-    updateFetchBtnState();
-    /* IDB boşsa Drive'dan otomatik yükle */
-    for(var i=0;i<toRestore.length;i++){
-      var rKey=toRestore[i];
-      try{
-        var idb=await cGet(rKey);
-        if(!idb||!idb.length){
-          showToast("☁️ Drive'dan indiriliyor…");
-          var infoEl=document.getElementById("dcRangeInfo");
-          if(infoEl)infoEl.textContent="☁️ Drive'dan indiriliyor… %0";
-          var rd=await gdGet(rKey,function(recv,tot){
-            var kb=Math.round(recv/1024);
-            var pct=tot>0?(" %"+Math.round(recv/tot*100)):"";
-            if(infoEl)infoEl.textContent="☁️ Drive'dan indiriliyor…"+pct+" "+kb+"KB";
-          });
-          if(rd&&rd.length){
-            try{await cPut(rKey,rd);}catch(e){}
-            showToast("✓ Drive'dan "+rd.length.toLocaleString()+" mum yüklendi");
-            loadCandleRange();refreshCacheRange();
-          } else {
-            if(infoEl)infoEl.textContent="⚠ Drive'dan indirilemedi";
-          }
-        }
-      }catch(e){console.error("[Drive] Otomatik yükleme hatası:",rKey,e);}
-    }
-  }catch(e){}
-}
-async function exportFromDrive(){
-  if(!gdriveConnected()){showToast("⚠ Önce Drive'a bağlan");return;}
-  var key=S.coin+"_"+INSTANT_BAR.okx;
-  var btn=document.getElementById("driveExportBtn");
-  var infoEl=document.getElementById("dcRangeInfo");
-  /* Dosya ID'yi bul */
-  if(!_gFileIds[key]){
-    if(infoEl)infoEl.textContent="☁️ Drive'da dosya aranıyor…";
-    var sr=await fetch(
-      "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27"+encodeURIComponent(key)+".json%27&fields=files(id,size)",
-      {headers:{Authorization:"Bearer "+_gToken}});
-    if(!sr.ok){showToast("⚠ Drive arama hatası: "+sr.status);return;}
-    var sj=await sr.json();
-    if(!sj.files||!sj.files.length){showToast("⚠ Drive'da mum dosyası yok");if(infoEl)infoEl.textContent="⚠ Drive'da dosya bulunamadı";return;}
-    _gFileIds[key]=sj.files[0].id;
-  }
-  /* Ham bytes olarak indir — JSON parse yok */
-  if(btn)btn.textContent="☁️ İndiriliyor…";
-  if(infoEl)infoEl.textContent="☁️ Drive'dan dosya indiriliyor…";
-  var dr=await fetch(
-    "https://www.googleapis.com/drive/v3/files/"+_gFileIds[key]+"?alt=media",
-    {headers:{Authorization:"Bearer "+_gToken}});
-  if(!dr.ok){showToast("⚠ Drive indirme hatası: "+dr.status);if(btn)btn.textContent="☁️ Drive→Dosya";return;}
-  /* Stream okuyarak KB ilerleme göster */
-  var reader=dr.body.getReader(),chunks=[],received=0;
-  while(true){
-    var _r=await reader.read();
-    if(_r.done)break;
-    chunks.push(_r.value);
-    received+=_r.value.length;
-    if(infoEl)infoEl.textContent="☁️ Drive'dan indiriliyor… "+Math.round(received/1024)+"KB";
-  }
-  var buf=new Uint8Array(received),pos=0;
-  for(var i=0;i<chunks.length;i++){buf.set(chunks[i],pos);pos+=chunks[i].length;}
-  var blob=new Blob([buf],{type:"application/json"});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement("a");
-  a.href=url;
-  a.download=key+"_drive_"+new Date().toISOString().slice(0,10)+".json";
-  a.click();
-  URL.revokeObjectURL(url);
-  if(btn)btn.textContent="☁️ Drive→Dosya";
-  showToast("✅ Drive dosyası indirildi ("+Math.round(received/1024/1024*10)/10+"MB)");
-  if(infoEl)infoEl.textContent="✅ Drive dosyası bilgisayara indirildi";
-}
 async function exportCandles(){
   var key=S.coin+"_"+INSTANT_BAR.okx;
   var data=[];
@@ -1146,7 +806,6 @@ async function importCandles(input){
   input.value="";
 }
 async function stClear(){
-  if(gdriveConnected())return gdClearAll();
   return cClearAll();
 }
 
@@ -1235,10 +894,6 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
 
   /* 1. IDB'den yükle; boşsa Drive'dan lazy-load */
   try{cached=await cGet(key);}catch(e){}
-  if(!cached.length&&gdriveConnected()){
-    showToast("☁️ Drive'dan yükleniyor…");
-    try{var d=await stGet(key);if(d&&d.length){cached=d;showToast("✓ Drive'dan "+d.length.toLocaleString()+" mum yüklendi");}}catch(e){}
-  }
 
   /* 2. Yineleme önleme seti */
   var tsSet=new Set();
@@ -1308,10 +963,6 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
     else{try{await cPut(key,cached);}catch(e){}}
     /* OPFS: cache temizliğine dayanıklı yerel yedek */
     opfsPut(key,cached);
-    if(gdriveConnected()){
-      showToast("☁️ Drive'a kaydediliyor…");
-      try{await gdPut(key,cached);showToast("✅ Drive'a kaydedildi · "+cached.length.toLocaleString()+" mum");}catch(e){showToast("⚠ Drive kayıt hatası");}
-    }
   }
 
   /* 7. Durum mesajı */
@@ -1356,13 +1007,6 @@ async function loadCandleRange(){
       var days=Math.round((cached[cached.length-1].ts-cached[0].ts)/(864e5));
       infoEl.textContent=(histDone?"✅ ":"⏳ ")+cached.length.toLocaleString()+" mum · "+days+" gün · "+from+" – "+to+(histDone?"":" · Geçmiş eksik");
       saveState();
-    } else if(_gFileIds[key]){
-      infoEl.textContent="☁️ Drive'da veri var, yükleniyor…";
-      if(!S.dateFrom)S.dateFrom=tsToDateInput(HISTORY_START_TS);
-      if(!S.dateTo)S.dateTo=tsToDateInput(Date.now());
-      inpFrom.value=S.dateFrom; inpTo.value=S.dateTo;
-    } else if(gdriveConnected()){
-      infoEl.textContent="☁️ Drive bağlı ama mum yok — 📥 Mum Çek ile yükleyin";
     } else {
       inpFrom.value=""; inpTo.value="";
       infoEl.textContent="Veri yok — 📥 Mum Çek ile yükleyin";
@@ -2317,7 +1961,6 @@ toggleTtpSub();
 
 /* ── Kalıcı depolama iste (tarayıcı baskı altında silmez) ── */
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
-/* ── Google Drive: onGisLoad() otomatik bağlanır ── */
 refreshCacheRange();
 /* ── Tarih aralıklarını önbellekten yükle ── */
 loadCandleRange();
