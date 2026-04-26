@@ -963,7 +963,8 @@ async function syncDriveToLocal(){
       toRestore.push(key);
       count++;
     });
-    if(count>0)showToast("☁️ Drive'da "+count+" mum seti mevcut");
+    if(count>0)showToast("☁️ Drive'da "+count+" mum seti bulundu");
+    else if(gdriveConnected())showToast("☁️ Drive bağlı — henüz mum yok, Mum Çek ile kaydet");
     loadCandleRange();
     refreshCacheRange();
     updateFetchBtnState();
@@ -1150,7 +1151,10 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
     var toWrite=(pend&&pend.length?pend:[]).concat(newC.length?newC:[]);
     if(toWrite.length){try{await cPut(key,toWrite);}catch(e){}}
     else{try{await cPut(key,cached);}catch(e){}}
-    if(gdriveConnected()){try{await gdPut(key,cached);}catch(e){}}
+    if(gdriveConnected()){
+      showToast("☁️ Drive'a kaydediliyor…");
+      try{await gdPut(key,cached);showToast("✅ Drive'a kaydedildi · "+cached.length.toLocaleString()+" mum");}catch(e){showToast("⚠ Drive kayıt hatası");}
+    }
   }
 
   /* 7. Durum mesajı */
@@ -1195,10 +1199,12 @@ async function loadCandleRange(){
       infoEl.textContent=(histDone?"✅ ":"⏳ ")+cached.length.toLocaleString()+" mum · "+from+" – "+to+(histDone?"":" · Geçmiş eksik — Mum Çek ile tamamlayın");
       saveState();
     } else if(_gFileIds[key]){
-      infoEl.textContent="☁️ Drive'dan indiriliyor…";
+      infoEl.textContent="☁️ Drive'da veri var, yükleniyor…";
       if(!S.dateFrom)S.dateFrom=tsToDateInput(HISTORY_START_TS);
       if(!S.dateTo)S.dateTo=tsToDateInput(Date.now());
       inpFrom.value=S.dateFrom; inpTo.value=S.dateTo;
+    } else if(gdriveConnected()){
+      infoEl.textContent="☁️ Drive bağlı ama mum yok — 📥 Mum Çek ile yükleyin";
     } else {
       inpFrom.value=""; inpTo.value="";
       infoEl.textContent="Veri yok — 📥 Mum Çek ile yükleyin";
