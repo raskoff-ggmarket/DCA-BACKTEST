@@ -1091,6 +1091,7 @@ async function importCandles(input){
     var key=S.coin+"_"+INSTANT_BAR.okx;
     await cPut(key,candles);
     showToast("✅ "+candles.length.toLocaleString()+" mum yüklendi");
+    S.dateFrom="";S.dateTo="";saveState();
     loadCandleRange();refreshCacheRange();updateFetchBtnState();
   }catch(e){showToast("⚠ Dosya okunamadı: "+e.message);}
   input.value="";
