@@ -1273,7 +1273,7 @@ function backtest(prices, rsiArr){
     dynSafeAmt=parseFloat((dynSafeAmt*ratio).toFixed(8));
   }
 
-  function closeDealAt(price,date,time,why){
+  function closeDealAt(price,date,why){
     var profit, bProfit=0;
     if(isBase){
       bProfit=deal.totalQty-deal.totalCost/price;
@@ -1338,13 +1338,13 @@ function backtest(prices, rsiArr){
         if(deal.ttpActive){
           if(price>deal.ttpPeak)deal.ttpPeak=price;
           if(price<=deal.ttpPeak*(1-S.ttpPct/100)){
-            closeDealAt(price,date,time,"TTP");
+            closeDealAt(price,date,"TTP");
             equity.push({date:date,value:eqVal(price),price:price});continue;
           }
         }
       } else {
         if(price>=tpPrice){
-          closeDealAt(price,date,time,"TP");
+          closeDealAt(price,date,"TP");
           equity.push({date:date,value:eqVal(price),price:price});continue;
         }
       }
