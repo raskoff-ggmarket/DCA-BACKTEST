@@ -955,17 +955,34 @@ async function syncDriveToLocal(){
       {headers:{Authorization:"Bearer "+_gToken}});
     if(!r.ok)return;
     var j=await r.json();
-    var count=0;
+    var count=0,toRestore=[];
     (j.files||[]).forEach(function(f){
       if(!f.name.endsWith(".json")||f.name==="settings.json"||f.name==="_settings.json")return;
       var key=f.name.replace(/\.json$/,"");
       _gFileIds[key]=f.id;
+      toRestore.push(key);
       count++;
     });
     if(count>0)showToast("☁️ Drive'da "+count+" mum seti mevcut");
     loadCandleRange();
     refreshCacheRange();
     updateFetchBtnState();
+    /* IDB boşsa Drive'dan otomatik yükle */
+    for(var i=0;i<toRestore.length;i++){
+      var rKey=toRestore[i];
+      try{
+        var idb=await cGet(rKey);
+        if(!idb||!idb.length){
+          showToast("☁️ Drive'dan otomatik yükleniyor…");
+          var rd=await gdGet(rKey);
+          if(rd&&rd.length){
+            try{await cPut(rKey,rd);}catch(e){}
+            showToast("✓ Drive'dan "+rd.length.toLocaleString()+" mum yüklendi");
+            loadCandleRange();refreshCacheRange();
+          }
+        }
+      }catch(e){console.error("[Drive] Otomatik yükleme hatası:",rKey,e);}
+    }
   }catch(e){}
 }
 async function stClear(){
