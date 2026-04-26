@@ -784,25 +784,30 @@ async function exportCandles(){
 async function importCandles(input){
   var file=input.files[0];
   if(!file)return;
-  showToast("📂 Yükleniyor…");
+  var infoEl=document.getElementById("dcRangeInfo");
+  if(infoEl)infoEl.textContent="📂 Dosya okunuyor…";
   try{
     var text=await file.text();
-    var raw=JSON.parse(text);
-    if(!Array.isArray(raw)||!raw.length){showToast("⚠ Geçersiz dosya");return;}
-    /* Hem compact [[ts,price]] hem eski [{ts,price,...}] formatını destekle */
+    var raw;
+    try{raw=JSON.parse(text);}catch(e){showToast("⚠ JSON hatası: "+e.message);if(infoEl)infoEl.textContent="";input.value="";return;}
+    if(!Array.isArray(raw)||!raw.length){showToast("⚠ Geçersiz dosya");if(infoEl)infoEl.textContent="";input.value="";return;}
     var candles=raw.map(function(d){
-      if(Array.isArray(d)){
-        var ts=d[0];
-        return {ts:ts,price:d[1],date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
-      }
-      return d;
-    });
+      if(Array.isArray(d)){var ts=d[0];return {ts:ts,price:d[1],date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};}
+      return {ts:d.ts,price:d.price,date:d.date||new Date(d.ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
+    }).filter(function(c){return c.ts>=HISTORY_START_TS;});
+    if(!candles.length){showToast("⚠ Geçerli mum bulunamadı");if(infoEl)infoEl.textContent="";input.value="";return;}
     var key=S.coin+"_"+INSTANT_BAR.okx;
-    await cPut(key,candles);
-    showToast("✅ "+candles.length.toLocaleString()+" mum yüklendi");
+    var CHUNK=10000,total=candles.length;
+    for(var i=0;i<total;i+=CHUNK){
+      await cPut(key,candles.slice(i,i+CHUNK));
+      if(infoEl)infoEl.textContent="📥 "+Math.min(i+CHUNK,total).toLocaleString()+" / "+total.toLocaleString()+" mum yazılıyor…";
+    }
+    /* OPFS yedek */
+    try{var saved=await cGet(key);if(saved&&saved.length)opfsPut(key,saved);}catch(e){}
+    showToast("✅ "+total.toLocaleString()+" mum yüklendi");
     S.dateFrom="";S.dateTo="";saveState();
     loadCandleRange();refreshCacheRange();updateFetchBtnState();
-  }catch(e){showToast("⚠ Dosya okunamadı: "+e.message);}
+  }catch(e){showToast("⚠ Hata: "+e.message);if(infoEl)infoEl.textContent="";}
   input.value="";
 }
 async function stClear(){
