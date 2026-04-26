@@ -659,6 +659,13 @@ function cClearAll(){
     });
   });
 }
+async function cPutBatched(key,candles,onProgress){
+  var CHUNK=10000,total=candles.length;
+  for(var i=0;i<total;i+=CHUNK){
+    await cPut(key,candles.slice(i,i+CHUNK));
+    if(onProgress)onProgress(Math.min(i+CHUNK,total),total);
+  }
+}
 function parseRawCandles(raw){
   return raw.map(function(k){
     return {
@@ -742,8 +749,11 @@ async function opfsRestore(){
   var data=await opfsGet(key);
   if(data&&data.length){
     var infoEl=document.getElementById("dcRangeInfo");
-    if(infoEl)infoEl.textContent="📱 Yerel depodan yükleniyor…";
-    try{await cPut(key,data);}catch(e){}
+    try{
+      await cPutBatched(key,data,function(done,tot){
+        if(infoEl)infoEl.textContent="📱 "+done.toLocaleString()+" / "+tot.toLocaleString()+" mum yükleniyor…";
+      });
+    }catch(e){}
     showToast("📱 "+data.length.toLocaleString()+" mum yerel depodan yüklendi");
     loadCandleRange();refreshCacheRange();updateFetchBtnState();
   }
@@ -757,7 +767,7 @@ async function stGet(key){
   /* 2. OPFS — hızlı, cache temizliğine dayanıklı */
   var opfsData=await opfsGet(key);
   if(opfsData&&opfsData.length>0){
-    try{await cPut(key,opfsData);}catch(e){}
+    try{await cPutBatched(key,opfsData);}catch(e){}
     return opfsData;
   }
   return [];
@@ -799,11 +809,10 @@ async function importCandles(input){
     }).filter(function(c){return c.ts>=HISTORY_START_TS;});
     if(!candles.length){showToast("⚠ Geçerli mum bulunamadı");if(infoEl)infoEl.textContent="";input.value="";return;}
     var key=S.coin+"_"+INSTANT_BAR.okx;
-    var CHUNK=10000,total=candles.length;
-    for(var i=0;i<total;i+=CHUNK){
-      await cPut(key,candles.slice(i,i+CHUNK));
-      if(infoEl)infoEl.textContent="📥 "+Math.min(i+CHUNK,total).toLocaleString()+" / "+total.toLocaleString()+" mum yazılıyor…";
-    }
+    var total=candles.length;
+    await cPutBatched(key,candles,function(done,tot){
+      if(infoEl)infoEl.textContent="📥 "+done.toLocaleString()+" / "+tot.toLocaleString()+" mum yazılıyor…";
+    });
     /* OPFS yedek */
     try{var saved=await cGet(key);if(saved&&saved.length)opfsPut(key,saved);}catch(e){}
     showToast("✅ "+total.toLocaleString()+" mum yüklendi");
