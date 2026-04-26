@@ -1033,7 +1033,7 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
 
   /* 1. IDB'den yükle; boşsa Drive'dan lazy-load */
   try{cached=await cGet(key);}catch(e){}
-  if(!cached.length&&gdriveConnected()&&_gFileIds[key]){
+  if(!cached.length&&gdriveConnected()){
     showToast("☁️ Drive'dan yükleniyor…");
     try{var d=await stGet(key);if(d&&d.length){cached=d;showToast("✓ Drive'dan "+d.length.toLocaleString()+" mum yüklendi");}}catch(e){}
   }
