@@ -942,12 +942,61 @@ async function gdClearAll(){
 }
 
 /* Aktif backend seçimi */
+/* ═══════════════════════════════
+   OPFS — tarayıcı cache temizliğinden bağımsız yerel depo
+═══════════════════════════════ */
+async function opfsPut(key,candles){
+  if(!navigator.storage||!navigator.storage.getDirectory)return;
+  try{
+    var compact=candles.map(function(c){return [c.ts,c.price];});
+    var root=await navigator.storage.getDirectory();
+    var fh=await root.getFileHandle(key+".json",{create:true});
+    var w=await fh.createWritable();
+    await w.write(JSON.stringify(compact));
+    await w.close();
+    console.log("[OPFS] Kaydedildi:",key,compact.length,"mum");
+  }catch(e){console.error("[OPFS] Yazma hatası:",e);}
+}
+async function opfsGet(key){
+  if(!navigator.storage||!navigator.storage.getDirectory)return null;
+  try{
+    var root=await navigator.storage.getDirectory();
+    var fh=await root.getFileHandle(key+".json");
+    var file=await fh.getFile();
+    var text=await file.text();
+    var raw=JSON.parse(text);
+    return raw.map(function(d){
+      if(Array.isArray(d)){var ts=d[0];return {ts:ts,price:d[1],date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};}
+      return d;
+    });
+  }catch(e){return null;}
+}
+async function opfsRestore(){
+  var key=S.coin+"_"+INSTANT_BAR.okx;
+  var idb=[];try{idb=await cGet(key);}catch(e){}
+  if(idb&&idb.length)return;
+  var data=await opfsGet(key);
+  if(data&&data.length){
+    var infoEl=document.getElementById("dcRangeInfo");
+    if(infoEl)infoEl.textContent="📱 Yerel depodan yükleniyor…";
+    try{await cPut(key,data);}catch(e){}
+    showToast("📱 "+data.length.toLocaleString()+" mum yerel depodan yüklendi");
+    loadCandleRange();refreshCacheRange();updateFetchBtnState();
+  }
+}
+
 async function stGet(key){
   /* 1. IDB — hızlı, ağ yok */
   var idb=[];
   try{idb=await cGet(key);}catch(e){}
   if(idb&&idb.length>0)return idb;
-  /* 2. IDB boş → Drive'dan indir (kullanıcı backtest/mum-çek bastığında) */
+  /* 2. OPFS — hızlı, cache temizliğine dayanıklı */
+  var opfsData=await opfsGet(key);
+  if(opfsData&&opfsData.length>0){
+    try{await cPut(key,opfsData);}catch(e){}
+    return opfsData;
+  }
+  /* 3. IDB boş → Drive'dan indir (kullanıcı backtest/mum-çek bastığında) */
   if(gdriveConnected()){
     if(_gMem[key]&&_gMem[key].length>0)return _gMem[key];
     try{
@@ -1257,6 +1306,8 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
     var toWrite=(pend&&pend.length?pend:[]).concat(newC.length?newC:[]);
     if(toWrite.length){try{await cPut(key,toWrite);}catch(e){}}
     else{try{await cPut(key,cached);}catch(e){}}
+    /* OPFS: cache temizliğine dayanıklı yerel yedek */
+    opfsPut(key,cached);
     if(gdriveConnected()){
       showToast("☁️ Drive'a kaydediliyor…");
       try{await gdPut(key,cached);showToast("✅ Drive'a kaydedildi · "+cached.length.toLocaleString()+" mum");}catch(e){showToast("⚠ Drive kayıt hatası");}
@@ -2264,11 +2315,15 @@ document.getElementById("chkTtp").checked = S.ttpEnabled;
 toggleReinvestSub();
 toggleTtpSub();
 
+/* ── Kalıcı depolama iste (tarayıcı baskı altında silmez) ── */
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
 /* ── Google Drive: onGisLoad() otomatik bağlanır ── */
 refreshCacheRange();
 /* ── Tarih aralıklarını önbellekten yükle ── */
 loadCandleRange();
 updateFetchBtnState();
+/* ── OPFS: IDB boşsa yerel dosyadan otomatik yükle ── */
+opfsRestore();
 </script>
 <div id="toast" class="toast" style="opacity:0"></div>
 </body>
