@@ -847,7 +847,7 @@ function updateGdriveUI(connected){
   }
 }
 
-async function gdGet(key){
+async function gdGet(key,onProgress){
   if(!gdriveConnected()){console.warn("[Drive] gdGet: bağlı değil");return null;}
   if(_gMem[key])return _gMem[key];
   if(!_gFileIds[key]){
@@ -865,7 +865,20 @@ async function gdGet(key){
     "https://www.googleapis.com/drive/v3/files/"+_gFileIds[key]+"?alt=media",
     {headers:{Authorization:"Bearer "+_gToken}});
   if(!r2.ok){console.error("[Drive] İndirme hatası:",r2.status);return null;}
-  var raw=await r2.json();
+  /* Stream okuyarak byte bazlı ilerleme takibi */
+  var total=parseInt(r2.headers.get("Content-Length")||"0");
+  var reader=r2.body.getReader();
+  var chunks=[],received=0;
+  while(true){
+    var _ref=await reader.read(),done=_ref.done,value=_ref.value;
+    if(done)break;
+    chunks.push(value);
+    received+=value.length;
+    if(onProgress)onProgress(received,total);
+  }
+  var buf=new Uint8Array(received),pos=0;
+  for(var ci=0;ci<chunks.length;ci++){buf.set(chunks[ci],pos);pos+=chunks[ci].length;}
+  var raw=JSON.parse(new TextDecoder().decode(buf));
   /* Eski format: [{ts,price,...}]  Yeni compact format: [[ts,price],...] */
   var data=raw.map(function(d){
     if(Array.isArray(d)){
@@ -980,8 +993,12 @@ async function syncDriveToLocal(){
         if(!idb||!idb.length){
           showToast("☁️ Drive'dan indiriliyor…");
           var infoEl=document.getElementById("dcRangeInfo");
-          if(infoEl)infoEl.textContent="☁️ Drive'dan indiriliyor…";
-          var rd=await gdGet(rKey);
+          if(infoEl)infoEl.textContent="☁️ Drive'dan indiriliyor… %0";
+          var rd=await gdGet(rKey,function(recv,tot){
+            var pct=tot>0?Math.round(recv/tot*100):0;
+            var kb=Math.round(recv/1024);
+            if(infoEl)infoEl.textContent="☁️ Drive'dan indiriliyor… %"+pct+" ("+kb+"KB)";
+          });
           if(rd&&rd.length){
             try{await cPut(rKey,rd);}catch(e){}
             showToast("✓ Drive'dan "+rd.length.toLocaleString()+" mum yüklendi");
