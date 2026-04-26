@@ -375,6 +375,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
       <button class="gd-btn gd-off" id="gdBtn" onclick="gToggle()" style="flex-shrink:0">Bağlan</button>
     </div>
+    <div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)">
+      <button onclick="exportCandles()" style="flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer">📤 Dışa Aktar</button>
+      <label style="flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer;display:block;text-align:center">📂 İçe Aktar<input type="file" accept=".json" style="display:none" onchange="importCandles(this)"></label>
+    </div>
   </div>
   <div class="err hidden" id="errBox"></div>
 </div>
@@ -989,6 +993,44 @@ async function syncDriveToLocal(){
       }catch(e){console.error("[Drive] Otomatik yükleme hatası:",rKey,e);}
     }
   }catch(e){}
+}
+async function exportCandles(){
+  var key=S.coin+"_"+INSTANT_BAR.okx;
+  var data=[];
+  try{data=await cGet(key);}catch(e){}
+  if(!data.length){showToast("⚠ İndirilecek mum yok");return;}
+  var compact=data.map(function(c){return [c.ts,c.price];});
+  var blob=new Blob([JSON.stringify(compact)],{type:"application/json"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url;
+  a.download=key+"_"+new Date().toISOString().slice(0,10)+".json";
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("✅ "+data.length.toLocaleString()+" mum indirildi");
+}
+async function importCandles(input){
+  var file=input.files[0];
+  if(!file)return;
+  showToast("📂 Yükleniyor…");
+  try{
+    var text=await file.text();
+    var raw=JSON.parse(text);
+    if(!Array.isArray(raw)||!raw.length){showToast("⚠ Geçersiz dosya");return;}
+    /* Hem compact [[ts,price]] hem eski [{ts,price,...}] formatını destekle */
+    var candles=raw.map(function(d){
+      if(Array.isArray(d)){
+        var ts=d[0];
+        return {ts:ts,price:d[1],date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
+      }
+      return d;
+    });
+    var key=S.coin+"_"+INSTANT_BAR.okx;
+    await cPut(key,candles);
+    showToast("✅ "+candles.length.toLocaleString()+" mum yüklendi");
+    loadCandleRange();refreshCacheRange();updateFetchBtnState();
+  }catch(e){showToast("⚠ Dosya okunamadı: "+e.message);}
+  input.value="";
 }
 async function stClear(){
   if(gdriveConnected())return gdClearAll();
