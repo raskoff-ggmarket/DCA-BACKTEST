@@ -377,6 +377,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     </div>
     <div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)">
       <button onclick="exportCandles()" style="flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer">📤 Dışa Aktar</button>
+      <button onclick="exportFromDrive()" id="driveExportBtn" style="flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer">☁️ Drive→Dosya</button>
       <label style="flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer;display:block;text-align:center">📂 İçe Aktar<input type="file" accept=".json" style="display:none" onchange="importCandles(this)"></label>
     </div>
   </div>
@@ -1010,6 +1011,51 @@ async function syncDriveToLocal(){
       }catch(e){console.error("[Drive] Otomatik yükleme hatası:",rKey,e);}
     }
   }catch(e){}
+}
+async function exportFromDrive(){
+  if(!gdriveConnected()){showToast("⚠ Önce Drive'a bağlan");return;}
+  var key=S.coin+"_"+INSTANT_BAR.okx;
+  var btn=document.getElementById("driveExportBtn");
+  var infoEl=document.getElementById("dcRangeInfo");
+  /* Dosya ID'yi bul */
+  if(!_gFileIds[key]){
+    if(infoEl)infoEl.textContent="☁️ Drive'da dosya aranıyor…";
+    var sr=await fetch(
+      "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27"+encodeURIComponent(key)+".json%27&fields=files(id,size)",
+      {headers:{Authorization:"Bearer "+_gToken}});
+    if(!sr.ok){showToast("⚠ Drive arama hatası: "+sr.status);return;}
+    var sj=await sr.json();
+    if(!sj.files||!sj.files.length){showToast("⚠ Drive'da mum dosyası yok");if(infoEl)infoEl.textContent="⚠ Drive'da dosya bulunamadı";return;}
+    _gFileIds[key]=sj.files[0].id;
+  }
+  /* Ham bytes olarak indir — JSON parse yok */
+  if(btn)btn.textContent="☁️ İndiriliyor…";
+  if(infoEl)infoEl.textContent="☁️ Drive'dan dosya indiriliyor…";
+  var dr=await fetch(
+    "https://www.googleapis.com/drive/v3/files/"+_gFileIds[key]+"?alt=media",
+    {headers:{Authorization:"Bearer "+_gToken}});
+  if(!dr.ok){showToast("⚠ Drive indirme hatası: "+dr.status);if(btn)btn.textContent="☁️ Drive→Dosya";return;}
+  /* Stream okuyarak KB ilerleme göster */
+  var reader=dr.body.getReader(),chunks=[],received=0;
+  while(true){
+    var _r=await reader.read();
+    if(_r.done)break;
+    chunks.push(_r.value);
+    received+=_r.value.length;
+    if(infoEl)infoEl.textContent="☁️ Drive'dan indiriliyor… "+Math.round(received/1024)+"KB";
+  }
+  var buf=new Uint8Array(received),pos=0;
+  for(var i=0;i<chunks.length;i++){buf.set(chunks[i],pos);pos+=chunks[i].length;}
+  var blob=new Blob([buf],{type:"application/json"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url;
+  a.download=key+"_drive_"+new Date().toISOString().slice(0,10)+".json";
+  a.click();
+  URL.revokeObjectURL(url);
+  if(btn)btn.textContent="☁️ Drive→Dosya";
+  showToast("✅ Drive dosyası indirildi ("+Math.round(received/1024/1024*10)/10+"MB)");
+  if(infoEl)infoEl.textContent="✅ Drive dosyası bilgisayara indirildi";
 }
 async function exportCandles(){
   var key=S.coin+"_"+INSTANT_BAR.okx;
