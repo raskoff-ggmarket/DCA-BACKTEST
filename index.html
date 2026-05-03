@@ -396,15 +396,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <button class="tab-btn" onclick="goTab('deals')">📋 Döngüler</button>
   </div>
   <div class="tp" id="tp-stats"><div class="sg" id="statsG"></div></div>
-  <div class="tp" id="tp-deals">
-    <div style="display:flex;gap:6px;padding:10px 14px 4px;flex-wrap:wrap">
-      <button class="chip on" id="df-all"    onclick="setDealFilter('all')"   >Tümü</button>
-      <button class="chip"    id="df-profit" onclick="setDealFilter('profit')" >💚 Kâr</button>
-      <button class="chip"    id="df-loss"   onclick="setDealFilter('loss')"   >🔴 Zarar</button>
-      <button class="chip"    id="df-open"   onclick="setDealFilter('open')"   >⏳ Açık</button>
-    </div>
-    <div class="dl" id="dealL"></div>
-  </div>
+  <div class="tp" id="tp-deals"><div class="dl" id="dealL"></div></div>
   </div><!-- /resultContent -->
 </div>
 
@@ -1205,7 +1197,7 @@ function backtest(prices, rsiArr){
             orders:[{date:date,price:price,size:dynInitAmt,qty:dynInitAmt/price}],
             totalCost:dynInitAmt,totalQty:dynInitAmt/price,
             avgCost:price,safetyCount:0,so:so,
-            ttpActive:false,ttpPeak:0,maxDDPct:0,
+            ttpActive:false,ttpPeak:0,
             snapshotInitAmt:dynInitAmt,snapshotSafeAmt:dynSafeAmt};
       inDeal=true;
 
@@ -1239,8 +1231,6 @@ function backtest(prices, rsiArr){
           deal.safetyCount++;lv.filled=true;
         }
       }
-      var ddNow=(deal.avgCost-price)/deal.avgCost*100;
-      if(ddNow>deal.maxDDPct)deal.maxDDPct=ddNow;
     }
     equity.push({date:date,value:eqVal(price),price:price});
   }
@@ -1498,56 +1488,17 @@ function render(res, source, mumCnt, dateFrom, dateTo){
   }
 
   /* Deals */
-  _lastDeals=deals; _lastIsBase=isBase; _lastCoin=coin;
-  _dealFilter='all';
-  ['all','profit','loss','open'].forEach(function(id){
-    var el=document.getElementById('df-'+id);
-    if(el)el.className='chip'+(id==='all'?' on':'');
-  });
-  renderDealList();
-}
-
-/* ═══════════════════════════════
-   DEAL LIST
-═══════════════════════════════ */
-var _lastDeals=[], _lastIsBase=false, _lastCoin=null, _dealFilter='all';
-
-function setDealFilter(fltr){
-  _dealFilter=fltr;
-  ['all','profit','loss','open'].forEach(function(id){
-    var el=document.getElementById('df-'+id);
-    if(el)el.className='chip'+(id===fltr?' on':'');
-  });
-  renderDealList();
-}
-
-function renderDealList(){
-  var deals=_lastDeals, isBase=_lastIsBase, coin=_lastCoin||{sym:'Coin'};
-  var fltr=_dealFilter;
-  var filtered=deals.filter(function(d){
-    if(fltr==='profit')return d.profit>0&&d.why!=='OPEN';
-    if(fltr==='loss')  return d.profit<=0&&d.why!=='OPEN';
-    if(fltr==='open')  return d.why==='OPEN';
-    return true;
-  });
   var dl=document.getElementById("dealL"); dl.innerHTML="";
-  if(!filtered.length){
-    dl.innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px">Sonuç yok</div>';
-    return;
-  }
-  filtered.forEach(function(d){
-    var origIdx=deals.indexOf(d);
+  deals.forEach(function(d,i){
     var isOpen=d.why==="OPEN";
     var pc2=d.profit>=0?"var(--green)":"var(--red)";
     var bc=isOpen?"rgba(251,191,36,.2)":d.profit>=0?"rgba(0,212,170,.18)":"rgba(255,79,109,.18)";
     var baseLbl=isBase&&d.baseProfit>0?' <span style="color:var(--accent);font-size:10px;font-weight:700">+'+f(d.baseProfit,5)+' '+coin.sym+'</span>':"";
-    var dd=d.maxDDPct||0;
-    var ddColor=dd<5?"var(--green)":dd<15?"var(--yellow)":"var(--red)";
     dl.innerHTML+=
-      '<div class="dc" style="border-color:'+bc+';animation-delay:'+Math.min(origIdx*.02,.3)+'s">'+
+      '<div class="dc" style="border-color:'+bc+';animation-delay:'+Math.min(i*.02,.3)+'s">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
       '<div>'+
-      '<div class="dm">#'+(origIdx+1)+' '+d.startDate+' → '+d.endDate+
+      '<div class="dm">#'+(i+1)+' '+d.startDate+' → '+d.endDate+
         (isOpen?' <span style="color:var(--yellow);font-size:10px">⏳ AÇIK</span>':"")+
         (d.why==="TTP"?' <span style="color:var(--purple);font-size:10px">🎯 TTP</span>':"")+
         baseLbl+
@@ -1565,7 +1516,6 @@ function renderDealList(){
       [["İlk Giriş",d.initPrice],[isOpen?"Anlık":"Çıkış",d.exitPrice],["Yatırılan",d.totalCost]].map(function(r){
         return '<div class="dc3"><div class="dc3l">'+r[0]+'</div><div class="dc3v">'+fu(r[1])+'</div></div>';
       }).join("")+
-      '<div class="dc3" style="border-color:'+ddColor+'55"><div class="dc3l">Max DD</div><div class="dc3v" style="color:'+ddColor+'">'+fp(-dd)+'</div></div>'+
       '</div></div>';
   });
 }
