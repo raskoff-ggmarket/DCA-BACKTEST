@@ -216,7 +216,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
   <div class="splash-title">DCA Backtest</div>
   <div class="splash-sub">DCA Bot Simülatörü</div>
-  <div style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:.08em;margin-top:4px;opacity:.7">v1.2.0</div>
+  <div style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:.08em;margin-top:4px;opacity:.7">v1.0.0</div>
   <div class="splash-divider"></div>
   <div class="splash-credit">
     <div class="splash-credit-line">Designed and Built by <span>Raskoff</span></div>
@@ -235,7 +235,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div>
       <div class="hdr-t">Backtest</div>
       <div class="hdr-s">DCA PARAMETRELERİ</div>
-      <div style="font-size:9px;color:var(--text3);opacity:.55;letter-spacing:.06em;margin-top:1px">v1.2.0</div>
+      <div style="font-size:9px;color:var(--text3);opacity:.55;letter-spacing:.06em;margin-top:1px">v1.0.0</div>
     </div>
   </div>
   <div class="hdr-badge" id="hdrBadge">₿ BTC · 1Y</div>
@@ -396,7 +396,15 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <button class="tab-btn" onclick="goTab('deals')">📋 Döngüler</button>
   </div>
   <div class="tp" id="tp-stats"><div class="sg" id="statsG"></div></div>
-  <div class="tp" id="tp-deals"><div class="dl" id="dealL"></div></div>
+  <div class="tp" id="tp-deals">
+    <div style="display:flex;gap:6px;padding:10px 14px 4px;flex-wrap:wrap">
+      <button class="chip on" id="df-all"    onclick="setDealFilter('all')"   >Tümü</button>
+      <button class="chip"    id="df-profit" onclick="setDealFilter('profit')" >💚 Kâr</button>
+      <button class="chip"    id="df-loss"   onclick="setDealFilter('loss')"   >🔴 Zarar</button>
+      <button class="chip"    id="df-open"   onclick="setDealFilter('open')"   >⏳ Açık</button>
+    </div>
+    <div class="dl" id="dealL"></div>
+  </div>
   </div><!-- /resultContent -->
 </div>
 
@@ -1336,20 +1344,11 @@ async function run(){
       mumCount=prices.length;
     }
 
-    /* Performans: 1m veride çok fazla mum varsa örnekle */
-    if(S.cond==="instant"&&prices.length>150000){
-      var step=prices.length>600000?5:prices.length>300000?3:2;
-      prices=prices.filter(function(_,i){return i%step===0;});
-      mumCount=prices.length;
-      sourceLabel+=" (×"+step+" örnekleme)";
-    }
     setLoad(90);
     var result = backtest(prices, rsiArr);
     var _elapsed=Date.now()-_t0;
     await new Promise(function(r){setTimeout(r,Math.max(0,400-_elapsed));});
-    var _d0=prices[0].date, _dN=prices[prices.length-1].date;
-    render(result, sourceLabel, mumCount, _d0, _dN);
-    saveResult(result, sourceLabel, mumCount, _d0, _dN);
+    render(result, sourceLabel, mumCount, prices[0].date, prices[prices.length-1].date);
     refreshCacheRange();
     goResult();
 
@@ -1500,18 +1499,44 @@ function render(res, source, mumCnt, dateFrom, dateTo){
 
   /* Deals */
   _lastDeals=deals; _lastIsBase=isBase; _lastCoin=coin;
+  _dealFilter='all';
+  ['all','profit','loss','open'].forEach(function(id){
+    var el=document.getElementById('df-'+id);
+    if(el)el.className='chip'+(id==='all'?' on':'');
+  });
   renderDealList();
 }
 
 /* ═══════════════════════════════
    DEAL LIST
 ═══════════════════════════════ */
-var _lastDeals=[], _lastIsBase=false, _lastCoin=null;
+var _lastDeals=[], _lastIsBase=false, _lastCoin=null, _dealFilter='all';
+
+function setDealFilter(fltr){
+  _dealFilter=fltr;
+  ['all','profit','loss','open'].forEach(function(id){
+    var el=document.getElementById('df-'+id);
+    if(el)el.className='chip'+(id===fltr?' on':'');
+  });
+  renderDealList();
+}
 
 function renderDealList(){
   var deals=_lastDeals, isBase=_lastIsBase, coin=_lastCoin||{sym:'Coin'};
+  var fltr=_dealFilter;
+  var filtered=deals.filter(function(d){
+    if(fltr==='profit')return d.profit>0&&d.why!=='OPEN';
+    if(fltr==='loss')  return d.profit<=0&&d.why!=='OPEN';
+    if(fltr==='open')  return d.why==='OPEN';
+    return true;
+  });
   var dl=document.getElementById("dealL"); dl.innerHTML="";
-  deals.forEach(function(d,origIdx){
+  if(!filtered.length){
+    dl.innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px">Sonuç yok</div>';
+    return;
+  }
+  filtered.forEach(function(d){
+    var origIdx=deals.indexOf(d);
     var isOpen=d.why==="OPEN";
     var pc2=d.profit>=0?"var(--green)":"var(--red)";
     var bc=isOpen?"rgba(251,191,36,.2)":d.profit>=0?"rgba(0,212,170,.18)":"rgba(255,79,109,.18)";
@@ -1543,41 +1568,6 @@ function renderDealList(){
       '<div class="dc3" style="border-color:'+ddColor+'55"><div class="dc3l">Max DD</div><div class="dc3v" style="color:'+ddColor+'">'+fp(-dd)+'</div></div>'+
       '</div></div>';
   });
-}
-
-/* ═══════════════════════════════
-   RESULT PERSISTENCE
-═══════════════════════════════ */
-function _slimDeal(d){
-  return{startDate:d.startDate,endDate:d.endDate,initPrice:d.initPrice,exitPrice:d.exitPrice,
-    avgCost:d.avgCost,totalCost:d.totalCost,safetyCount:d.safetyCount,
-    profit:d.profit,profitPct:d.profitPct,baseProfit:d.baseProfit||0,
-    why:d.why,maxDDPct:d.maxDDPct||0};
-}
-function saveResult(res,source,mumCnt,dateFrom,dateTo){
-  try{
-    localStorage.setItem("dca_result_v1",JSON.stringify({
-      stats:res.stats,
-      deals:res.deals.map(_slimDeal),
-      openDeal:res.openDeal?_slimDeal(res.openDeal):null,
-      source:source,mumCnt:mumCnt,dateFrom:dateFrom,dateTo:dateTo,
-      maxSO:S.maxSO,tpPct:S.tpPct,coin:S.coin
-    }));
-  }catch(e){}
-}
-function restoreResult(){
-  try{
-    var raw=localStorage.getItem("dca_result_v1");
-    if(!raw)return;
-    var d=JSON.parse(raw);
-    if(!d||!d.stats||!d.deals)return;
-    /* Geçici olarak o anki backtest koşullarını taklit et */
-    var savedMaxSO=S.maxSO,savedTpPct=S.tpPct,savedCoin=S.coin;
-    S.maxSO=d.maxSO;S.tpPct=d.tpPct;S.coin=d.coin;
-    render({stats:d.stats,deals:d.deals,openDeal:d.openDeal,equity:[]},
-           d.source,d.mumCnt,d.dateFrom,d.dateTo);
-    S.maxSO=savedMaxSO;S.tpPct=savedTpPct;S.coin=savedCoin;
-  }catch(e){}
 }
 
 /* ═══════════════════════════════
@@ -2045,8 +2035,6 @@ loadCandleRange();
 updateFetchBtnState();
 /* ── OPFS: IDB boşsa yerel dosyadan otomatik yükle ── */
 opfsRestore();
-/* ── Önceki backtest sonucunu geri yükle ── */
-restoreResult();
 </script>
 <div id="toast" class="toast" style="opacity:0"></div>
 </body>
