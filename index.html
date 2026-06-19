@@ -216,7 +216,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
   <div class="splash-title">DCA Backtest</div>
   <div class="splash-sub">DCA Bot Simülatörü</div>
-  <div style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:.08em;margin-top:4px;opacity:.7">v1.0.0</div>
   <div class="splash-divider"></div>
   <div class="splash-credit">
     <div class="splash-credit-line">Designed and Built by <span>Raskoff</span></div>
@@ -235,7 +234,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div>
       <div class="hdr-t">Backtest</div>
       <div class="hdr-s">DCA PARAMETRELERİ</div>
-      <div style="font-size:9px;color:var(--text3);opacity:.55;letter-spacing:.06em;margin-top:1px">v1.0.0</div>
     </div>
   </div>
   <div class="hdr-badge" id="hdrBadge">₿ BTC · 1Y</div>
@@ -1720,15 +1718,15 @@ var OPT_PROFILES=[
   {
     id:"orta",label:"⚖️ Orta Vade",color:"var(--accent)",
     ranges:{
-      maxSO:[4,10],priceStep:[1.5,4.0],stepMult:[1.0,1.8],
-      amtMult:[1.0,1.8],tpPct:[1.0,2.5],
+      maxSO:[4,10],priceStep:[2.0,5.0],stepMult:[1.0,1.8],
+      amtMult:[1.0,1.8],tpPct:[1.0,3.0],
     }
   },
   {
     id:"uzun",label:"🏔️ Uzun Vade",color:"var(--purple)",
     ranges:{
-      maxSO:[8,15],priceStep:[2.5,6.0],stepMult:[1.0,2.0],
-      amtMult:[1.0,2.0],tpPct:[1.5,4.0],
+      maxSO:[8,18],priceStep:[3.0,8.0],stepMult:[1.0,2.0],
+      amtMult:[1.0,1.8],tpPct:[1.5,5.0],
     }
   }
 ];
@@ -1777,8 +1775,13 @@ function backtestWithParams(prices,rsiArr,params){
 }
 
 function _optScore(stats){
-  if(!stats||stats.completedCycles<3)return -Infinity;
-  return stats.arbitrageAPR*(1-stats.maxDrawdown/150);
+  /* En az 5 tamamlanan döngü — çöküşte takılan botları eler */
+  if(!stats||stats.completedCycles<5)return -Infinity;
+  /* DD %70'i aşarsa tamamen sil — kurtarılamaz */
+  if(stats.maxDrawdown>70)return -Infinity;
+  /* Hedef: max APR + min DD. DD'ye 2.5× ağırlık → her 1% DD için 2.5 APR puanı lazım */
+  var apr=Math.max(0,stats.arbitrageAPR);
+  return apr - stats.maxDrawdown*2.5;
 }
 
 async function loadOptDateRange(){
@@ -1824,7 +1827,7 @@ async function runOptimizer(){
     if(dateFrom||dateTo)prices=filterByDateRange(prices,dateFrom,dateTo);
     if(!prices||prices.length<20)throw new Error("Seçilen tarih aralığında yeterli veri yok.");
 
-    var SAMPLES=300;
+    var SAMPLES=500;
     var allProfileResults=[];
 
     for(var pi=0;pi<OPT_PROFILES.length;pi++){
@@ -1855,7 +1858,7 @@ async function runOptimizer(){
     allProfileResults.forEach(function(pr){
       resultsEl.innerHTML+=_renderOptProfile(pr.profile,pr.best);
     });
-    statusEl.textContent="✅ Tarama tamamlandı · "+SAMPLES+" × 3 profil · Tarih: "+(prices[0].date||"")+" – "+(prices[prices.length-1].date||"");
+    statusEl.textContent="✅ Tarama tamamlandı · "+SAMPLES+" × 3 profil = "+(SAMPLES*3)+" kombinasyon · Tarih: "+(prices[0].date||"")+" – "+(prices[prices.length-1].date||"");
 
   }catch(e){
     statusEl.textContent="⚠ "+e.message;
@@ -1875,11 +1878,23 @@ function _renderOptProfile(profile,best){
   }
   var s=best.stats,p=best.params;
   var apr=s.arbitrageAPR,dd=s.maxDrawdown,cyc=s.completedCycles;
-  var aprColor=apr>=0?"var(--green)":"var(--red)";
+  var aprColor=apr>=30?"var(--green)":apr>=10?"var(--yellow)":"var(--red)";
+  var ddColor=dd<20?"var(--green)":dd<40?"var(--yellow)":"var(--red)";
+  var wrColor=s.winRate>=70?"var(--green)":s.winRate>=50?"var(--yellow)":"var(--red)";
   html+='<div style="background:var(--bg2);border:1px solid '+profile.color+'33;border-radius:10px;padding:12px 14px">';
-  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
-  html+='<div style="font-size:20px;font-weight:800;color:'+aprColor+'">'+fp(apr)+'</div>';
-  html+='<div style="text-align:right;font-size:11px;color:var(--text3)">DD '+fp(-dd)+'<br>'+cyc+' döngü</div>';
+  /* Üst satır: APR / MAX DD / WIN RATE */
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:10px;text-align:center">';
+  html+='<div><div style="font-size:9px;color:var(--text3);letter-spacing:.04em;margin-bottom:2px">KAR ORANI</div>'
+      +'<div style="font-size:16px;font-weight:800;color:'+aprColor+'">'+fp(apr)+'</div></div>';
+  html+='<div><div style="font-size:9px;color:var(--text3);letter-spacing:.04em;margin-bottom:2px">MAX DD</div>'
+      +'<div style="font-size:16px;font-weight:800;color:'+ddColor+'">'+fp(-dd)+'</div></div>';
+  html+='<div><div style="font-size:9px;color:var(--text3);letter-spacing:.04em;margin-bottom:2px">WIN RATE</div>'
+      +'<div style="font-size:16px;font-weight:800;color:'+wrColor+'">'+fp(s.winRate)+'</div></div>';
+  html+='</div>';
+  /* Alt bilgi satırı */
+  html+='<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">';
+  html+='<span>'+cyc+' döngü</span>';
+  html+='<span>Skor <span style="color:var(--text)">'+best.score.toFixed(1)+'</span></span>';
   html+='</div>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px;font-size:11px;margin-bottom:10px">';
   html+='<div style="color:var(--text3)">BO <span style="color:var(--text);font-weight:700">$'+p.initAmt+'</span></div>';
