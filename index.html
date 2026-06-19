@@ -699,6 +699,23 @@ function showToast(msg){
   t.textContent=msg;t.style.opacity="1";
   clearTimeout(t._tid);t._tid=setTimeout(function(){t.style.opacity="0";},2500);
 }
+function playDone(){
+  try{
+    var ctx=new(window.AudioContext||window.webkitAudioContext)();
+    /* Üç nota: sol-mi-do (başarı akordu) */
+    [[0,392],[0.18,523],[0.36,659]].forEach(function(n){
+      var osc=ctx.createOscillator();
+      var gain=ctx.createGain();
+      osc.connect(gain);gain.connect(ctx.destination);
+      osc.type="sine";osc.frequency.value=n[1];
+      var t=ctx.currentTime+n[0];
+      gain.gain.setValueAtTime(0,t);
+      gain.gain.linearRampToValueAtTime(0.18,t+0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+      osc.start(t);osc.stop(t+0.5);
+    });
+  }catch(e){}
+}
 async function clearAllData(){
   if(!confirm("Tüm mumlar silinsin mi?"))return;
   showToast("🗑 Siliniyor…");
@@ -1340,6 +1357,7 @@ async function run(){
     await new Promise(function(r){setTimeout(r,Math.max(0,400-_elapsed));});
     render(result, sourceLabel, mumCount, prices[0].date, prices[prices.length-1].date);
     refreshCacheRange();
+    playDone();
     goResult();
 
   } catch(e){
