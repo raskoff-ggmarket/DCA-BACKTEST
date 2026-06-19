@@ -289,6 +289,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <span>⚙️ Bot Parametreleri</span>
       <button onclick="saveSettings()" title="Parametreleri indir" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:3px 9px;border-radius:7px;font-size:11px;cursor:pointer;line-height:1.4">📋 Kopyala</button>
     </div>
+    <div id="coverageChip" style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;border:1px solid;margin-bottom:6px;display:inline-block">🛡 Kapsama: —</div>
     <div class="row" id="row-initAmt"><div><div class="rl">İlk alım miktarı ($)</div><div class="rs">Her döngünün ilk alım emri büyüklüğü</div></div></div>
     <div class="row" id="row-safeAmt"><div><div class="rl">Güvenlik emri miktarı ($)</div><div class="rs">Her güvenlik emrinin başlangıç büyüklüğü</div></div></div>
     <div class="row" id="row-priceStep"><div><div class="rl">Fiyat adımı (%)</div><div class="rs">Güvenlik emrinin tetikleneceği fiyat düşüşü</div></div></div>
@@ -1294,6 +1295,7 @@ function backtest(prices, rsiArr){
       finalSafeAmt:dynSafeAmt,
       accumBase:accumBase,
       isBase:isBase,
+      firstPrice:prices[0].price,
     }
   };
 }
@@ -1438,6 +1440,35 @@ function render(res, source, mumCnt, dateFrom, dateTo){
   sg.innerHTML+=fullRow("Arbitrage APR / Toplam APR",
     fp(stats.arbitrageAPR)+" / "+fp(stats.totalAPR),
     stats.arbitrageAPR>=0?"var(--green)":"var(--red)");
+
+  /* ── Al & Tut karşılaştırması ── */
+  if(stats.firstPrice&&stats.firstPrice>0){
+    var bhQty=S.startCapital/stats.firstPrice;
+    var bhVal=bhQty*stats.lastPrice;
+    var bhPnL=bhVal-S.startCapital;
+    var bhPct=bhPnL/S.startCapital*100;
+    var dcaPct=stats.totalPnLPct;
+    var dcaWins=dcaPct>=bhPct;
+    var gold="var(--yellow)";
+    var neutral="var(--text3)";
+    var dcaColor=dcaWins?gold:neutral;
+    var bhColor=!dcaWins?gold:neutral;
+    var trophy=dcaWins?"🏆 DCA":"🏆 Al & Tut";
+    sg.innerHTML+='<div class="sc" style="grid-column:1/-1;border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.05);padding:14px 16px">'
+      +'<div style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px">'+trophy+' kazandı</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +'<div style="background:var(--bg3);border-radius:10px;padding:10px 12px;border:1px solid '+(dcaWins?"rgba(251,191,36,.5)":"var(--border)")+'">'
+        +'<div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">DCA Bot</div>'
+        +'<div style="font-size:18px;font-weight:800;color:'+dcaColor+'">'+fp(dcaPct)+'</div>'
+        +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+(stats.totalPnL>=0?"+":"")+fu(stats.totalPnL)+' → '+fu(stats.finalCapital)+'</div>'
+      +'</div>'
+      +'<div style="background:var(--bg3);border-radius:10px;padding:10px 12px;border:1px solid '+(!dcaWins?"rgba(251,191,36,.5)":"var(--border)")+'">'
+        +'<div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Al & Tut</div>'
+        +'<div style="font-size:18px;font-weight:800;color:'+bhColor+'">'+fp(bhPct)+'</div>'
+        +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+(bhPnL>=0?"+":"")+fu(bhPnL)+' → '+fu(bhVal)+'</div>'
+      +'</div>'
+      +'</div></div>';
+  }
 
   if(isBase){
     sg.innerHTML+=
@@ -1651,6 +1682,12 @@ function refreshMainChips(){
   document.getElementById("coinC").value=S.coin;
 }
 
+function calcCoverage(){
+  /* Tüm SO'ların tetikleneceği en derin fiyat seviyesini hesapla */
+  var lvl=1, step=S.priceStep;
+  for(var n=0;n<S.maxSO;n++){lvl*=(1-step/100);step*=S.stepMult;}
+  return (1-lvl)*100; /* başlangıç fiyatından toplam düşüş % */
+}
 function updateCap(){
   var t=S.initAmt, a=S.safeAmt;
   for(var i=0;i<S.maxSO;i++){t+=a;a*=S.amtMult;}
@@ -1660,6 +1697,15 @@ function updateCap(){
   document.getElementById("capT").textContent=ok?"✓ Yeterli — $"+Math.ceil(t)+" gerekli":"⚠ Tek döngü maks: $"+Math.ceil(t)+" — yetersiz";
   var btn=document.getElementById("fabBtn");
   btn.disabled=!ok; btn.textContent=ok?"▶ BACKTEST":"⚠ Sermaye Yetersiz";
+  /* Kapsama göstergesi */
+  var cov=calcCoverage();
+  var covEl=document.getElementById("coverageChip");
+  if(covEl){
+    var covColor=cov>=40?"var(--green)":cov>=20?"var(--yellow)":"var(--red)";
+    covEl.textContent="🛡 Kapsama: %"+cov.toFixed(1)+" düşüş";
+    covEl.style.color=covColor;
+    covEl.style.borderColor=covColor;
+  }
 }
 
 
