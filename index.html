@@ -1471,19 +1471,31 @@ function render(res, source, mumCnt, dateFrom, dateTo){
     var neutral="var(--text3)";
     var dcaColor=dcaWins?gold:neutral;
     var bhColor=!dcaWins?gold:neutral;
-    var trophy=dcaWins?"🏆 DCA":"🏆 Al & Tut";
+    var trophy=dcaWins?"🏆 DCA kazandı":"🏆 Al & Tut kazandı";
+    var symLbl=coin?coin.sym:"Coin";
     sg.innerHTML+='<div class="sc" style="grid-column:1/-1;border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.05);padding:14px 16px">'
-      +'<div style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px">'+trophy+' kazandı</div>'
+      +'<div style="font-size:11px;font-weight:800;color:var(--yellow);letter-spacing:.04em;margin-bottom:10px">'+trophy+'</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      /* DCA kartı */
       +'<div style="background:var(--bg3);border-radius:10px;padding:10px 12px;border:1px solid '+(dcaWins?"rgba(251,191,36,.5)":"var(--border)")+'">'
-        +'<div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">DCA Bot</div>'
+        +'<div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">DCA Bot</div>'
         +'<div style="font-size:18px;font-weight:800;color:'+dcaColor+'">'+fp(dcaPct)+'</div>'
-        +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+(stats.totalPnL>=0?"+":"")+fu(stats.totalPnL)+' → '+fu(stats.finalCapital)+'</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 0;margin-top:7px">'
+          +'<div style="font-size:9px;color:var(--text3)">Başlangıç</div><div style="font-size:9px;color:var(--text);font-weight:700;text-align:right">'+fu(S.startCapital)+'</div>'
+          +'<div style="font-size:9px;color:var(--text3)">Son bakiye</div><div style="font-size:9px;color:'+dcaColor+';font-weight:700;text-align:right">'+fu(stats.finalCapital)+'</div>'
+          +'<div style="font-size:9px;color:var(--text3)">Kâr/Zarar</div><div style="font-size:9px;color:'+(stats.totalPnL>=0?"var(--green)":"var(--red)")+';font-weight:700;text-align:right">'+(stats.totalPnL>=0?"+":"")+fu(stats.totalPnL)+'</div>'
+        +'</div>'
       +'</div>'
+      /* Al & Tut kartı */
       +'<div style="background:var(--bg3);border-radius:10px;padding:10px 12px;border:1px solid '+(!dcaWins?"rgba(251,191,36,.5)":"var(--border)")+'">'
-        +'<div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Al & Tut</div>'
+        +'<div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Al & Tut</div>'
         +'<div style="font-size:18px;font-weight:800;color:'+bhColor+'">'+fp(bhPct)+'</div>'
-        +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+(bhPnL>=0?"+":"")+fu(bhPnL)+' → '+fu(bhVal)+'</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 0;margin-top:7px">'
+          +'<div style="font-size:9px;color:var(--text3)">Başlangıç</div><div style="font-size:9px;color:var(--text);font-weight:700;text-align:right">'+fu(S.startCapital)+'</div>'
+          +'<div style="font-size:9px;color:var(--text3)">Son bakiye</div><div style="font-size:9px;color:'+bhColor+';font-weight:700;text-align:right">'+fu(bhVal)+'</div>'
+          +'<div style="font-size:9px;color:var(--text3)">Kâr/Zarar</div><div style="font-size:9px;color:'+(bhPnL>=0?"var(--green)":"var(--red)")+';font-weight:700;text-align:right">'+(bhPnL>=0?"+":"")+fu(bhPnL)+'</div>'
+          +'<div style="font-size:9px;color:var(--text3)">Alınan adet</div><div style="font-size:9px;color:var(--accent);font-weight:700;text-align:right">'+f(bhQty,4)+' '+symLbl+'</div>'
+        +'</div>'
       +'</div>'
       +'</div></div>';
   }
