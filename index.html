@@ -1775,13 +1775,17 @@ function backtestWithParams(prices,rsiArr,params){
 }
 
 function _optScore(stats){
-  /* En az 5 tamamlanan döngü — çöküşte takılan botları eler */
-  if(!stats||stats.completedCycles<5)return -Infinity;
-  /* DD %70'i aşarsa tamamen sil — kurtarılamaz */
-  if(stats.maxDrawdown>70)return -Infinity;
-  /* Hedef: max APR + min DD. DD'ye 2.5× ağırlık → her 1% DD için 2.5 APR puanı lazım */
+  if(!stats||stats.completedCycles<3)return -Infinity;
+  if(stats.maxDrawdown>75)return -Infinity;
+  /* Takılı pozisyon testi: yatırılan tutarın %25'inden fazla floating kayıp varsa → REDDEDİLDİ
+     Bu, safety orderlar bitip fiyat TP'ye dönemeyen "çöküş takılması"nı eler */
+  var floatRatio=stats.investedAmt>0?stats.unrealizedPnL/stats.investedAmt:0;
+  if(floatRatio<-0.25)return -Infinity;
+  /* Skor: max APR − DD cezası − kalan floating kayıp cezası */
   var apr=Math.max(0,stats.arbitrageAPR);
-  return apr - stats.maxDrawdown*2.5;
+  var ddPenalty=stats.maxDrawdown*2;
+  var floatPenalty=floatRatio<0?Math.abs(floatRatio)*200:0;
+  return apr-ddPenalty-floatPenalty;
 }
 
 async function loadOptDateRange(){
