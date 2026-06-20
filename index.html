@@ -1697,10 +1697,9 @@ function refreshMainChips(){
 }
 
 function calcCoverage(){
-  /* Tüm SO'ların tetikleneceği en derin fiyat seviyesini hesapla */
-  var lvl=1, step=S.priceStep;
-  for(var n=0;n<S.maxSO;n++){lvl*=(1-step/100);step*=S.stepMult;}
-  return (1-lvl)*100; /* başlangıç fiyatından toplam düşüş % */
+  var total=0, step=S.priceStep;
+  for(var n=0;n<S.maxSO;n++){total+=step;step*=S.stepMult;}
+  return total;
 }
 function updateCap(){
   var t=S.initAmt, a=S.safeAmt;
