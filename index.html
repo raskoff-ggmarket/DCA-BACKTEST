@@ -1703,29 +1703,31 @@ function calcCoverage(){
   return total;
 }
 function calcOrderSummary(){
-  var stepNow=S.priceStep;
-  var cumPct=0; // girişten lineer kümülatif % (coverage chipiyle aynı mantık)
-  var totalCost=S.initAmt;
-  var totalCoins=S.initAmt; // entry price=1 → coins=amount
-  var soLevels=[];
+  // 3Commas ile birebir aynı formül:
+  // SO trigger = başlangıç × (1 - kümülatif_lineer_pct / 100)
+  // Ağırlıklı ortalama = toplam_maliyet / toplam_coin (normalize, giriş=1)
+  // TP yükselmesi = TP_fiyatı / SO_trigger_fiyatı - 1
+  var stepNow=S.priceStep, cumPct=0;
+  var totalCost=S.initAmt, totalCoins=S.initAmt;
+  var rows=[];
   for(var n=0;n<S.maxSO;n++){
-    cumPct+=stepNow; // lineer toplam
-    var soPrice=1-cumPct/100; // girişten fiyat (başlangıç fiyatı baz)
+    cumPct+=stepNow;
+    var soPrice=1-cumPct/100;          // SO trigger (giriş=1 baz)
     var soAmt=S.safeAmt*Math.pow(S.amtMult,n);
     totalCost+=soAmt;
     totalCoins+=soAmt/soPrice;
-    soLevels.push({pct:-cumPct,amt:soAmt});
+    var runAvg=totalCost/totalCoins;   // ağırlıklı ortalama (normalize)
+    var tpPrice=runAvg*(1+S.tpPct/100);
+    rows.push({
+      devPct:-cumPct,                          // girişten sapma (negatif)
+      soAmt:soAmt,                             // bu SO'nun hacmi (USDT)
+      totalAmt:totalCost,                      // kümülatif toplam (USDT)
+      avgFromEntry:(runAvg-1)*100,             // ort. alış (girişten %)
+      tpFromSO:(tpPrice/soPrice-1)*100         // TP (bu SO'nun trigger'ından %)
+    });
     stepNow*=S.stepMult;
   }
-  var avgPrice=totalCost/totalCoins;
-  var tpPrice=avgPrice*(1+S.tpPct/100);
-  return {
-    totalCost:totalCost,
-    avgPricePct:(avgPrice-1)*100,
-    tpFromEntryPct:(tpPrice-1)*100,
-    tpAboveAvgPct:S.tpPct,
-    soLevels:soLevels
-  };
+  return {initAmt:S.initAmt, rows:rows};
 }
 function updateCap(){
   var t=S.initAmt, a=S.safeAmt;
@@ -1745,30 +1747,40 @@ function updateCap(){
     covEl.style.color=covColor;
     covEl.style.borderColor=covColor;
   }
-  /* Emir özeti */
+  /* Emir özeti — 3Commas formatında tablo */
   var sumEl=document.getElementById("orderSummary");
-  if(sumEl){
+  if(sumEl&&S.maxSO>0){
     var s=calcOrderSummary();
-    var tpColor=s.tpFromEntryPct>=0?"var(--green)":"var(--red)";
-    var rowStyle="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border1)";
-    var labelStyle="color:var(--text3)";
-    var valStyle="font-weight:700";
-    var rows=[
-      ["💰 Toplam Yatırım","$"+Math.ceil(s.totalCost),"var(--text)"],
-      ["📊 Ort. Alış Fiyatı","Girişten "+s.avgPricePct.toFixed(2)+"%","var(--yellow)"],
-      ["🎯 TP Hedefi","Girişten "+(s.tpFromEntryPct>=0?"+":"")+s.tpFromEntryPct.toFixed(2)+"% (ort.+"+s.tpAboveAvgPct+"%)",tpColor],
-    ];
-    var html=rows.map(function(r){
-      return '<div style="'+rowStyle+'"><span style="'+labelStyle+'">'+r[0]+'</span><span style="'+valStyle+';color:'+r[2]+'">'+r[1]+'</span></div>';
-    }).join("");
-    html+='<div style="margin-top:5px"><span style="color:var(--text3);font-size:10px">📍 SO Seviyeleri (girişten)</span>';
-    html+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px">';
-    s.soLevels.forEach(function(lvl,i){
-      html+='<span style="background:var(--card3);border-radius:5px;padding:1px 6px;font-size:10px;color:var(--text2)">SO'+(i+1)+' '+lvl.pct.toFixed(1)+'%</span>';
+    var last=s.rows[s.rows.length-1];
+    var thS="color:var(--text3);font-size:9px;padding:2px 4px;font-weight:400;text-align:right;white-space:nowrap";
+    var html='<div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 5px;margin-bottom:3px;border-bottom:1px solid var(--border1)">'+
+      '<span style="color:var(--text3);font-size:11px">💰 Toplam yatırım (tüm SO)</span>'+
+      '<span style="font-weight:700;font-size:11px">$'+Math.ceil(last.totalAmt)+'</span></div>';
+    html+='<table style="width:100%;border-collapse:collapse">';
+    html+='<tr>'+
+      '<th style="'+thS+';text-align:left">SO</th>'+
+      '<th style="'+thS+'">Sapma</th>'+
+      '<th style="'+thS+'">Hacim</th>'+
+      '<th style="'+thS+'">Ort.alış</th>'+
+      '<th style="'+thS+'">TP↑ dip</th></tr>';
+    s.rows.forEach(function(r,i){
+      var avg=r.avgFromEntry;
+      var avgC=avg<-25?"var(--red)":avg<-10?"var(--yellow)":"var(--text2)";
+      var tp=r.tpFromSO;
+      var tpC=tp>30?"var(--red)":tp>15?"var(--yellow)":"var(--green)";
+      var td="text-align:right;padding:2px 4px;font-size:10px;white-space:nowrap";
+      html+='<tr style="border-top:1px solid var(--border1)">'+
+        '<td style="text-align:left;padding:2px 4px;font-size:10px;font-weight:700;color:var(--accent)">SO'+(i+1)+'</td>'+
+        '<td style="'+td+';color:var(--text3)">'+r.devPct.toFixed(2)+'%</td>'+
+        '<td style="'+td+'">$'+Math.round(r.soAmt)+'</td>'+
+        '<td style="'+td+';color:'+avgC+'">'+avg.toFixed(1)+'%</td>'+
+        '<td style="'+td+';color:'+tpC+'">+'+tp.toFixed(1)+'%</td></tr>';
     });
-    html+='</div></div>';
+    html+='</table>';
     sumEl.innerHTML=html;
     sumEl.style.display="";
+  } else if(sumEl){
+    sumEl.style.display="none";
   }
 }
 
