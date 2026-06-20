@@ -1189,10 +1189,14 @@ function backtest(prices, rsiArr){
       cash-=dynInitAmt;
 
       var so=[];
-      var stepNow=S.priceStep,lvlPrice=price*(1-S.priceStep/100);
+      // 3Commas mantığı: SO trigger = giriş × (1 - kümülatif_lineer_sapma%)
+      // (emir özeti calcOrderSummary ile birebir aynı)
+      var stepNow=S.priceStep,cumPct=0;
       for(var n=0;n<S.maxSO;n++){
-        so.push({price:lvlPrice,amt:dynSafeAmt*Math.pow(S.amtMult,n),filled:false});
-        stepNow*=S.stepMult;lvlPrice*=(1-stepNow/100);
+        cumPct+=stepNow;
+        var cumPctF=Math.floor(cumPct*100)/100; // 3Commas 2dp kırpma
+        so.push({price:price*(1-cumPctF/100),amt:dynSafeAmt*Math.pow(S.amtMult,n),filled:false});
+        stepNow*=S.stepMult;
       }
       deal={startDate:date,initPrice:price,
             orders:[{date:date,price:price,size:dynInitAmt,qty:dynInitAmt/price}],
