@@ -1704,17 +1704,18 @@ function calcCoverage(){
 }
 function calcOrderSummary(){
   var stepNow=S.priceStep;
-  var lvlPrice=1*(1-S.priceStep/100);
+  var cumPct=0; // girişten lineer kümülatif % (coverage chipiyle aynı mantık)
   var totalCost=S.initAmt;
   var totalCoins=S.initAmt; // entry price=1 → coins=amount
   var soLevels=[];
   for(var n=0;n<S.maxSO;n++){
+    cumPct+=stepNow; // lineer toplam
+    var soPrice=1-cumPct/100; // girişten fiyat (başlangıç fiyatı baz)
     var soAmt=S.safeAmt*Math.pow(S.amtMult,n);
     totalCost+=soAmt;
-    totalCoins+=soAmt/lvlPrice;
-    soLevels.push({pct:(lvlPrice-1)*100,amt:soAmt});
+    totalCoins+=soAmt/soPrice;
+    soLevels.push({pct:-cumPct,amt:soAmt});
     stepNow*=S.stepMult;
-    lvlPrice*=(1-stepNow/100);
   }
   var avgPrice=totalCost/totalCoins;
   var tpPrice=avgPrice*(1+S.tpPct/100);
