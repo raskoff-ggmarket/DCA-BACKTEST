@@ -1776,11 +1776,10 @@ function updateCap(){
       '<th style="'+thS+';text-align:left;font-size:8px">EMİR</th>'+
       '<th style="'+thS+';font-size:8px">SAPMA</th>'+
       '<th style="'+thS+';font-size:8px">TOPLAM$</th>'+
-      '<th style="'+thS+';font-size:8px">ORT.ALIŞ</th>'+
       '<th style="'+thS+';font-size:8px">TP↑ DİP</th></tr>';
     s.rows.forEach(function(r){
-      var avg=r.avgFromEntry;
-      var avgC=avg<-25?"var(--red)":avg<-10?"var(--yellow)":"var(--text2)";
+      var dev=r.devPct;
+      var devC=dev===0?"var(--text2)":dev<=-40?"var(--red)":dev<=-20?"var(--yellow)":"var(--green)";
       var tp=r.tpFromTrigger;
       var tpC=tp>30?"var(--red)":tp>15?"var(--yellow)":"var(--green)";
       var td="text-align:right;padding:2px 3px;font-size:10px;white-space:nowrap";
@@ -1788,9 +1787,8 @@ function updateCap(){
       var rowBg=r.isBase?"background:var(--card3)":"";
       html+='<tr style="border-top:1px solid var(--border1);'+rowBg+'">'+
         '<td style="text-align:left;padding:2px 3px;font-size:10px;font-weight:700;color:'+labelColor+'">'+r.label+'</td>'+
-        '<td style="'+td+';color:var(--text3)">'+(r.devPct===0?"0%":r.devPct.toFixed(2)+"%")+'</td>'+
+        '<td style="'+td+';color:'+devC+';font-weight:600">'+(dev===0?"0%":dev.toFixed(2)+"%")+'</td>'+
         '<td style="'+td+'">$'+Math.ceil(r.totalAmt)+'</td>'+
-        '<td style="'+td+';color:'+avgC+'">'+(r.avgFromEntry===0?"—":avg.toFixed(2)+"%")+'</td>'+
         '<td style="'+td+';color:'+tpC+'">+'+tp.toFixed(2)+"%</td></tr>";
     });
     html+='</table></div>';
