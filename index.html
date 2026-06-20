@@ -2034,9 +2034,14 @@ function _renderOptProfile(profile,best){
   html+='<div><div style="font-size:9px;color:var(--text3);letter-spacing:.04em;margin-bottom:2px">WIN RATE</div>'
       +'<div style="font-size:16px;font-weight:800;color:'+wrColor+'">'+fp(s.winRate)+'</div></div>';
   html+='</div>';
+  /* Kapsama: 3Commas lineer formül (calcCoverage ile aynı mantık) */
+  var covStep=p.priceStep,covTotal=0;
+  for(var cn=0;cn<p.maxSO;cn++){covTotal+=covStep;covStep*=p.stepMult;}
+  var covColor=covTotal>=40?"var(--green)":covTotal>=20?"var(--yellow)":"var(--red)";
   /* Alt bilgi satırı */
-  html+='<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--text3);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">';
   html+='<span>'+cyc+' döngü</span>';
+  html+='<span>🛡 Kapsama <span style="color:'+covColor+';font-weight:700">%'+covTotal.toFixed(1)+'</span></span>';
   html+='<span>Skor <span style="color:var(--text)">'+best.score.toFixed(1)+'</span></span>';
   html+='</div>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px;font-size:11px;margin-bottom:10px">';
