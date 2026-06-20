@@ -290,6 +290,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <button onclick="saveSettings()" title="Parametreleri indir" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:3px 9px;border-radius:7px;font-size:11px;cursor:pointer;line-height:1.4">📋 Kopyala</button>
     </div>
     <div id="coverageChip" style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;border:1px solid;margin-bottom:6px;display:inline-block">🛡 Kapsama: —</div>
+    <div id="orderSummary" style="margin:4px 0 8px;background:var(--card2);border-radius:10px;padding:8px 10px;font-size:11px;display:none"></div>
     <div class="row" id="row-initAmt"><div><div class="rl">İlk alım miktarı ($)</div><div class="rs">Her döngünün ilk alım emri büyüklüğü</div></div></div>
     <div class="row" id="row-safeAmt"><div><div class="rl">Güvenlik emri miktarı ($)</div><div class="rs">Her güvenlik emrinin başlangıç büyüklüğü</div></div></div>
     <div class="row" id="row-priceStep"><div><div class="rl">Fiyat adımı (%)</div><div class="rs">Güvenlik emrinin tetikleneceği fiyat düşüşü</div></div></div>
@@ -1701,6 +1702,30 @@ function calcCoverage(){
   for(var n=0;n<S.maxSO;n++){total+=step;step*=S.stepMult;}
   return total;
 }
+function calcOrderSummary(){
+  var stepNow=S.priceStep;
+  var lvlPrice=1*(1-S.priceStep/100);
+  var totalCost=S.initAmt;
+  var totalCoins=S.initAmt; // entry price=1 → coins=amount
+  var soLevels=[];
+  for(var n=0;n<S.maxSO;n++){
+    var soAmt=S.safeAmt*Math.pow(S.amtMult,n);
+    totalCost+=soAmt;
+    totalCoins+=soAmt/lvlPrice;
+    soLevels.push({pct:(lvlPrice-1)*100,amt:soAmt});
+    stepNow*=S.stepMult;
+    lvlPrice*=(1-stepNow/100);
+  }
+  var avgPrice=totalCost/totalCoins;
+  var tpPrice=avgPrice*(1+S.tpPct/100);
+  return {
+    totalCost:totalCost,
+    avgPricePct:(avgPrice-1)*100,
+    tpFromEntryPct:(tpPrice-1)*100,
+    tpAboveAvgPct:S.tpPct,
+    soLevels:soLevels
+  };
+}
 function updateCap(){
   var t=S.initAmt, a=S.safeAmt;
   for(var i=0;i<S.maxSO;i++){t+=a;a*=S.amtMult;}
@@ -1718,6 +1743,31 @@ function updateCap(){
     covEl.textContent="🛡 Kapsama: %"+cov.toFixed(1)+" düşüş";
     covEl.style.color=covColor;
     covEl.style.borderColor=covColor;
+  }
+  /* Emir özeti */
+  var sumEl=document.getElementById("orderSummary");
+  if(sumEl){
+    var s=calcOrderSummary();
+    var tpColor=s.tpFromEntryPct>=0?"var(--green)":"var(--red)";
+    var rowStyle="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border1)";
+    var labelStyle="color:var(--text3)";
+    var valStyle="font-weight:700";
+    var rows=[
+      ["💰 Toplam Yatırım","$"+Math.ceil(s.totalCost),"var(--text)"],
+      ["📊 Ort. Alış Fiyatı","Girişten "+s.avgPricePct.toFixed(2)+"%","var(--yellow)"],
+      ["🎯 TP Hedefi","Girişten "+(s.tpFromEntryPct>=0?"+":"")+s.tpFromEntryPct.toFixed(2)+"% (ort.+"+s.tpAboveAvgPct+"%)",tpColor],
+    ];
+    var html=rows.map(function(r){
+      return '<div style="'+rowStyle+'"><span style="'+labelStyle+'">'+r[0]+'</span><span style="'+valStyle+';color:'+r[2]+'">'+r[1]+'</span></div>';
+    }).join("");
+    html+='<div style="margin-top:5px"><span style="color:var(--text3);font-size:10px">📍 SO Seviyeleri (girişten)</span>';
+    html+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px">';
+    s.soLevels.forEach(function(lvl,i){
+      html+='<span style="background:var(--card3);border-radius:5px;padding:1px 6px;font-size:10px;color:var(--text2)">SO'+(i+1)+' '+lvl.pct.toFixed(1)+'%</span>';
+    });
+    html+='</div></div>';
+    sumEl.innerHTML=html;
+    sumEl.style.display="";
   }
 }
 
