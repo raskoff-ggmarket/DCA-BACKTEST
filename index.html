@@ -1703,31 +1703,42 @@ function calcCoverage(){
   return total;
 }
 function calcOrderSummary(){
-  // 3Commas ile birebir aynı formül:
-  // SO trigger = başlangıç × (1 - kümülatif_lineer_pct / 100)
-  // Ağırlıklı ortalama = toplam_maliyet / toplam_coin (normalize, giriş=1)
-  // TP yükselmesi = TP_fiyatı / SO_trigger_fiyatı - 1
+  // 3Commas birebir formül:
+  // Sapma kümülatif lineer %, Math.floor ile 2dp kırpma (yuvarlama değil)
+  // SO trigger = giriş × (1 - kırpılmış_sapma / 100)
+  // Ort.alış = toplam_USDT / toplam_coin (giriş=1 normalize)
+  // TP yükselmesi = (ort.alış × (1+tp%) / SO_trigger) - 1
   var stepNow=S.priceStep, cumPct=0;
-  var totalCost=S.initAmt, totalCoins=S.initAmt;
+  var totalCost=S.initAmt, totalCoins=S.initAmt; // giriş emri (fiyat=1)
   var rows=[];
+  // Base order (giriş emri) satırı
+  var baseAvg=1, baseTp=1*(1+S.tpPct/100);
+  rows.push({
+    label:"Giriş",devPct:0,soAmt:S.initAmt,totalAmt:S.initAmt,
+    avgFromEntry:0,tpFromTrigger:S.tpPct,isBase:true
+  });
   for(var n=0;n<S.maxSO;n++){
     cumPct+=stepNow;
-    var soPrice=1-cumPct/100;          // SO trigger (giriş=1 baz)
+    // 3Commas: 2 ondalık basamak kırpma (floor), yuvarlama değil
+    var cumPctF=Math.floor(cumPct*100)/100;
+    var soPrice=1-cumPctF/100;              // SO trigger (normalize)
     var soAmt=S.safeAmt*Math.pow(S.amtMult,n);
     totalCost+=soAmt;
     totalCoins+=soAmt/soPrice;
-    var runAvg=totalCost/totalCoins;   // ağırlıklı ortalama (normalize)
+    var runAvg=totalCost/totalCoins;        // kümülatif ağırlıklı ortalama
     var tpPrice=runAvg*(1+S.tpPct/100);
     rows.push({
-      devPct:-cumPct,                          // girişten sapma (negatif)
-      soAmt:soAmt,                             // bu SO'nun hacmi (USDT)
-      totalAmt:totalCost,                      // kümülatif toplam (USDT)
-      avgFromEntry:(runAvg-1)*100,             // ort. alış (girişten %)
-      tpFromSO:(tpPrice/soPrice-1)*100         // TP (bu SO'nun trigger'ından %)
+      label:"SO"+(n+1),
+      devPct:-cumPctF,
+      soAmt:soAmt,
+      totalAmt:totalCost,
+      avgFromEntry:(runAvg-1)*100,
+      tpFromTrigger:(tpPrice/soPrice-1)*100,
+      isBase:false
     });
     stepNow*=S.stepMult;
   }
-  return {initAmt:S.initAmt, rows:rows};
+  return {rows:rows};
 }
 function updateCap(){
   var t=S.initAmt, a=S.safeAmt;
@@ -1743,40 +1754,42 @@ function updateCap(){
   var covEl=document.getElementById("coverageChip");
   if(covEl){
     var covColor=cov>=40?"var(--green)":cov>=20?"var(--yellow)":"var(--red)";
-    covEl.textContent="🛡 Kapsama: %"+cov.toFixed(1)+" düşüş";
+    covEl.textContent="🛡 Kapsama: %"+cov.toFixed(2)+" düşüş";
     covEl.style.color=covColor;
     covEl.style.borderColor=covColor;
   }
-  /* Emir özeti — 3Commas formatında tablo */
+  /* Emir özeti — 3Commas birebir formül, Base Order dahil */
   var sumEl=document.getElementById("orderSummary");
   if(sumEl&&S.maxSO>0){
     var s=calcOrderSummary();
-    var last=s.rows[s.rows.length-1];
-    var thS="color:var(--text3);font-size:9px;padding:2px 4px;font-weight:400;text-align:right;white-space:nowrap";
-    var html='<div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 5px;margin-bottom:3px;border-bottom:1px solid var(--border1)">'+
-      '<span style="color:var(--text3);font-size:11px">💰 Toplam yatırım (tüm SO)</span>'+
-      '<span style="font-weight:700;font-size:11px">$'+Math.ceil(last.totalAmt)+'</span></div>';
-    html+='<table style="width:100%;border-collapse:collapse">';
+    var lastRow=s.rows[s.rows.length-1];
+    var thS="color:var(--text3);font-size:9px;padding:2px 3px;font-weight:400;text-align:right;white-space:nowrap";
+    var html='<div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 4px;margin-bottom:3px;border-bottom:1px solid var(--border1)">'+
+      '<span style="color:var(--text3);font-size:10px">💰 Toplam yatırım (tüm SO)</span>'+
+      '<span style="font-weight:700;font-size:11px">$'+Math.ceil(lastRow.totalAmt)+'</span></div>';
+    html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:300px">';
     html+='<tr>'+
-      '<th style="'+thS+';text-align:left">SO</th>'+
-      '<th style="'+thS+'">Sapma</th>'+
-      '<th style="'+thS+'">Hacim</th>'+
-      '<th style="'+thS+'">Ort.alış</th>'+
-      '<th style="'+thS+'">TP↑ dip</th></tr>';
-    s.rows.forEach(function(r,i){
+      '<th style="'+thS+';text-align:left;font-size:8px">EMİR</th>'+
+      '<th style="'+thS+';font-size:8px">SAPMA</th>'+
+      '<th style="'+thS+';font-size:8px">TOPLAM$</th>'+
+      '<th style="'+thS+';font-size:8px">ORT.ALIŞ</th>'+
+      '<th style="'+thS+';font-size:8px">TP↑ DİP</th></tr>';
+    s.rows.forEach(function(r){
       var avg=r.avgFromEntry;
       var avgC=avg<-25?"var(--red)":avg<-10?"var(--yellow)":"var(--text2)";
-      var tp=r.tpFromSO;
+      var tp=r.tpFromTrigger;
       var tpC=tp>30?"var(--red)":tp>15?"var(--yellow)":"var(--green)";
-      var td="text-align:right;padding:2px 4px;font-size:10px;white-space:nowrap";
-      html+='<tr style="border-top:1px solid var(--border1)">'+
-        '<td style="text-align:left;padding:2px 4px;font-size:10px;font-weight:700;color:var(--accent)">SO'+(i+1)+'</td>'+
-        '<td style="'+td+';color:var(--text3)">'+r.devPct.toFixed(2)+'%</td>'+
-        '<td style="'+td+'">$'+Math.round(r.soAmt)+'</td>'+
-        '<td style="'+td+';color:'+avgC+'">'+avg.toFixed(1)+'%</td>'+
-        '<td style="'+td+';color:'+tpC+'">+'+tp.toFixed(1)+'%</td></tr>';
+      var td="text-align:right;padding:2px 3px;font-size:10px;white-space:nowrap";
+      var labelColor=r.isBase?"var(--text)":"var(--accent)";
+      var rowBg=r.isBase?"background:var(--card3)":"";
+      html+='<tr style="border-top:1px solid var(--border1);'+rowBg+'">'+
+        '<td style="text-align:left;padding:2px 3px;font-size:10px;font-weight:700;color:'+labelColor+'">'+r.label+'</td>'+
+        '<td style="'+td+';color:var(--text3)">'+(r.devPct===0?"0%":r.devPct.toFixed(2)+"%")+'</td>'+
+        '<td style="'+td+'">$'+Math.ceil(r.totalAmt)+'</td>'+
+        '<td style="'+td+';color:'+avgC+'">'+(r.avgFromEntry===0?"—":avg.toFixed(2)+"%")+'</td>'+
+        '<td style="'+td+';color:'+tpC+'">+'+tp.toFixed(2)+"%</td></tr>";
     });
-    html+='</table>';
+    html+='</table></div>';
     sumEl.innerHTML=html;
     sumEl.style.display="";
   } else if(sumEl){
