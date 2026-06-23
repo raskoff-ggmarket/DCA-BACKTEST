@@ -2016,6 +2016,7 @@ function _sampleParams(profile,capital){
     maxSO:maxSO,tpPct:tpPct,
     reinvest:_optReinvest,reinvestPct:reinvestPct,
     ttpEnabled:_optTtp,ttpPct:ttpPct,
+    commission:S.commission||0,
     cond:"instant",profitMode:_getOptProfitMode()
   };
 }
@@ -2171,6 +2172,7 @@ function _renderOptProfile(profile,best){
   html+='<div style="color:var(--text3)">TP <span style="color:var(--text);font-weight:700">%'+p.tpPct+'</span></div>';
   if(p.reinvest)html+='<div style="color:var(--text3)">Reinv <span style="color:var(--accent);font-weight:700">%'+p.reinvestPct+'</span></div>';
   if(p.ttpEnabled)html+='<div style="color:var(--text3)">TTP <span style="color:var(--yellow);font-weight:700">%'+p.ttpPct+'</span></div>';
+  html+='<div style="color:var(--text3)">Kom. <span style="color:var(--text);font-weight:700">%'+p.commission+'</span></div>';
   html+='</div>';
   html+='<button onclick="applyOptParams(\''+profile.id+'\')" '
     +'style="width:100%;padding:8px;border-radius:8px;border:1px solid '+profile.color+'44;background:'+profile.color+'11;color:'+profile.color+';font-size:12px;font-weight:700;font-family:\'Space Grotesk\',sans-serif;cursor:pointer">'
