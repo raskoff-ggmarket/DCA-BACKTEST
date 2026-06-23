@@ -494,22 +494,22 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
    CONSTANTS
 ═══════════════════════════════ */
 var COINS = [
-  {id:"bitcoin",    sym:"BTC",    e:"₿"},
-  {id:"ethereum",   sym:"ETH",    e:"Ξ"},
-  {id:"solana",     sym:"SOL",    e:"◎"},
-  {id:"binancecoin",sym:"BNB",    e:"⬡"},
-  {id:"ripple",     sym:"XRP",    e:"✕"},
-  {id:"cardano",    sym:"ADA",    e:"₳"},
-  {id:"hyperliquid",sym:"HYPE",   e:"◈"},
-  {id:"avalanche-2",sym:"AVAX",   e:"▲"},
-  {id:"tether-gold",sym:"XAUT",   e:"🥇"},
-  {id:"pax-gold",   sym:"PAXG",   e:"🪙"},
-  {id:"tslax",      sym:"TSLAX",  e:"🚗", src:"bybit"},
-  {id:"nvdax",      sym:"NVDAX",  e:"🎮", src:"bybit"},
-  {id:"aaplx",      sym:"AAPLX",  e:"🍎", src:"bybit"},
-  {id:"amznx",      sym:"AMZNX",  e:"📦", src:"bybit"},
-  {id:"googlx",     sym:"GOOGLX", e:"🔍", src:"bybit"},
-  {id:"spcx",       sym:"SPCX",   e:"📈", src:"bybit"},
+  {id:"bitcoin",    sym:"BTC",    e:""},
+  {id:"ethereum",   sym:"ETH",    e:""},
+  {id:"solana",     sym:"SOL",    e:""},
+  {id:"binancecoin",sym:"BNB",    e:""},
+  {id:"ripple",     sym:"XRP",    e:""},
+  {id:"cardano",    sym:"ADA",    e:""},
+  {id:"hyperliquid",sym:"HYPE",   e:""},
+  {id:"avalanche-2",sym:"AVAX",   e:""},
+  {id:"tether-gold",sym:"XAUT",   e:""},
+  {id:"pax-gold",   sym:"PAXG",   e:""},
+  {id:"tslax",      sym:"TSLAX",  e:"", src:"bybit"},
+  {id:"nvdax",      sym:"NVDAX",  e:"", src:"bybit"},
+  {id:"aaplx",      sym:"AAPLX",  e:"", src:"bybit"},
+  {id:"amznx",      sym:"AMZNX",  e:"", src:"bybit"},
+  {id:"googlx",     sym:"GOOGLX", e:"", src:"bybit"},
+  {id:"spcx",       sym:"SPCX",   e:"", src:"bybit"},
 ];
 var PERS = [
   {l:"1A", d:30},
@@ -1760,7 +1760,7 @@ function buildMainChips(){
   var cc=document.getElementById("coinC");
   COINS.forEach(function(c){
     var o=document.createElement("option");
-    o.value=c.id;o.textContent=c.e+" "+c.sym;
+    o.value=c.id;o.textContent=(c.e?c.e+" ":"")+c.sym;
     cc.appendChild(o);
   });
   cc.value=S.coin;
@@ -1872,7 +1872,7 @@ function updateCap(){
 
 function updateBadge(){
   var c=COINS.find(function(x){return x.id===S.coin;});
-  document.getElementById("hdrBadge").textContent=c.e+" "+c.sym;
+  document.getElementById("hdrBadge").textContent=(c.e?c.e+" ":"")+c.sym;
 }
 
 function toggleReinvestSub(){
