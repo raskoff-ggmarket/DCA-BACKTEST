@@ -290,6 +290,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <button onclick="saveSettings()" title="Parametreleri indir" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:3px 9px;border-radius:7px;font-size:11px;cursor:pointer;line-height:1.4">📋 Kopyala</button>
     </div>
     <div id="coverageChip" style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;border:1px solid;margin-bottom:6px;display:inline-block">🛡 Kapsama: —</div>
+    <div id="orderSummary" style="margin:4px 0 8px;background:var(--card2);border-radius:10px;padding:8px 10px;font-size:11px;display:none"></div>
     <div class="row" id="row-initAmt"><div><div class="rl">İlk alım miktarı ($)</div><div class="rs">Her döngünün ilk alım emri büyüklüğü</div></div></div>
     <div class="row" id="row-safeAmt"><div><div class="rl">Güvenlik emri miktarı ($)</div><div class="rs">Her güvenlik emrinin başlangıç büyüklüğü</div></div></div>
     <div class="row" id="row-priceStep"><div><div class="rl">Fiyat adımı (%)</div><div class="rs">Güvenlik emrinin tetikleneceği fiyat düşüşü</div></div></div>
@@ -345,6 +346,14 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
     </div>
 
+    <!-- Borsa Komisyonu -->
+    <div class="row" id="row-commission">
+      <div>
+        <div class="rl">Borsa Komisyonu (%)</div>
+        <div class="rs">Her alım ve satımda kesilen işlem ücreti</div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Başlatma Koşulu -->
@@ -396,6 +405,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
   <div class="tp" id="tp-stats"><div class="sg" id="statsG"></div></div>
   <div class="tp" id="tp-deals"><div class="dl" id="dealL"></div></div>
+  <div style="display:flex;justify-content:center;margin-top:16px;padding-bottom:8px">
+    <button onclick="copyResults()" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:6px 20px;border-radius:7px;font-size:12px;cursor:pointer;line-height:1.4">📋 Sonuçları Kopyala</button>
+  </div>
   </div><!-- /resultContent -->
 </div>
 
@@ -461,10 +473,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
           </div>
         </div>
         <div id="optTtpSub" style="display:none;align-items:center;gap:8px">
-          <span style="font-size:12px;color:var(--text3)">TTP sapma</span>
-          <input type="number" id="optTtpPct" value="0.5" min="0.1" max="5" step="0.1"
-            style="width:70px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;color:var(--text);font-size:13px;font-weight:700;font-family:'Space Grotesk',sans-serif;text-align:right">
-          <span style="font-size:12px;color:var(--text3)">%</span>
+          <span style="font-size:12px;color:var(--accent)">Otomatik — 0.1% – 3.0% arasında en iyi değer seçilir</span>
         </div>
       </div>
 
@@ -493,16 +502,22 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
    CONSTANTS
 ═══════════════════════════════ */
 var COINS = [
-  {id:"bitcoin",    sym:"BTC",  e:"₿"},
-  {id:"ethereum",   sym:"ETH",  e:"Ξ"},
-  {id:"solana",     sym:"SOL",  e:"◎"},
-  {id:"binancecoin",sym:"BNB",  e:"⬡"},
-  {id:"ripple",     sym:"XRP",  e:"✕"},
-  {id:"cardano",    sym:"ADA",  e:"₳"},
-  {id:"hyperliquid",sym:"HYPE", e:"◈"},
-  {id:"avalanche-2",sym:"AVAX", e:"▲"},
-  {id:"tether-gold",sym:"XAUT", e:"🥇"},
-  {id:"pax-gold",   sym:"PAXG", e:"🪙"},
+  {id:"bitcoin",    sym:"BTC",    e:""},
+  {id:"ethereum",   sym:"ETH",    e:""},
+  {id:"solana",     sym:"SOL",    e:""},
+  {id:"binancecoin",sym:"BNB",    e:""},
+  {id:"ripple",     sym:"XRP",    e:""},
+  {id:"cardano",    sym:"ADA",    e:""},
+  {id:"hyperliquid",sym:"HYPE",   e:""},
+  {id:"avalanche-2",sym:"AVAX",   e:""},
+  {id:"tether-gold",sym:"XAUT",   e:""},
+  {id:"pax-gold",   sym:"PAXG",   e:""},
+  {id:"tslax",      sym:"TSLAX",  e:"", src:"bybit"},
+  {id:"nvdax",      sym:"NVDAX",  e:"", src:"bybit"},
+  {id:"aaplx",      sym:"AAPLX",  e:"", src:"bybit"},
+  {id:"amznx",      sym:"AMZNX",  e:"", src:"bybit"},
+  {id:"googlx",     sym:"GOOGLX", e:"", src:"bybit"},
+  {id:"spcx",       sym:"SPCX",   e:"", src:"bybit"},
 ];
 var PERS = [
   {l:"1A", d:30},
@@ -532,6 +547,7 @@ var DEFAULTS = {
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
   maxSO:10, tpPct:1.5,
   reinvest:false, reinvestPct:100, ttpEnabled:false, ttpPct:0.5,
+  commission:0.1,
   profitMode:"quote",
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
@@ -564,6 +580,7 @@ var STEPPERS = [
   {k:"tpPct",       step:0.1, min:0.1,        dec:2},
   {k:"ttpPct",      step:0.1, min:0.1,        dec:2},
   {k:"reinvestPct", step:5,   min:1, max:100,  dec:0},
+  {k:"commission",  step:0.01,min:0, max:5,    dec:2},
   {k:"rsiTP",       step:1,   min:2, max:50,  dec:0},
   {k:"rsiThr",      step:1,   min:1, max:99,  dec:0},
 ];
@@ -850,15 +867,53 @@ function _timedFetch(url){
   return fetch(url,{signal:ctrl.signal}).finally(function(){clearTimeout(id);});
 }
 
+/* OKX bar kodu → Bybit interval kodu */
+function _barToBybit(bar){
+  return {"1m":"1","30m":"30","1H":"60","4H":"240","1D":"D"}[bar]||"1";
+}
+
 /* afterTs: ms timestamp — bu ts'den daha eski mumları çek ("" = şimdiden başla)
    onProgress(oldestTs, totalFetched)
    onBatch(rawBatch, oldestTs) → true döndürürse dur
    onBatch verilmezse tüm veriyi döndürür (backtest modu) */
 async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
   var coin=COINS.find(function(c){return c.id===coinId;});
+  var isBybit=coin.src==="bybit";
+  var all=[],totalFetched=0,reqCount=0;
+
+  if(isBybit){
+    var symbol=coin.sym+"USDT";
+    var interval=_barToBybit(okxBar);
+    var endTs=afterTs?String(afterTs):"";
+    var maxReq=150;
+    while(reqCount<maxReq){
+      var url="https://api.bybit.com/v5/market/kline?category=spot&symbol="+symbol+
+              "&interval="+interval+"&limit=200";
+      if(endTs)url+="&end="+endTs;
+      var r;
+      try{r=await _timedFetch(url);}catch(e){break;}
+      if(!r.ok)throw new Error("Bybit API hata: "+r.status);
+      var j=await r.json();
+      if(j.retCode!==0||!j.result||!j.result.list||!j.result.list.length)break;
+      var batch=j.result.list; // descending: newest first
+      totalFetched+=batch.length;
+      if(!onBatch)all=all.concat(batch);
+      endTs=batch[batch.length-1][0]; // oldest in batch
+      reqCount++;
+      var oldest=parseInt(endTs);
+      if(onProgress)onProgress(oldest,totalFetched);
+      if(onBatch){var stop=await onBatch(batch,oldest);if(stop)break;}
+      if(oldest<=HISTORY_START_TS)break;
+      if(batch.length<200)break;
+      await new Promise(function(res){setTimeout(res,50);});
+    }
+    return all;
+  }
+
+  /* OKX path */
   var instId=coin.sym+"-USDT";
   var after=afterTs?String(afterTs):"";
-  var all=[],totalFetched=0,reqCount=0,maxReq=100;
+  var maxReq=100;
   while(reqCount<maxReq){
     var url="https://www.okx.com/api/v5/market/history-candles?instId="+instId+
             "&bar="+okxBar+"&limit=300";
@@ -885,8 +940,34 @@ async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
 
 async function _fetchNew(coinId,okxBar,latestTs){
   var coin=COINS.find(function(c){return c.id===coinId;});
+  var isBybit=coin.src==="bybit";
+  var all=[],reqCount=0,maxReq=5;
+
+  if(isBybit){
+    var symbol=coin.sym+"USDT";
+    var interval=_barToBybit(okxBar);
+    var startTs=String(latestTs+1);
+    while(reqCount<maxReq){
+      var url="https://api.bybit.com/v5/market/kline?category=spot&symbol="+symbol+
+              "&interval="+interval+"&limit=200&start="+startTs;
+      var r;
+      try{r=await _timedFetch(url);}catch(e){break;}
+      if(!r.ok)break;
+      var j=await r.json();
+      if(j.retCode!==0||!j.result||!j.result.list||!j.result.list.length)break;
+      var list=j.result.list;
+      all=all.concat(list);
+      reqCount++;
+      if(list.length<200)break;
+      // Newest first — next page starts after the newest we got
+      startTs=String(parseInt(list[0][0])+1);
+    }
+    return all;
+  }
+
+  /* OKX path */
   var instId=coin.sym+"-USDT";
-  var all=[],before=String(latestTs),reqCount=0,maxReq=5;
+  var before=String(latestTs);
   while(reqCount<maxReq){
     var url="https://www.okx.com/api/v5/market/history-candles?instId="+instId+
             "&bar="+okxBar+"&limit=300&before="+before;
@@ -964,12 +1045,12 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
   /* 5. Hiç veri yoksa ilk çekim (backtest modu) */
   if(!cached.length){
     var raw=await _fetchHistorical(coinId,okxBar,"",null,null);
-    if(!raw.length)throw new Error("OKX'ten veri gelmedi.");
+    if(!raw.length)throw new Error("Borsadan veri gelmedi.");
     cached=parseRawCandles(raw).filter(function(c){return c.ts>=HISTORY_START_TS;});
     changed=true;
   }
 
-  if(!cached.length)throw new Error("OKX'ten veri gelmedi.");
+  if(!cached.length)throw new Error("Borsadan veri gelmedi.");
 
   /* 6. Kaydet — sadece YENİ mumları yaz, tüm önbelleği değil */
   if(changed){
@@ -1124,6 +1205,7 @@ function backtest(prices, rsiArr){
   var cdLeft=0, waitRSI=(S.cond==="rsi");
   var accumBase=0;
   var isBase=S.profitMode==="base";
+  var feeRate=(S.commission||0)/100;
 
   var dynInitAmt=S.initAmt;
   var dynSafeAmt=S.safeAmt;
@@ -1147,12 +1229,12 @@ function backtest(prices, rsiArr){
   function closeDealAt(price,date,why){
     var profit, bProfit=0;
     if(isBase){
-      bProfit=deal.totalQty-deal.totalCost/price;
+      bProfit=deal.totalQty*(1-feeRate)-deal.totalCost/price;
       profit=bProfit*price;
       cash+=deal.totalCost;
       accumBase+=bProfit;
     } else {
-      profit=deal.totalQty*price-deal.totalCost;
+      profit=deal.totalQty*price*(1-feeRate)-deal.totalCost;
       cash+=deal.totalCost+profit;
       applyReinvest(profit);
     }
@@ -1188,14 +1270,18 @@ function backtest(prices, rsiArr){
       cash-=dynInitAmt;
 
       var so=[];
-      var stepNow=S.priceStep,lvlPrice=price*(1-S.priceStep/100);
+      // 3Commas mantığı: SO trigger = giriş × (1 - kümülatif_lineer_sapma%)
+      // (emir özeti calcOrderSummary ile birebir aynı)
+      var stepNow=S.priceStep,cumPct=0;
       for(var n=0;n<S.maxSO;n++){
-        so.push({price:lvlPrice,amt:dynSafeAmt*Math.pow(S.amtMult,n),filled:false});
-        stepNow*=S.stepMult;lvlPrice*=(1-stepNow/100);
+        cumPct+=stepNow;
+        var cumPctF=Math.floor(cumPct*100)/100; // 3Commas 2dp kırpma
+        so.push({price:price*(1-cumPctF/100),amt:dynSafeAmt*Math.pow(S.amtMult,n),filled:false});
+        stepNow*=S.stepMult;
       }
       deal={startDate:date,initPrice:price,
-            orders:[{date:date,price:price,size:dynInitAmt,qty:dynInitAmt/price}],
-            totalCost:dynInitAmt,totalQty:dynInitAmt/price,
+            orders:[{date:date,price:price,size:dynInitAmt,qty:dynInitAmt*(1-feeRate)/price}],
+            totalCost:dynInitAmt,totalQty:dynInitAmt*(1-feeRate)/price,
             avgCost:price,safetyCount:0,so:so,
             ttpActive:false,ttpPeak:0,
             snapshotInitAmt:dynInitAmt,snapshotSafeAmt:dynSafeAmt};
@@ -1225,8 +1311,8 @@ function backtest(prices, rsiArr){
         if(!lv.filled&&price<=lv.price){
           if(cash<lv.amt)break;
           cash-=lv.amt;
-          deal.orders.push({date:date,price:price,size:lv.amt,qty:lv.amt/price});
-          deal.totalCost+=lv.amt;deal.totalQty+=lv.amt/price;
+          deal.orders.push({date:date,price:price,size:lv.amt,qty:lv.amt*(1-feeRate)/price});
+          deal.totalCost+=lv.amt;deal.totalQty+=lv.amt*(1-feeRate)/price;
           deal.avgCost=deal.totalCost/deal.totalQty;
           deal.safetyCount++;lv.filled=true;
         }
@@ -1359,6 +1445,7 @@ async function run(){
    RENDER
 ═══════════════════════════════ */
 function render(res, source, mumCnt, dateFrom, dateTo){
+  _lastResult={res:res,mumCnt:mumCnt,dateFrom:dateFrom,dateTo:dateTo};
   if(!_hasResult){
     _hasResult=true;
     document.getElementById("noResultState").style.display="none";
@@ -1589,9 +1676,46 @@ function saveSettings(){
     "Kâr Modu        : "+(S.profitMode==="base"?coin.sym+" (Base)":"Quote (USDT)"),
     "Reinvest        : "+(S.reinvest?"Evet (%"+S.reinvestPct+")":"Hayır"),
     "TTP             : "+(S.ttpEnabled?"Evet (%"+S.ttpPct+")":"Hayır"),
+    "Komisyon        : %"+S.commission,
   ];
   var txt=lines.join("\n");
   navigator.clipboard.writeText(txt)
+    .then(function(){showToast("✓ Panoya kopyalandı");})
+    .catch(function(){showToast("⚠ Kopyalanamadı");});
+}
+function copyResults(){
+  if(!_lastResult){showToast("⚠ Henüz backtest yapılmadı");return;}
+  var r=_lastResult,s=r.res.stats;
+  var coin=COINS.find(function(c){return c.id===S.coin;})||{sym:"?"};
+  var now=new Date().toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  var pnlSign=s.totalPnL>=0?"+":"";
+  var lines=[
+    "DCA Backtest Sonuçları — "+now,
+    "════════════════════════════════════",
+    "Sembol     : "+coin.sym+"/USDT",
+    "Dönem      : "+r.dateFrom+" – "+r.dateTo,
+    "Mum Sayısı : "+r.mumCnt.toLocaleString(),
+    "",
+    "─── Performans ───",
+    "Toplam PnL   : "+pnlSign+"$"+s.totalPnL.toFixed(2)+" ("+pnlSign+s.totalPnLPct.toFixed(2)+"%)",
+    "Arb. APR     : %"+s.arbitrageAPR.toFixed(2),
+    "Toplam APR   : %"+s.totalAPR.toFixed(2),
+    "Max Drawdown : -%"+s.maxDrawdown.toFixed(2),
+    "Win Rate     : %"+s.winRate.toFixed(1),
+    "Döngüler     : "+s.completedCycles,
+    "",
+    "─── Parametreler ───",
+    "Sermaye      : $"+S.startCapital,
+    "İlk Alım     : $"+S.initAmt,
+    "SO Miktarı   : $"+S.safeAmt,
+    "Fiyat Adımı  : %"+S.priceStep,
+    "Adım Çarpanı : ×"+S.stepMult,
+    "Miktar Çarp. : ×"+S.amtMult,
+    "Max SO       : "+S.maxSO,
+    "TP           : %"+S.tpPct,
+    "Komisyon     : %"+S.commission,
+  ];
+  navigator.clipboard.writeText(lines.join("\n"))
     .then(function(){showToast("✓ Panoya kopyalandı");})
     .catch(function(){showToast("⚠ Kopyalanamadı");});
 }
@@ -1685,7 +1809,7 @@ function buildMainChips(){
   var cc=document.getElementById("coinC");
   COINS.forEach(function(c){
     var o=document.createElement("option");
-    o.value=c.id;o.textContent=c.e+" "+c.sym;
+    o.value=c.id;o.textContent=(c.e?c.e+" ":"")+c.sym;
     cc.appendChild(o);
   });
   cc.value=S.coin;
@@ -1697,10 +1821,47 @@ function refreshMainChips(){
 }
 
 function calcCoverage(){
-  /* Tüm SO'ların tetikleneceği en derin fiyat seviyesini hesapla */
-  var lvl=1, step=S.priceStep;
-  for(var n=0;n<S.maxSO;n++){lvl*=(1-step/100);step*=S.stepMult;}
-  return (1-lvl)*100; /* başlangıç fiyatından toplam düşüş % */
+  var total=0, step=S.priceStep;
+  for(var n=0;n<S.maxSO;n++){total+=step;step*=S.stepMult;}
+  return total;
+}
+function calcOrderSummary(){
+  // 3Commas birebir formül:
+  // Sapma kümülatif lineer %, Math.floor ile 2dp kırpma (yuvarlama değil)
+  // SO trigger = giriş × (1 - kırpılmış_sapma / 100)
+  // Ort.alış = toplam_USDT / toplam_coin (giriş=1 normalize)
+  // TP yükselmesi = (ort.alış × (1+tp%) / SO_trigger) - 1
+  var stepNow=S.priceStep, cumPct=0;
+  var totalCost=S.initAmt, totalCoins=S.initAmt; // giriş emri (fiyat=1)
+  var rows=[];
+  // Base order (giriş emri) satırı
+  var baseAvg=1, baseTp=1*(1+S.tpPct/100);
+  rows.push({
+    label:"Giriş",devPct:0,soAmt:S.initAmt,totalAmt:S.initAmt,
+    avgFromEntry:0,tpFromTrigger:S.tpPct,isBase:true
+  });
+  for(var n=0;n<S.maxSO;n++){
+    cumPct+=stepNow;
+    // 3Commas: 2 ondalık basamak kırpma (floor), yuvarlama değil
+    var cumPctF=Math.floor(cumPct*100)/100;
+    var soPrice=1-cumPctF/100;              // SO trigger (normalize)
+    var soAmt=S.safeAmt*Math.pow(S.amtMult,n);
+    totalCost+=soAmt;
+    totalCoins+=soAmt/soPrice;
+    var runAvg=totalCost/totalCoins;        // kümülatif ağırlıklı ortalama
+    var tpPrice=runAvg*(1+S.tpPct/100);
+    rows.push({
+      label:"SO"+(n+1),
+      devPct:-cumPctF,
+      soAmt:soAmt,
+      totalAmt:totalCost,
+      avgFromEntry:(runAvg-1)*100,
+      tpFromTrigger:(tpPrice/soPrice-1)*100,
+      isBase:false
+    });
+    stepNow*=S.stepMult;
+  }
+  return {rows:rows};
 }
 function updateCap(){
   var t=S.initAmt, a=S.safeAmt;
@@ -1716,16 +1877,51 @@ function updateCap(){
   var covEl=document.getElementById("coverageChip");
   if(covEl){
     var covColor=cov>=40?"var(--green)":cov>=20?"var(--yellow)":"var(--red)";
-    covEl.textContent="🛡 Kapsama: %"+cov.toFixed(1)+" düşüş";
+    covEl.textContent="🛡 Kapsama: %"+cov.toFixed(2)+" düşüş";
     covEl.style.color=covColor;
     covEl.style.borderColor=covColor;
+  }
+  /* Emir özeti — 3Commas birebir formül, Base Order dahil */
+  var sumEl=document.getElementById("orderSummary");
+  if(sumEl&&S.maxSO>0){
+    var s=calcOrderSummary();
+    var lastRow=s.rows[s.rows.length-1];
+    var thS="color:var(--text3);font-size:9px;padding:2px 3px;font-weight:400;text-align:right;white-space:nowrap";
+    var html='<div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 4px;margin-bottom:3px;border-bottom:1px solid var(--border1)">'+
+      '<span style="color:var(--text3);font-size:10px">💰 Toplam yatırım (tüm SO)</span>'+
+      '<span style="font-weight:700;font-size:11px">$'+Math.ceil(lastRow.totalAmt)+'</span></div>';
+    html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:300px">';
+    html+='<tr>'+
+      '<th style="'+thS+';text-align:left;font-size:8px">EMİR</th>'+
+      '<th style="'+thS+';font-size:8px">SAPMA</th>'+
+      '<th style="'+thS+';font-size:8px">TOPLAM$</th>'+
+      '<th style="'+thS+';font-size:8px">TP↑ DİP</th></tr>';
+    s.rows.forEach(function(r){
+      var dev=r.devPct;
+      var devC=dev===0?"var(--text2)":dev<=-40?"var(--red)":dev<=-20?"var(--yellow)":"var(--green)";
+      var tp=r.tpFromTrigger;
+      var tpC=tp>30?"var(--red)":tp>15?"var(--yellow)":"var(--green)";
+      var td="text-align:right;padding:2px 3px;font-size:10px;white-space:nowrap";
+      var labelColor=r.isBase?"var(--text)":"var(--accent)";
+      var rowBg=r.isBase?"background:var(--card3)":"";
+      html+='<tr style="border-top:1px solid var(--border1);'+rowBg+'">'+
+        '<td style="text-align:left;padding:2px 3px;font-size:10px;font-weight:700;color:'+labelColor+'">'+r.label+'</td>'+
+        '<td style="'+td+';color:'+devC+';font-weight:600">'+(dev===0?"0%":dev.toFixed(2)+"%")+'</td>'+
+        '<td style="'+td+'">$'+Math.ceil(r.totalAmt)+'</td>'+
+        '<td style="'+td+';color:'+tpC+'">+'+tp.toFixed(2)+"%</td></tr>";
+    });
+    html+='</table></div>';
+    sumEl.innerHTML=html;
+    sumEl.style.display="";
+  } else if(sumEl){
+    sumEl.style.display="none";
   }
 }
 
 
 function updateBadge(){
   var c=COINS.find(function(x){return x.id===S.coin;});
-  document.getElementById("hdrBadge").textContent=c.e+" "+c.sym;
+  document.getElementById("hdrBadge").textContent=(c.e?c.e+" ":"")+c.sym;
 }
 
 function toggleReinvestSub(){
@@ -1803,9 +1999,9 @@ function _sampleParams(profile,capital){
   var stepMult=_rnd(r.stepMult[0],r.stepMult[1],2);
   var amtMult=_rnd(r.amtMult[0],r.amtMult[1],2);
   var tpPct=_rnd(r.tpPct[0],r.tpPct[1],2);
-  /* reinvest + TTP: kullanıcı manuel belirledi */
   var reinvestPct=parseFloat(document.getElementById("optReinvestPct").value)||100;
-  var ttpPct=parseFloat(document.getElementById("optTtpPct").value)||0.5;
+  /* TTP açıksa 0.1–3.0% arasında otomatik örnekle, kapalıysa varsayılan */
+  var ttpPct=_optTtp?_rnd(0.1,3.0,1):0.5;
 
   /* initAmt + safeAmt: sermayeye sığacak şekilde */
   var budget=capital;
@@ -1955,9 +2151,14 @@ function _renderOptProfile(profile,best){
   html+='<div><div style="font-size:9px;color:var(--text3);letter-spacing:.04em;margin-bottom:2px">WIN RATE</div>'
       +'<div style="font-size:16px;font-weight:800;color:'+wrColor+'">'+fp(s.winRate)+'</div></div>';
   html+='</div>';
+  /* Kapsama: 3Commas lineer formül (calcCoverage ile aynı mantık) */
+  var covStep=p.priceStep,covTotal=0;
+  for(var cn=0;cn<p.maxSO;cn++){covTotal+=covStep;covStep*=p.stepMult;}
+  var covColor=covTotal>=40?"var(--green)":covTotal>=20?"var(--yellow)":"var(--red)";
   /* Alt bilgi satırı */
-  html+='<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--text3);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">';
   html+='<span>'+cyc+' döngü</span>';
+  html+='<span>🛡 Kapsama <span style="color:'+covColor+';font-weight:700">%'+covTotal.toFixed(1)+'</span></span>';
   html+='<span>Skor <span style="color:var(--text)">'+best.score.toFixed(1)+'</span></span>';
   html+='</div>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px;font-size:11px;margin-bottom:10px">';
@@ -1979,6 +2180,7 @@ function _renderOptProfile(profile,best){
 }
 
 var _optLastResults=[];
+var _lastResult=null;
 
 function applyOptParams(profileId){
   var pr=_optLastResults.find(function(r){return r.profile.id===profileId;});
