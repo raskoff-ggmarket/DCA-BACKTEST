@@ -379,9 +379,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div style="font-size:13px;text-align:center;line-height:1.5">⚙️ Ayarlar sekmesinden parametreleri ayarlayıp<br><strong style="color:var(--accent)">▶ Backtest Başlat</strong> butonuna bas.</div>
   </div>
   <div id="resultContent" class="hidden">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
-    <button onclick="copyResults()" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:3px 9px;border-radius:7px;font-size:11px;cursor:pointer;line-height:1.4">📋 Kopyala</button>
-  </div>
   <div class="hero">
     <div class="hero-lbl" id="hMeta"></div>
     <div class="hero-pct" id="hPct"></div>
@@ -400,6 +397,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
   <div class="tp" id="tp-stats"><div class="sg" id="statsG"></div></div>
   <div class="tp" id="tp-deals"><div class="dl" id="dealL"></div></div>
+  <div style="display:flex;justify-content:center;margin-top:16px;padding-bottom:8px">
+    <button onclick="copyResults()" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:6px 20px;border-radius:7px;font-size:12px;cursor:pointer;line-height:1.4">📋 Sonuçları Kopyala</button>
+  </div>
   </div><!-- /resultContent -->
 </div>
 
