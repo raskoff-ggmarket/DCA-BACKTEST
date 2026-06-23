@@ -504,12 +504,12 @@ var COINS = [
   {id:"avalanche-2",sym:"AVAX",   e:"▲"},
   {id:"tether-gold",sym:"XAUT",   e:"🥇"},
   {id:"pax-gold",   sym:"PAXG",   e:"🪙"},
-  {id:"tslax",      sym:"TSLAX",  e:"🚗"},
-  {id:"nvdax",      sym:"NVDAX",  e:"🎮"},
-  {id:"aaplx",      sym:"AAPLX",  e:"🍎"},
-  {id:"amznx",      sym:"AMZNX",  e:"📦"},
-  {id:"googlx",     sym:"GOOGLX", e:"🔍"},
-  {id:"spcx",       sym:"SPCX",   e:"📈"},
+  {id:"tslax",      sym:"TSLAX",  e:"🚗", src:"bybit"},
+  {id:"nvdax",      sym:"NVDAX",  e:"🎮", src:"bybit"},
+  {id:"aaplx",      sym:"AAPLX",  e:"🍎", src:"bybit"},
+  {id:"amznx",      sym:"AMZNX",  e:"📦", src:"bybit"},
+  {id:"googlx",     sym:"GOOGLX", e:"🔍", src:"bybit"},
+  {id:"spcx",       sym:"SPCX",   e:"📈", src:"bybit"},
 ];
 var PERS = [
   {l:"1A", d:30},
@@ -857,15 +857,53 @@ function _timedFetch(url){
   return fetch(url,{signal:ctrl.signal}).finally(function(){clearTimeout(id);});
 }
 
+/* OKX bar kodu → Bybit interval kodu */
+function _barToBybit(bar){
+  return {"1m":"1","30m":"30","1H":"60","4H":"240","1D":"D"}[bar]||"1";
+}
+
 /* afterTs: ms timestamp — bu ts'den daha eski mumları çek ("" = şimdiden başla)
    onProgress(oldestTs, totalFetched)
    onBatch(rawBatch, oldestTs) → true döndürürse dur
    onBatch verilmezse tüm veriyi döndürür (backtest modu) */
 async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
   var coin=COINS.find(function(c){return c.id===coinId;});
+  var isBybit=coin.src==="bybit";
+  var all=[],totalFetched=0,reqCount=0;
+
+  if(isBybit){
+    var symbol=coin.sym+"USDT";
+    var interval=_barToBybit(okxBar);
+    var endTs=afterTs?String(afterTs):"";
+    var maxReq=150;
+    while(reqCount<maxReq){
+      var url="https://api.bybit.com/v5/market/kline?category=spot&symbol="+symbol+
+              "&interval="+interval+"&limit=200";
+      if(endTs)url+="&end="+endTs;
+      var r;
+      try{r=await _timedFetch(url);}catch(e){break;}
+      if(!r.ok)throw new Error("Bybit API hata: "+r.status);
+      var j=await r.json();
+      if(j.retCode!==0||!j.result||!j.result.list||!j.result.list.length)break;
+      var batch=j.result.list; // descending: newest first
+      totalFetched+=batch.length;
+      if(!onBatch)all=all.concat(batch);
+      endTs=batch[batch.length-1][0]; // oldest in batch
+      reqCount++;
+      var oldest=parseInt(endTs);
+      if(onProgress)onProgress(oldest,totalFetched);
+      if(onBatch){var stop=await onBatch(batch,oldest);if(stop)break;}
+      if(oldest<=HISTORY_START_TS)break;
+      if(batch.length<200)break;
+      await new Promise(function(res){setTimeout(res,50);});
+    }
+    return all;
+  }
+
+  /* OKX path */
   var instId=coin.sym+"-USDT";
   var after=afterTs?String(afterTs):"";
-  var all=[],totalFetched=0,reqCount=0,maxReq=100;
+  var maxReq=100;
   while(reqCount<maxReq){
     var url="https://www.okx.com/api/v5/market/history-candles?instId="+instId+
             "&bar="+okxBar+"&limit=300";
@@ -892,8 +930,34 @@ async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
 
 async function _fetchNew(coinId,okxBar,latestTs){
   var coin=COINS.find(function(c){return c.id===coinId;});
+  var isBybit=coin.src==="bybit";
+  var all=[],reqCount=0,maxReq=5;
+
+  if(isBybit){
+    var symbol=coin.sym+"USDT";
+    var interval=_barToBybit(okxBar);
+    var startTs=String(latestTs+1);
+    while(reqCount<maxReq){
+      var url="https://api.bybit.com/v5/market/kline?category=spot&symbol="+symbol+
+              "&interval="+interval+"&limit=200&start="+startTs;
+      var r;
+      try{r=await _timedFetch(url);}catch(e){break;}
+      if(!r.ok)break;
+      var j=await r.json();
+      if(j.retCode!==0||!j.result||!j.result.list||!j.result.list.length)break;
+      var list=j.result.list;
+      all=all.concat(list);
+      reqCount++;
+      if(list.length<200)break;
+      // Newest first — next page starts after the newest we got
+      startTs=String(parseInt(list[0][0])+1);
+    }
+    return all;
+  }
+
+  /* OKX path */
   var instId=coin.sym+"-USDT";
-  var all=[],before=String(latestTs),reqCount=0,maxReq=5;
+  var before=String(latestTs);
   while(reqCount<maxReq){
     var url="https://www.okx.com/api/v5/market/history-candles?instId="+instId+
             "&bar="+okxBar+"&limit=300&before="+before;
@@ -971,12 +1035,12 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
   /* 5. Hiç veri yoksa ilk çekim (backtest modu) */
   if(!cached.length){
     var raw=await _fetchHistorical(coinId,okxBar,"",null,null);
-    if(!raw.length)throw new Error("OKX'ten veri gelmedi.");
+    if(!raw.length)throw new Error("Borsadan veri gelmedi.");
     cached=parseRawCandles(raw).filter(function(c){return c.ts>=HISTORY_START_TS;});
     changed=true;
   }
 
-  if(!cached.length)throw new Error("OKX'ten veri gelmedi.");
+  if(!cached.length)throw new Error("Borsadan veri gelmedi.");
 
   /* 6. Kaydet — sadece YENİ mumları yaz, tüm önbelleği değil */
   if(changed){
