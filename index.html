@@ -379,6 +379,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div style="font-size:13px;text-align:center;line-height:1.5">⚙️ Ayarlar sekmesinden parametreleri ayarlayıp<br><strong style="color:var(--accent)">▶ Backtest Başlat</strong> butonuna bas.</div>
   </div>
   <div id="resultContent" class="hidden">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
+    <button onclick="copyResults()" style="background:transparent;border:1px solid var(--border2);color:var(--text3);padding:3px 9px;border-radius:7px;font-size:11px;cursor:pointer;line-height:1.4">📋 Kopyala</button>
+  </div>
   <div class="hero">
     <div class="hero-lbl" id="hMeta"></div>
     <div class="hero-pct" id="hPct"></div>
@@ -1434,6 +1437,7 @@ async function run(){
    RENDER
 ═══════════════════════════════ */
 function render(res, source, mumCnt, dateFrom, dateTo){
+  _lastResult={res:res,mumCnt:mumCnt,dateFrom:dateFrom,dateTo:dateTo};
   if(!_hasResult){
     _hasResult=true;
     document.getElementById("noResultState").style.display="none";
@@ -1667,6 +1671,41 @@ function saveSettings(){
   ];
   var txt=lines.join("\n");
   navigator.clipboard.writeText(txt)
+    .then(function(){showToast("✓ Panoya kopyalandı");})
+    .catch(function(){showToast("⚠ Kopyalanamadı");});
+}
+function copyResults(){
+  if(!_lastResult){showToast("⚠ Henüz backtest yapılmadı");return;}
+  var r=_lastResult,s=r.res.stats;
+  var coin=COINS.find(function(c){return c.id===S.coin;})||{sym:"?"};
+  var now=new Date().toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  var pnlSign=s.totalPnL>=0?"+":"";
+  var lines=[
+    "DCA Backtest Sonuçları — "+now,
+    "════════════════════════════════════",
+    "Sembol     : "+coin.sym+"/USDT",
+    "Dönem      : "+r.dateFrom+" – "+r.dateTo,
+    "Mum Sayısı : "+r.mumCnt.toLocaleString(),
+    "",
+    "─── Performans ───",
+    "Toplam PnL   : "+pnlSign+"$"+s.totalPnL.toFixed(2)+" ("+pnlSign+s.totalPnLPct.toFixed(2)+"%)",
+    "Arb. APR     : %"+s.arbitrageAPR.toFixed(2),
+    "Toplam APR   : %"+s.totalAPR.toFixed(2),
+    "Max Drawdown : -%"+s.maxDrawdown.toFixed(2),
+    "Win Rate     : %"+s.winRate.toFixed(1),
+    "Döngüler     : "+s.completedCycles,
+    "",
+    "─── Parametreler ───",
+    "Sermaye      : $"+S.startCapital,
+    "İlk Alım     : $"+S.initAmt,
+    "SO Miktarı   : $"+S.safeAmt,
+    "Fiyat Adımı  : %"+S.priceStep,
+    "Adım Çarpanı : ×"+S.stepMult,
+    "Miktar Çarp. : ×"+S.amtMult,
+    "Max SO       : "+S.maxSO,
+    "TP           : %"+S.tpPct,
+  ];
+  navigator.clipboard.writeText(lines.join("\n"))
     .then(function(){showToast("✓ Panoya kopyalandı");})
     .catch(function(){showToast("⚠ Kopyalanamadı");});
 }
@@ -2131,6 +2170,7 @@ function _renderOptProfile(profile,best){
 }
 
 var _optLastResults=[];
+var _lastResult=null;
 
 function applyOptParams(profileId){
   var pr=_optLastResults.find(function(r){return r.profile.id===profileId;});
