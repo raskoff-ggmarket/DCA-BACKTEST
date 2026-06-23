@@ -346,6 +346,14 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
     </div>
 
+    <!-- Borsa Komisyonu -->
+    <div class="row" id="row-commission">
+      <div>
+        <div class="rl">Borsa Komisyonu (%)</div>
+        <div class="rs">Her alım ve satımda kesilen işlem ücreti</div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Başlatma Koşulu -->
@@ -539,6 +547,7 @@ var DEFAULTS = {
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
   maxSO:10, tpPct:1.5,
   reinvest:false, reinvestPct:100, ttpEnabled:false, ttpPct:0.5,
+  commission:0.1,
   profitMode:"quote",
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
@@ -571,6 +580,7 @@ var STEPPERS = [
   {k:"tpPct",       step:0.1, min:0.1,        dec:2},
   {k:"ttpPct",      step:0.1, min:0.1,        dec:2},
   {k:"reinvestPct", step:5,   min:1, max:100,  dec:0},
+  {k:"commission",  step:0.01,min:0, max:5,    dec:2},
   {k:"rsiTP",       step:1,   min:2, max:50,  dec:0},
   {k:"rsiThr",      step:1,   min:1, max:99,  dec:0},
 ];
@@ -1195,6 +1205,7 @@ function backtest(prices, rsiArr){
   var cdLeft=0, waitRSI=(S.cond==="rsi");
   var accumBase=0;
   var isBase=S.profitMode==="base";
+  var feeRate=(S.commission||0)/100;
 
   var dynInitAmt=S.initAmt;
   var dynSafeAmt=S.safeAmt;
@@ -1218,12 +1229,12 @@ function backtest(prices, rsiArr){
   function closeDealAt(price,date,why){
     var profit, bProfit=0;
     if(isBase){
-      bProfit=deal.totalQty-deal.totalCost/price;
+      bProfit=deal.totalQty*(1-feeRate)-deal.totalCost/price;
       profit=bProfit*price;
       cash+=deal.totalCost;
       accumBase+=bProfit;
     } else {
-      profit=deal.totalQty*price-deal.totalCost;
+      profit=deal.totalQty*price*(1-feeRate)-deal.totalCost;
       cash+=deal.totalCost+profit;
       applyReinvest(profit);
     }
@@ -1269,8 +1280,8 @@ function backtest(prices, rsiArr){
         stepNow*=S.stepMult;
       }
       deal={startDate:date,initPrice:price,
-            orders:[{date:date,price:price,size:dynInitAmt,qty:dynInitAmt/price}],
-            totalCost:dynInitAmt,totalQty:dynInitAmt/price,
+            orders:[{date:date,price:price,size:dynInitAmt,qty:dynInitAmt*(1-feeRate)/price}],
+            totalCost:dynInitAmt,totalQty:dynInitAmt*(1-feeRate)/price,
             avgCost:price,safetyCount:0,so:so,
             ttpActive:false,ttpPeak:0,
             snapshotInitAmt:dynInitAmt,snapshotSafeAmt:dynSafeAmt};
@@ -1300,8 +1311,8 @@ function backtest(prices, rsiArr){
         if(!lv.filled&&price<=lv.price){
           if(cash<lv.amt)break;
           cash-=lv.amt;
-          deal.orders.push({date:date,price:price,size:lv.amt,qty:lv.amt/price});
-          deal.totalCost+=lv.amt;deal.totalQty+=lv.amt/price;
+          deal.orders.push({date:date,price:price,size:lv.amt,qty:lv.amt*(1-feeRate)/price});
+          deal.totalCost+=lv.amt;deal.totalQty+=lv.amt*(1-feeRate)/price;
           deal.avgCost=deal.totalCost/deal.totalQty;
           deal.safetyCount++;lv.filled=true;
         }
@@ -1665,6 +1676,7 @@ function saveSettings(){
     "Kâr Modu        : "+(S.profitMode==="base"?coin.sym+" (Base)":"Quote (USDT)"),
     "Reinvest        : "+(S.reinvest?"Evet (%"+S.reinvestPct+")":"Hayır"),
     "TTP             : "+(S.ttpEnabled?"Evet (%"+S.ttpPct+")":"Hayır"),
+    "Komisyon        : %"+S.commission,
   ];
   var txt=lines.join("\n");
   navigator.clipboard.writeText(txt)
@@ -1701,6 +1713,7 @@ function copyResults(){
     "Miktar Çarp. : ×"+S.amtMult,
     "Max SO       : "+S.maxSO,
     "TP           : %"+S.tpPct,
+    "Komisyon     : %"+S.commission,
   ];
   navigator.clipboard.writeText(lines.join("\n"))
     .then(function(){showToast("✓ Panoya kopyalandı");})
