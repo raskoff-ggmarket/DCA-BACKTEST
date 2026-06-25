@@ -1967,22 +1967,22 @@ var OPT_PROFILES=[
   {
     id:"kisa",label:"⚡ Kısa Vade",color:"var(--accent2)",
     ranges:{
-      maxSO:[2,5],priceStep:[1.0,2.5],stepMult:[1.0,1.5],
-      amtMult:[1.0,1.5],tpPct:[0.5,1.5],
+      maxSO:[2,6],priceStep:[0.5,2.5],stepMult:[1.0,1.4],
+      amtMult:[1.0,1.4],tpPct:[0.3,2.0],
     }
   },
   {
     id:"orta",label:"⚖️ Orta Vade",color:"var(--accent)",
     ranges:{
-      maxSO:[4,10],priceStep:[2.0,5.0],stepMult:[1.0,1.8],
-      amtMult:[1.0,1.8],tpPct:[1.0,3.0],
+      maxSO:[4,12],priceStep:[1.5,5.0],stepMult:[1.0,1.7],
+      amtMult:[1.0,1.7],tpPct:[0.8,3.5],
     }
   },
   {
     id:"uzun",label:"🏔️ Uzun Vade",color:"var(--purple)",
     ranges:{
-      maxSO:[8,18],priceStep:[3.0,8.0],stepMult:[1.0,2.0],
-      amtMult:[1.0,1.8],tpPct:[1.5,5.0],
+      maxSO:[8,20],priceStep:[3.0,10.0],stepMult:[1.0,2.0],
+      amtMult:[1.0,2.0],tpPct:[1.5,6.0],
     }
   }
 ];
@@ -2032,17 +2032,21 @@ function backtestWithParams(prices,rsiArr,params){
 }
 
 function _optScore(stats){
-  if(!stats||stats.completedCycles<3)return -Infinity;
-  if(stats.maxDrawdown>75)return -Infinity;
-  /* Takılı pozisyon testi: yatırılan tutarın %25'inden fazla floating kayıp varsa → REDDEDİLDİ
-     Bu, safety orderlar bitip fiyat TP'ye dönemeyen "çöküş takılması"nı eler */
+  if(!stats||stats.completedCycles<5)return -Infinity;
+  if(stats.maxDrawdown>60)return -Infinity;
   var floatRatio=stats.investedAmt>0?stats.unrealizedPnL/stats.investedAmt:0;
   if(floatRatio<-0.25)return -Infinity;
-  /* Skor: max APR − DD cezası − kalan floating kayıp cezası */
   var apr=Math.max(0,stats.arbitrageAPR);
-  var ddPenalty=stats.maxDrawdown*2;
-  var floatPenalty=floatRatio<0?Math.abs(floatRatio)*200:0;
-  return apr-ddPenalty-floatPenalty;
+  var dd=Math.max(1,stats.maxDrawdown);
+  /* Calmar oranı: risk başına getiri (APR/MaxDD) — dengeli ana skor */
+  var calmar=apr/dd;
+  /* Win rate bonusu: %60 üzeri her puan için 0.3 bonus */
+  var wrBonus=Math.max(0,stats.winRate-60)*0.3;
+  /* Döngü bonusu: istikrar ödülü, logaritmik tavan (max 10) */
+  var cycleBonus=Math.min(10,Math.log(stats.completedCycles)*2);
+  /* Float cezası */
+  var floatPenalty=floatRatio<0?Math.abs(floatRatio)*20:0;
+  return calmar*10+wrBonus+cycleBonus-floatPenalty;
 }
 
 async function loadOptDateRange(){
