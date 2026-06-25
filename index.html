@@ -492,8 +492,14 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div id="gridPanel" class="hidden">
   <div style="padding:12px 14px 100px">
 
-    <div style="background:rgba(161,139,250,.08);border:1px solid rgba(161,139,250,.25);border-radius:12px;padding:11px 13px;margin-bottom:2px;font-size:12px;color:var(--text3);line-height:1.6">
-      ⊞ Arithmetic grid bot: fiyat aralığını eşit bantlara böler. Fiyat düşünce alır, çıkınca satar. Her tamamlanan bant bir döngüdür.
+    <!-- Coin -->
+    <div class="card">
+      <div class="card-head">💎 Coin Seçimi</div>
+      <div style="padding:10px 14px">
+        <select id="gridCoinC" onchange="GS.gridCoin=this.value;saveGridState();loadGridDateRange()"
+          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;color:var(--text);font-size:14px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer;-webkit-appearance:none;appearance:none">
+        </select>
+      </div>
     </div>
 
     <!-- Tarih -->
@@ -512,20 +518,29 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <div id="gridDateInfo" style="font-size:11px;color:var(--text3);padding:0 14px 12px;line-height:1.4"></div>
     </div>
 
+    <!-- Grid Tipi -->
+    <div class="card" style="margin-top:12px">
+      <div class="card-head">⚙️ Grid Tipi</div>
+      <div style="padding:12px 14px">
+        <div style="display:flex;gap:6px" id="gridTypeChips"></div>
+        <div id="gridTypeDesc" style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6"></div>
+      </div>
+    </div>
+
     <!-- Grid Parametreleri -->
-    <div class="card">
-      <div class="card-head">📐 Grid Parametreleri</div>
+    <div class="card" style="margin-top:12px">
+      <div class="card-head">📐 Parametreler</div>
       <div class="row">
         <div><div class="rl">Üst Fiyat (USDT)</div><div class="rs">Grid'in üst sınırı</div></div>
         <input type="number" id="gridUpper" step="any" min="0" placeholder="0"
           style="width:120px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;color:var(--text);font-size:14px;font-weight:700;font-family:'Space Grotesk',sans-serif;text-align:right"
-          oninput="GS.gridUpper=parseFloat(this.value)||0;saveGridState()">
+          oninput="GS.gridUpper=parseFloat(this.value)||0;saveGridState();updateGridPreview()">
       </div>
       <div class="row">
         <div><div class="rl">Alt Fiyat (USDT)</div><div class="rs">Grid'in alt sınırı</div></div>
         <input type="number" id="gridLower" step="any" min="0" placeholder="0"
           style="width:120px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;color:var(--text);font-size:14px;font-weight:700;font-family:'Space Grotesk',sans-serif;text-align:right"
-          oninput="GS.gridLower=parseFloat(this.value)||0;saveGridState()">
+          oninput="GS.gridLower=parseFloat(this.value)||0;saveGridState();updateGridPreview()">
       </div>
       <div class="row" id="row-gridCount">
         <div><div class="rl">Grid Sayısı</div><div class="rs">Kaç eşit bant</div></div>
@@ -538,19 +553,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
     </div>
 
-    <!-- Kaldıraç -->
-    <div class="card">
-      <div class="card-head" style="color:var(--yellow)">⚡ Kaldıraç</div>
-      <div style="padding:10px 14px">
-        <div style="display:flex;gap:6px;flex-wrap:wrap" id="gridLevChips"></div>
-      </div>
-      <div id="gridMarginRow" style="display:none;border-top:1px solid var(--border);padding:10px 14px">
-        <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.04em">TEMİNAT TÜRÜ</div>
-        <div style="display:flex;gap:6px" id="gridMarginChips"></div>
-        <div id="gridMarginDesc" style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5"></div>
-      </div>
-      <div id="gridLiqInfo" style="display:none;padding:0 14px 12px;font-size:11px;color:var(--yellow);line-height:1.5"></div>
-    </div>
+    <!-- Canlı Önizleme -->
+    <div id="gridPreview" style="background:var(--bg2);border:1px solid rgba(161,139,250,.3);border-radius:14px;padding:14px;margin-top:12px;display:none"></div>
 
     <button id="gridBtn" onclick="runGrid()"
       style="width:100%;margin-top:12px;padding:14px;border-radius:12px;border:1px solid var(--purple);background:rgba(161,139,250,.1);color:var(--purple);font-size:14px;font-weight:800;font-family:'Space Grotesk',sans-serif;cursor:pointer;letter-spacing:.05em">
@@ -594,6 +598,7 @@ var COINS = [
   {id:"googlx",     sym:"GOOGLX", e:"", src:"bybit"},
   {id:"spcx",       sym:"SPCX",   e:"", src:"bybit"},
   {id:"rlusd",      sym:"RLUSD",  e:"", src:"bybit"},
+  {id:"usdc",       sym:"USDC",   e:"", src:"bybit"},
 ];
 var PERS = [
   {l:"1A", d:30},
@@ -2337,13 +2342,13 @@ function buildGridTypeChips(){
   ];
   types.forEach(function(t){
     var b=document.createElement("button");
-    b.className="chip"+(GS.gridType===t.v?" on":"");
-    b.style.padding="6px 14px";
+    b.className="chip"+(GS.gridType===t.v?" on-p":"");
+    b.style.cssText="padding:6px 14px;cursor:pointer;font-family:'Space Grotesk',sans-serif";
     b.textContent=t.l;
     b.onclick=function(){
       GS.gridType=t.v;
       el.querySelectorAll(".chip").forEach(function(c){c.className="chip";});
-      b.className="chip on";
+      b.className="chip on-p";
       document.getElementById("gridTypeDesc").textContent=t.d;
       saveGridState();updateGridPreview();
     };
