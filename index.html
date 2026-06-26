@@ -354,6 +354,18 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
     </div>
 
+    <!-- Hisse API Key -->
+    <div class="row" id="row-stockApiKey">
+      <div style="flex:1">
+        <div class="rl">Hisse Veri Anahtarı</div>
+        <div class="rs">GOOGL/AAPL vb. için · <a href="https://www.alphavantage.co/support/#api-key" target="_blank" style="color:var(--accent);text-decoration:none">Ücretsiz al ↗</a></div>
+        <input id="stockApiKeyInp" type="text" placeholder="Alpha Vantage API key gir…"
+          value=""
+          oninput="S.stockApiKey=this.value.trim();saveState()"
+          style="margin-top:6px;width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;font-family:'Space Grotesk',sans-serif"/>
+      </div>
+    </div>
+
   </div>
 
   <!-- Başlatma Koşulu -->
@@ -559,6 +571,7 @@ var DEFAULTS = {
   maxSO:10, tpPct:1.5,
   reinvest:false, reinvestPct:100, ttpEnabled:false, ttpPct:0.5,
   commission:0.1,
+  stockApiKey:"",
   profitMode:"quote",
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
@@ -920,42 +933,30 @@ async function fetchYahooCandles(coinId){
   var cached=[];
   try{cached=await cGet(key);}catch(e){}
   var latestTs=cached.length?cached[cached.length-1].ts:0;
-  var period1=latestTs?Math.floor(latestTs/1000)+86400:Math.floor(new Date("2004-01-01").getTime()/1000);
-  var period2=Math.floor(Date.now()/1000);
-  if(period1>=period2){showToast("✓ "+coin.sym+" verileri güncel");return 0;}
-  var yahooUrl="https://query1.finance.yahoo.com/v8/finance/chart/"+coin.sym+
-               "?interval=1d&period1="+period1+"&period2="+period2;
-  /* Sırayla 3 endpoint dene: direkt → corsproxy → allorigins */
-  var endpoints=[
-    yahooUrl,
-    "https://corsproxy.io/?"+encodeURIComponent(yahooUrl),
-    "https://api.allorigins.win/raw?url="+encodeURIComponent(yahooUrl),
-  ];
-  var j=null;
-  for(var ei=0;ei<endpoints.length;ei++){
-    try{
-      var r=await _timedFetch(endpoints[ei]);
-      if(!r.ok)continue;
-      var txt=await r.text();
-      j=JSON.parse(txt);
-      if(j&&j.chart&&j.chart.result)break;
-      j=null;
-    }catch(e){j=null;}
+  if(latestTs&&Date.now()-latestTs<86400000){showToast("✓ "+coin.sym+" verileri güncel");return 0;}
+  var apiKey=S.stockApiKey||"";
+  if(!apiKey){
+    throw new Error("Hisse veri anahtarı gerekli. Gelişmiş Ayarlar → 'Ücretsiz al' linkine tıkla, anahtarı gir.");
   }
-  if(!j)throw new Error(coin.sym+" verisi çekilemedi. Lütfen CSV import deneyin.");
-  var res=j.chart.result[0];
-  if(!res||!res.timestamp)throw new Error("Yahoo Finance veri boş");
-  var timestamps=res.timestamp;
-  var closes=res.indicators.quote[0].close;
+  /* Alpha Vantage — TIME_SERIES_DAILY, tam tarih (outputsize=full) */
+  var url="https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol="+coin.sym+
+          "&outputsize=full&apikey="+encodeURIComponent(apiKey);
+  var r=await _timedFetch(url);
+  if(!r.ok)throw new Error("Alpha Vantage API hata: "+r.status);
+  var j=await r.json();
+  if(j["Note"]||j["Information"])throw new Error("API limit: "+(j["Note"]||j["Information"]));
+  var series=j["Time Series (Daily)"];
+  if(!series)throw new Error(coin.sym+" için veri gelmedi. API anahtarını kontrol et.");
   var newCandles=[];
-  for(var i=0;i<timestamps.length;i++){
-    if(!closes[i])continue;
-    var ts=timestamps[i]*1000;
-    if(ts<=latestTs)continue;
-    newCandles.push({ts:ts,price:closes[i],
+  Object.keys(series).sort().forEach(function(dateStr){
+    var ts=new Date(dateStr).getTime();
+    if(ts<=latestTs)return;
+    var price=parseFloat(series[dateStr]["4. close"]);
+    if(!price)return;
+    newCandles.push({ts:ts,price:price,
       date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"}),
       time:"00:00"});
-  }
+  });
   var all=cached.concat(newCandles).sort(function(a,b){return a.ts-b.ts;});
   if(all.length)await cPut(key,all);
   return newCandles.length;
@@ -2352,6 +2353,7 @@ updateBadge();
 updateCap();
 /* Toggle başlangıç durumları */
 document.getElementById("chkReinvest").checked = S.reinvest;
+var _akInp=document.getElementById("stockApiKeyInp");if(_akInp)_akInp.value=S.stockApiKey||"";
 document.getElementById("chkTtp").checked = S.ttpEnabled;
 toggleReinvestSub();
 toggleTtpSub();
