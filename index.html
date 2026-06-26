@@ -521,6 +521,14 @@ var COINS = [
   {id:"spcx",       sym:"SPCX",   e:"", src:"bybit"},
   {id:"rlusd",      sym:"RLUSD",  e:"", src:"bybit"},
   {id:"usdc",       sym:"USDC",   e:"", src:"bybit"},
+  {id:"googl",      sym:"GOOGL",  e:"", src:"yahoo"},
+  {id:"aapl",       sym:"AAPL",   e:"", src:"yahoo"},
+  {id:"msft",       sym:"MSFT",   e:"", src:"yahoo"},
+  {id:"nvda",       sym:"NVDA",   e:"", src:"yahoo"},
+  {id:"meta",       sym:"META",   e:"", src:"yahoo"},
+  {id:"amzn",       sym:"AMZN",   e:"", src:"yahoo"},
+  {id:"tsla",       sym:"TSLA",   e:"", src:"yahoo"},
+  {id:"spy",        sym:"SPY",    e:"", src:"yahoo"},
 ];
 var PERS = [
   {l:"1A", d:30},
@@ -707,7 +715,7 @@ async function refreshCacheRange(){
   }
   var lines=[];
   try{
-    var key=S.coin+"_"+INSTANT_BAR.okx;
+    var key=S.coin+"_"+_coinBarKey(S.coin);
     var d=await cGet(key);
     var t=fmt(d,S.coin);
     if(t)lines.push("DCA: "+t);
@@ -765,7 +773,7 @@ async function opfsGet(key){
   }catch(e){return null;}
 }
 async function opfsRestore(){
-  var key=S.coin+"_"+INSTANT_BAR.okx;
+  var key=S.coin+"_"+_coinBarKey(S.coin);
   var idb=[];try{idb=await cGet(key);}catch(e){}
   if(idb&&idb.length)return;
   var data=await opfsGet(key);
@@ -799,7 +807,7 @@ async function stPut(key,candles){
 }
 
 async function exportCandles(){
-  var key=S.coin+"_"+INSTANT_BAR.okx;
+  var key=S.coin+"_"+_coinBarKey(S.coin);
   var data=[];
   try{data=await cGet(key);}catch(e){}
   if(!data.length){showToast("⚠ İndirilecek mum yok");return;}
@@ -830,7 +838,7 @@ async function importCandles(input){
       return {ts:d.ts,price:d.price,date:d.date||new Date(d.ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
     }).filter(function(c){return c.ts>=HISTORY_START_TS;});
     if(!candles.length){showToast("⚠ Geçerli mum bulunamadı");if(infoEl)infoEl.textContent="";input.value="";return;}
-    var key=S.coin+"_"+INSTANT_BAR.okx;
+    var key=S.coin+"_"+_coinBarKey(S.coin);
     var total=candles.length;
     await cPutBatched(key,candles,function(done,tot){
       if(infoEl)infoEl.textContent="📥 "+done.toLocaleString()+" / "+tot.toLocaleString()+" mum yazılıyor…";
@@ -873,6 +881,42 @@ function _timedFetch(url){
 /* OKX bar kodu → Bybit interval kodu */
 function _barToBybit(bar){
   return {"1m":"1","30m":"30","1H":"60","4H":"240","1D":"D"}[bar]||"1";
+}
+function _coinBarKey(coinId){
+  var coin=COINS.find(function(c){return c.id===coinId;});
+  return (coin&&coin.src==="yahoo")?"1d":INSTANT_BAR.okx;
+}
+
+async function fetchYahooCandles(coinId){
+  var coin=COINS.find(function(c){return c.id===coinId;});
+  var key=coinId+"_1d";
+  var cached=[];
+  try{cached=await cGet(key);}catch(e){}
+  var latestTs=cached.length?cached[cached.length-1].ts:0;
+  var period1=latestTs?Math.floor(latestTs/1000)+86400:Math.floor(new Date("2010-01-01").getTime()/1000);
+  var period2=Math.floor(Date.now()/1000);
+  if(period1>=period2){showToast("✓ "+coin.sym+" verileri güncel");return 0;}
+  var url="https://query1.finance.yahoo.com/v8/finance/chart/"+coin.sym+
+          "?interval=1d&period1="+period1+"&period2="+period2;
+  var r=await _timedFetch(url);
+  if(!r.ok)throw new Error("Yahoo Finance API hata: "+r.status);
+  var j=await r.json();
+  var res=j.chart&&j.chart.result&&j.chart.result[0];
+  if(!res||!res.timestamp)throw new Error("Yahoo Finance veri boş");
+  var timestamps=res.timestamp;
+  var closes=res.indicators.quote[0].close;
+  var newCandles=[];
+  for(var i=0;i<timestamps.length;i++){
+    if(!closes[i])continue;
+    var ts=timestamps[i]*1000;
+    if(ts<=latestTs)continue;
+    newCandles.push({ts:ts,price:closes[i],
+      date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"}),
+      time:"00:00"});
+  }
+  var all=cached.concat(newCandles).sort(function(a,b){return a.ts-b.ts;});
+  if(all.length)await cPut(key,all);
+  return newCandles.length;
 }
 
 /* afterTs: ms timestamp — bu ts'den daha eski mumları çek ("" = şimdiden başla)
@@ -1085,9 +1129,9 @@ async function loadCandleRange(){
     var key;
     if(S.cond==="rsi"){
       var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
-      key=S.coin+"_"+(tf?tf.okx:INSTANT_BAR.okx);
+      key=S.coin+"_"+(tf?tf.okx:_coinBarKey(S.coin));
     } else {
-      key=S.coin+"_"+INSTANT_BAR.okx;
+      key=S.coin+"_"+_coinBarKey(S.coin);
     }
     var inpFrom=document.getElementById("inpDateFrom");
     var inpTo=document.getElementById("inpDateTo");
@@ -1124,10 +1168,13 @@ async function fetchCandlesRun(){
   btn.disabled=true;
   btn.innerHTML='<span class="spinner" style="border-color:rgba(255,255,255,.2);border-top-color:var(--text2)"></span> Bağlanıyor…';
   document.getElementById("errBox").classList.add("hidden");
-  showToast("📡 OKX'e bağlanıyor…");
+  var _yahooMode=COINS.find(function(c){return c.id===S.coin&&c.src==="yahoo";});
+  showToast(_yahooMode?"📡 Yahoo Finance'e bağlanıyor…":"📡 OKX'e bağlanıyor…");
   setLoad(3);
   try{
-    if(S.cond==="rsi"){
+    if(_yahooMode){
+      await fetchYahooCandles(S.coin);
+    } else if(S.cond==="rsi"){
       var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
       if(!tf)throw new Error("Geçersiz RSI zaman dilimi.");
       await fetchOKXCandles(S.coin,tf.okx,true);
@@ -1154,9 +1201,9 @@ async function updateFetchBtnState(){
   var key;
   if(S.cond==="rsi"){
     var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
-    key=S.coin+"_"+(tf?tf.okx:INSTANT_BAR.okx);
+    key=S.coin+"_"+(tf?tf.okx:_coinBarKey(S.coin));
   } else {
-    key=S.coin+"_"+INSTANT_BAR.okx;
+    key=S.coin+"_"+_coinBarKey(S.coin);
   }
   var complete=false;
   try{
@@ -1416,7 +1463,7 @@ async function run(){
       sourceLabel="💾 Önbellek · "+tf.l+" mumlar";
       mumCount=prices.length;
     } else {
-      var allCandles=await stGet(S.coin+"_"+INSTANT_BAR.okx);
+      var allCandles=await stGet(S.coin+"_"+_coinBarKey(S.coin));
       if(!allCandles||allCandles.length<2) throw new Error("Önce 📥 Mum Çek ile veri yükleyin.");
       prices=filterByDateRange(allCandles,S.dateFrom,S.dateTo);
       if(prices.length<20) throw new Error("Seçilen tarih aralığında yeterli veri yok ("+prices.length+" mum).");
@@ -2055,7 +2102,7 @@ function _optScore(stats){
 async function loadOptDateRange(){
   try{
     var d=[];
-    try{d=await cGet(S.coin+"_"+INSTANT_BAR.okx);}catch(e){}
+    try{d=await cGet(S.coin+"_"+_coinBarKey(S.coin));}catch(e){}
     var fInp=document.getElementById("optDateFrom");
     var tInp=document.getElementById("optDateTo");
     var el=document.getElementById("optDateInfo");
@@ -2088,7 +2135,7 @@ async function runOptimizer(){
   setLoad(3);
 
   try{
-    var prices=await stGet(S.coin+"_"+INSTANT_BAR.okx);
+    var prices=await stGet(S.coin+"_"+_coinBarKey(S.coin));
     if(!prices||prices.length<20)throw new Error("Önce 📥 MUM İNDİR ile veri yükleyin.");
     var dateFrom=document.getElementById("optDateFrom").value;
     var dateTo=document.getElementById("optDateTo").value;
