@@ -373,7 +373,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="card-head">💾 Veri Depolama</div>
     <div style="display:flex;gap:8px">
       <button onclick="exportCandles()" style="flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer">📤 Dışa Aktar</button>
-      <label style="flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer;display:block;text-align:center">📂 İçe Aktar<input type="file" accept=".json" style="display:none" onchange="importCandles(this)"></label>
+      <label style="flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer;display:block;text-align:center">📂 İçe Aktar<input type="file" accept=".json,.csv" style="display:none" onchange="importCandles(this)"></label>
     </div>
   </div>
   <div class="err hidden" id="errBox"></div>
@@ -830,13 +830,40 @@ async function importCandles(input){
   if(infoEl)infoEl.textContent="📂 Dosya okunuyor…";
   try{
     var text=await file.text();
-    var raw;
-    try{raw=JSON.parse(text);}catch(e){showToast("⚠ JSON hatası: "+e.message);if(infoEl)infoEl.textContent="";input.value="";return;}
-    if(!Array.isArray(raw)||!raw.length){showToast("⚠ Geçersiz dosya");if(infoEl)infoEl.textContent="";input.value="";return;}
-    var candles=raw.map(function(d){
-      if(Array.isArray(d)){var ts=d[0];return {ts:ts,price:d[1],date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};}
-      return {ts:d.ts,price:d.price,date:d.date||new Date(d.ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
-    }).filter(function(c){return c.ts>=HISTORY_START_TS;});
+    var candles;
+    if(file.name.endsWith(".csv")||text.trimStart().startsWith("Date,")||text.trimStart().startsWith("Timestamp,")){
+      /* CSV: Yahoo Finance (Date,Open,High,Low,Close,...) or unix ts,close */
+      var lines=text.trim().split("\n");
+      var header=lines[0].toLowerCase().split(",").map(function(h){return h.trim().replace(/"/g,"");});
+      var dateIdx=header.indexOf("date"),tsIdx=header.indexOf("timestamp");
+      var closeIdx=header.indexOf("close"),adjIdx=header.indexOf("adj close");
+      if(closeIdx===-1&&adjIdx===-1){showToast("⚠ CSV'de 'close' sütunu bulunamadı");if(infoEl)infoEl.textContent="";input.value="";return;}
+      var priceCol=closeIdx!==-1?closeIdx:adjIdx;
+      var timeCol=dateIdx!==-1?dateIdx:tsIdx;
+      candles=[];
+      for(var i=1;i<lines.length;i++){
+        var cols=lines[i].split(",").map(function(v){return v.trim().replace(/"/g,"");});
+        if(!cols[priceCol]||isNaN(parseFloat(cols[priceCol])))continue;
+        var ts;
+        if(timeCol!==-1){
+          var raw=cols[timeCol];
+          ts=isNaN(Number(raw))?new Date(raw).getTime():Number(raw)*1000;
+        } else { ts=0; }
+        if(!ts||isNaN(ts))continue;
+        candles.push({ts:ts,price:parseFloat(cols[priceCol]),
+          date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"}),
+          time:new Date(ts).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})});
+      }
+    } else {
+      var raw;
+      try{raw=JSON.parse(text);}catch(e){showToast("⚠ JSON hatası: "+e.message);if(infoEl)infoEl.textContent="";input.value="";return;}
+      if(!Array.isArray(raw)||!raw.length){showToast("⚠ Geçersiz dosya");if(infoEl)infoEl.textContent="";input.value="";return;}
+      candles=raw.map(function(d){
+        if(Array.isArray(d)){var ts=d[0];return {ts:ts,price:d[1],date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};}
+        return {ts:d.ts,price:d.price,date:d.date||new Date(d.ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
+      });
+    }
+    candles=candles.filter(function(c){return c.ts>=HISTORY_START_TS;}).sort(function(a,b){return a.ts-b.ts;});
     if(!candles.length){showToast("⚠ Geçerli mum bulunamadı");if(infoEl)infoEl.textContent="";input.value="";return;}
     var key=S.coin+"_"+_coinBarKey(S.coin);
     var total=candles.length;
