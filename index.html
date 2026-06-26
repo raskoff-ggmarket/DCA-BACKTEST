@@ -920,15 +920,30 @@ async function fetchYahooCandles(coinId){
   var cached=[];
   try{cached=await cGet(key);}catch(e){}
   var latestTs=cached.length?cached[cached.length-1].ts:0;
-  var period1=latestTs?Math.floor(latestTs/1000)+86400:Math.floor(new Date("2010-01-01").getTime()/1000);
+  var period1=latestTs?Math.floor(latestTs/1000)+86400:Math.floor(new Date("2004-01-01").getTime()/1000);
   var period2=Math.floor(Date.now()/1000);
   if(period1>=period2){showToast("✓ "+coin.sym+" verileri güncel");return 0;}
-  var url="https://query1.finance.yahoo.com/v8/finance/chart/"+coin.sym+
-          "?interval=1d&period1="+period1+"&period2="+period2;
-  var r=await _timedFetch(url);
-  if(!r.ok)throw new Error("Yahoo Finance API hata: "+r.status);
-  var j=await r.json();
-  var res=j.chart&&j.chart.result&&j.chart.result[0];
+  var yahooUrl="https://query1.finance.yahoo.com/v8/finance/chart/"+coin.sym+
+               "?interval=1d&period1="+period1+"&period2="+period2;
+  /* Sırayla 3 endpoint dene: direkt → corsproxy → allorigins */
+  var endpoints=[
+    yahooUrl,
+    "https://corsproxy.io/?"+encodeURIComponent(yahooUrl),
+    "https://api.allorigins.win/raw?url="+encodeURIComponent(yahooUrl),
+  ];
+  var j=null;
+  for(var ei=0;ei<endpoints.length;ei++){
+    try{
+      var r=await _timedFetch(endpoints[ei]);
+      if(!r.ok)continue;
+      var txt=await r.text();
+      j=JSON.parse(txt);
+      if(j&&j.chart&&j.chart.result)break;
+      j=null;
+    }catch(e){j=null;}
+  }
+  if(!j)throw new Error(coin.sym+" verisi çekilemedi. Lütfen CSV import deneyin.");
+  var res=j.chart.result[0];
   if(!res||!res.timestamp)throw new Error("Yahoo Finance veri boş");
   var timestamps=res.timestamp;
   var closes=res.indicators.quote[0].close;
