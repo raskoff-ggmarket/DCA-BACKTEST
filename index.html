@@ -798,22 +798,47 @@ async function stPut(key,candles){
   try{await cPut(key,candles);}catch(e){}
 }
 
+function _downloadBlob(blob,filename){
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(url);},2000);
+}
+
 async function exportCandles(){
   var key=S.coin+"_"+INSTANT_BAR.okx;
   var data=[];
   try{data=await cGet(key);}catch(e){}
   if(!data.length){showToast("⚠ İndirilecek mum yok");return;}
-  var compact=data.map(function(c){return [c.ts,c.price];});
-  var blob=new Blob([JSON.stringify(compact)],{type:"application/json"});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement("a");
-  a.href=url;
+
+  var MAX=10*1024*1024;                  // parça başına 10MB tavan
+  // Her parçayı byte ölçerek doldur — geçerli JSON dizisi olarak
+  var parts=[];                          // her eleman: {arr:[], from:ts, to:ts}
+  var cur=[],curBytes=2;                 // "[" + "]"
+  for(var i=0;i<data.length;i++){
+    var e=[data[i].ts,data[i].price];
+    var sLen=JSON.stringify(e).length+1; // +1 virgül
+    if(curBytes+sLen>MAX&&cur.length){
+      parts.push(cur);cur=[];curBytes=2;
+    }
+    cur.push(e);curBytes+=sLen;
+  }
+  if(cur.length)parts.push(cur);
+
   var d1=new Date(data[0].ts).toISOString().slice(0,10);
   var d2=new Date(data[data.length-1].ts).toISOString().slice(0,10);
-  a.download=key+"_"+d1+"_"+d2+".json";
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast("✅ "+data.length.toLocaleString()+" mum indirildi");
+  var N=parts.length;
+
+  for(var p=0;p<N;p++){
+    var blob=new Blob([JSON.stringify(parts[p])],{type:"application/json"});
+    var suffix=N>1?("_part"+(p+1)+"of"+N):"";
+    _downloadBlob(blob,key+"_"+d1+"_"+d2+suffix+".json");
+    if(N>1)await new Promise(function(res){setTimeout(res,800);}); // tarayıcı çoklu indirme için bekle
+  }
+
+  if(N>1)showToast("✅ "+data.length.toLocaleString()+" mum, "+N+" parçaya bölündü (≤10MB)");
+  else showToast("✅ "+data.length.toLocaleString()+" mum indirildi");
 }
 async function importCandles(input){
   var file=input.files[0];
