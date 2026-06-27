@@ -934,19 +934,30 @@ async function fetchYahooCandles(coinId){
   try{cached=await cGet(key);}catch(e){}
   var latestTs=cached.length?cached[cached.length-1].ts:0;
   if(latestTs&&Date.now()-latestTs<86400000){showToast("✓ "+coin.sym+" verileri güncel");return 0;}
-  var apiKey=S.stockApiKey||"";
+  var apiKey=(S.stockApiKey||"").trim();
   if(!apiKey){
     throw new Error("Hisse veri anahtarı gerekli. Gelişmiş Ayarlar → 'Ücretsiz al' linkine tıkla, anahtarı gir.");
   }
   /* Alpha Vantage — TIME_SERIES_DAILY, tam tarih (outputsize=full) */
   var url="https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol="+coin.sym+
           "&outputsize=full&apikey="+encodeURIComponent(apiKey);
-  var r=await _timedFetch(url);
-  if(!r.ok)throw new Error("Alpha Vantage API hata: "+r.status);
-  var j=await r.json();
-  if(j["Note"]||j["Information"])throw new Error("API limit: "+(j["Note"]||j["Information"]));
+  var r;
+  try{r=await _timedFetch(url);}
+  catch(e){throw new Error("Bağlantı hatası: "+e.message+" — internet veya CORS engeli olabilir.");}
+  if(!r.ok)throw new Error("Alpha Vantage API hata: HTTP "+r.status);
+  var txt=await r.text();
+  var j;
+  try{j=JSON.parse(txt);}
+  catch(e){throw new Error("Yanıt JSON değil: "+txt.slice(0,120));}
+  /* Hata/limit mesajlarını net göster */
+  if(j["Error Message"])throw new Error("Geçersiz sembol/anahtar: "+j["Error Message"]);
+  if(j["Note"])throw new Error("Hız limiti (1 dk bekle): "+j["Note"]);
+  if(j["Information"])throw new Error("Alpha Vantage: "+j["Information"]);
   var series=j["Time Series (Daily)"];
-  if(!series)throw new Error(coin.sym+" için veri gelmedi. API anahtarını kontrol et.");
+  if(!series){
+    var firstKey=Object.keys(j)[0]||"?";
+    throw new Error(coin.sym+" verisi gelmedi. Yanıt: "+firstKey+" = "+JSON.stringify(j[firstKey]).slice(0,100));
+  }
   var newCandles=[];
   Object.keys(series).sort().forEach(function(dateStr){
     var ts=new Date(dateStr).getTime();
@@ -959,6 +970,7 @@ async function fetchYahooCandles(coinId){
   });
   var all=cached.concat(newCandles).sort(function(a,b){return a.ts-b.ts;});
   if(all.length)await cPut(key,all);
+  if(!newCandles.length&&!cached.length)throw new Error(coin.sym+" için fiyat verisi bulunamadı.");
   return newCandles.length;
 }
 
