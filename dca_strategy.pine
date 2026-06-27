@@ -1,8 +1,8 @@
 //@version=5
 // ════════════════════════════════════════════════════════════════
 //  DCA Bot Backtest — 3Commas tarzı (DCA-BACKTEST uygulamasının kopyası)
-//  Base Order + Safety Orders + Martingale (hacim & sapma çarpanı) + TP / TTP
-//  Komisyon her alım ve satımda uygulanır.
+//  Base Order + Safety Orders + Martingale (hacim & sapma çarpanı)
+//  + TP / TTP + Kâr Reinvest. Komisyon her alım ve satımda uygulanır.
 // ════════════════════════════════════════════════════════════════
 strategy("DCA Bot Backtest",
      overlay              = true,
@@ -16,27 +16,42 @@ strategy("DCA Bot Backtest",
      calc_on_every_tick   = false)
 
 // ─── Parametreler (uygulamadaki varsayılanlar) ───────────────────
-baseOrder = input.float(100,  "Base Order ($)",            group="DCA", tooltip="İlk alım tutarı")
-safeOrder = input.float(100,  "Safety Order ($)",          group="DCA", tooltip="İlk güvenlik emrinin tutarı")
-maxSO     = input.int  (10,   "Max Safety Orders",         group="DCA", minval=0, maxval=50)
-priceStep = input.float(1.0,  "Price Deviation % (ilk SO)", group="DCA", step=0.1, tooltip="İlk SO'nun giriş fiyatından sapması")
-stepMult  = input.float(1.0,  "Step Scale (sapma çarpanı)", group="DCA", step=0.05, tooltip="Her SO'da sapma adımının çarpanı")
-volMult   = input.float(1.0,  "Volume Scale (tutar çarpanı)", group="DCA", step=0.05, tooltip="Her SO'da tutarın çarpanı (martingale)")
-tpPct     = input.float(1.5,  "Take Profit %",             group="DCA", step=0.1, tooltip="Ortalama maliyet üzerine kâr hedefi")
-useTTP    = input.bool (false,"Trailing Take Profit",      group="DCA")
-ttpPct    = input.float(0.5,  "TTP Deviation %",           group="DCA", step=0.1)
+baseOrder = input.float(100,  "Base Order ($)",             group="DCA", tooltip="İlk alım tutarı")
+safeOrder = input.float(100,  "Safety Order ($)",           group="DCA", tooltip="İlk güvenlik emrinin tutarı")
+maxSO     = input.int  (10,   "Max Safety Orders",          group="DCA", minval=0, maxval=50)
+priceStep = input.float(1.0,  "Price Deviation % (ilk SO)", group="DCA", step=0.1)
+stepMult  = input.float(1.0,  "Step Scale (sapma çarpanı)", group="DCA", step=0.05)
+volMult   = input.float(1.0,  "Volume Scale (tutar çarpanı)", group="DCA", step=0.05)
+tpPct     = input.float(1.5,  "Take Profit %",              group="DCA", step=0.1)
+useTTP    = input.bool (false,"Trailing Take Profit",       group="DCA")
+ttpPct    = input.float(0.5,  "TTP Deviation %",            group="DCA", step=0.1)
+commPct   = input.float(0.1,  "Komisyon % (sync)",          group="DCA", step=0.01, tooltip="Yukarıdaki strategy() commission_value ile aynı tut")
+
+// ─── Reinvest ────────────────────────────────────────────────────
+reinvest    = input.bool (false, "Kârı Reinvest Et",  group="Reinvest")
+reinvestPct = input.float(100,   "Reinvest Oranı %",  group="Reinvest", minval=0, maxval=100, step=5)
+
+feeRate = commPct / 100
 
 // ─── Durum değişkenleri ──────────────────────────────────────────
-var float entryPrice = na     // mevcut döngünün ilk alım fiyatı
-var int   filledSO   = 0      // dolan güvenlik emri sayısı
+var float entryPrice = na      // mevcut döngünün ilk alım fiyatı
+var int   filledSO   = 0       // dolan güvenlik emri sayısı
 var bool  ttpActive  = false
 var float ttpPeak    = na
+var float dynBase    = na      // reinvest ile büyüyen base tutarı
+var float dynSafe    = na      // reinvest ile büyüyen safety tutarı
+var float dealCost   = 0.0     // bu döngüde harcanan $ (brüt)
+var float dealQty    = 0.0     // bu döngüde alınan miktar (alım komisyonu düşülmüş)
+
+if na(dynBase)
+    dynBase := baseOrder
+    dynSafe := safeOrder
 
 avg   = strategy.position_avg_price
 inPos = strategy.position_size > 0
 
 // ─── SO tetik fiyatı (0-tabanlı n) — uygulamayla birebir ─────────
-// cumPct tam hassasiyetle birikir, sadece kullanılan değer 2 ondalığa kırpılır (3Commas)
+// cumPct tam hassasiyetle birikir, kullanılan değer 2 ondalığa kırpılır (3Commas)
 soPrice(n) =>
     cum = 0.0
     st  = priceStep
@@ -46,6 +61,14 @@ soPrice(n) =>
     cumF = math.floor(cum * 100) / 100
     entryPrice * (1 - cumF / 100)
 
+// ─── Döngü başına toplam sermaye (base + tüm SO'lar) ─────────────
+totalOrderBase(init, safe) =>
+    t = init
+    if maxSO > 0
+        for n = 0 to maxSO - 1
+            t := t + safe * math.pow(volMult, n)
+    t
+
 // ═══════════════════════ İŞLEM MANTIĞI ══════════════════════════
 
 // 1) Pozisyon yoksa → Base Order aç
@@ -54,9 +77,11 @@ if not inPos
     filledSO   := 0
     ttpActive  := false
     ttpPeak    := na
-    strategy.entry("DCA", strategy.long, qty = baseOrder / close)
+    dealCost   := dynBase
+    dealQty    := dynBase * (1 - feeRate) / close
+    strategy.entry("DCA", strategy.long, qty = dynBase / close)
 
-// 2) Pozisyon varsa → önce TP kontrolü, sonra SO doldurma (uygulama sırası)
+// 2) Pozisyon varsa → önce TP, sonra SO doldurma (uygulama sırası)
 else
     tpPrice = avg * (1 + tpPct / 100)
     closed  = false
@@ -69,24 +94,38 @@ else
             ttpPeak := math.max(ttpPeak, close)
             if close <= ttpPeak * (1 - ttpPct / 100)
                 strategy.close("DCA", comment="TTP")
-                filledSO := 0
-                closed   := true
+                closed := true
     else
         if close >= tpPrice
             strategy.close("DCA", comment="TP")
-            filledSO := 0
-            closed   := true
+            closed := true
+
+    if closed
+        // Kâr = satış geliri (komisyon düşülmüş) − harcanan $ (uygulamayla aynı)
+        profit = dealQty * close * (1 - feeRate) - dealCost
+        if reinvest and profit > 0
+            add   = profit * reinvestPct / 100
+            base  = totalOrderBase(dynBase, dynSafe)
+            if base > 0
+                ratio   = (base + add) / base
+                dynBase := dynBase * ratio
+                dynSafe := dynSafe * ratio
+        filledSO := 0
+        dealCost := 0.0
+        dealQty  := 0.0
 
     // TP olmadıysa güvenlik emirlerini doldur
     if not closed and filledSO < maxSO
         for n = filledSO to maxSO - 1
             if close <= soPrice(n)
-                amt = safeOrder * math.pow(volMult, n)
+                amt = dynSafe * math.pow(volMult, n)
                 strategy.entry("DCA", strategy.long, qty = amt / close)
+                dealCost := dealCost + amt
+                dealQty  := dealQty + amt * (1 - feeRate) / close
                 filledSO := n + 1
             else
                 break
 
 // ─── Görsel: ortalama maliyet & TP çizgileri ─────────────────────
-plot(inPos ? avg : na,                          "Avg Cost", color.orange, 2, plot.style_linebr)
-plot(inPos ? avg * (1 + tpPct / 100) : na,      "TP",       color.green,  1, plot.style_linebr)
+plot(inPos ? avg : na,                     "Avg Cost", color.orange, 2, plot.style_linebr)
+plot(inPos ? avg * (1 + tpPct / 100) : na, "TP",       color.green,  1, plot.style_linebr)
