@@ -1,0 +1,92 @@
+//@version=5
+// ════════════════════════════════════════════════════════════════
+//  DCA Bot Backtest — 3Commas tarzı (DCA-BACKTEST uygulamasının kopyası)
+//  Base Order + Safety Orders + Martingale (hacim & sapma çarpanı) + TP / TTP
+//  Komisyon her alım ve satımda uygulanır.
+// ════════════════════════════════════════════════════════════════
+strategy("DCA Bot Backtest",
+     overlay              = true,
+     initial_capital      = 10000,
+     currency             = currency.USD,
+     commission_type      = strategy.commission.percent,
+     commission_value     = 0.1,
+     pyramiding           = 1000,
+     default_qty_type     = strategy.fixed,
+     process_orders_on_close = true,
+     calc_on_every_tick   = false)
+
+// ─── Parametreler (uygulamadaki varsayılanlar) ───────────────────
+baseOrder = input.float(100,  "Base Order ($)",            group="DCA", tooltip="İlk alım tutarı")
+safeOrder = input.float(100,  "Safety Order ($)",          group="DCA", tooltip="İlk güvenlik emrinin tutarı")
+maxSO     = input.int  (10,   "Max Safety Orders",         group="DCA", minval=0, maxval=50)
+priceStep = input.float(1.0,  "Price Deviation % (ilk SO)", group="DCA", step=0.1, tooltip="İlk SO'nun giriş fiyatından sapması")
+stepMult  = input.float(1.0,  "Step Scale (sapma çarpanı)", group="DCA", step=0.05, tooltip="Her SO'da sapma adımının çarpanı")
+volMult   = input.float(1.0,  "Volume Scale (tutar çarpanı)", group="DCA", step=0.05, tooltip="Her SO'da tutarın çarpanı (martingale)")
+tpPct     = input.float(1.5,  "Take Profit %",             group="DCA", step=0.1, tooltip="Ortalama maliyet üzerine kâr hedefi")
+useTTP    = input.bool (false,"Trailing Take Profit",      group="DCA")
+ttpPct    = input.float(0.5,  "TTP Deviation %",           group="DCA", step=0.1)
+
+// ─── Durum değişkenleri ──────────────────────────────────────────
+var float entryPrice = na     // mevcut döngünün ilk alım fiyatı
+var int   filledSO   = 0      // dolan güvenlik emri sayısı
+var bool  ttpActive  = false
+var float ttpPeak    = na
+
+avg   = strategy.position_avg_price
+inPos = strategy.position_size > 0
+
+// ─── SO tetik fiyatı (0-tabanlı n) — uygulamayla birebir ─────────
+// cumPct tam hassasiyetle birikir, sadece kullanılan değer 2 ondalığa kırpılır (3Commas)
+soPrice(n) =>
+    cum = 0.0
+    st  = priceStep
+    for i = 0 to n
+        cum := cum + st
+        st  := st * stepMult
+    cumF = math.floor(cum * 100) / 100
+    entryPrice * (1 - cumF / 100)
+
+// ═══════════════════════ İŞLEM MANTIĞI ══════════════════════════
+
+// 1) Pozisyon yoksa → Base Order aç
+if not inPos
+    entryPrice := close
+    filledSO   := 0
+    ttpActive  := false
+    ttpPeak    := na
+    strategy.entry("DCA", strategy.long, qty = baseOrder / close)
+
+// 2) Pozisyon varsa → önce TP kontrolü, sonra SO doldurma (uygulama sırası)
+else
+    tpPrice = avg * (1 + tpPct / 100)
+    closed  = false
+
+    if useTTP
+        if not ttpActive and close >= tpPrice
+            ttpActive := true
+            ttpPeak   := close
+        if ttpActive
+            ttpPeak := math.max(ttpPeak, close)
+            if close <= ttpPeak * (1 - ttpPct / 100)
+                strategy.close("DCA", comment="TTP")
+                filledSO := 0
+                closed   := true
+    else
+        if close >= tpPrice
+            strategy.close("DCA", comment="TP")
+            filledSO := 0
+            closed   := true
+
+    // TP olmadıysa güvenlik emirlerini doldur
+    if not closed and filledSO < maxSO
+        for n = filledSO to maxSO - 1
+            if close <= soPrice(n)
+                amt = safeOrder * math.pow(volMult, n)
+                strategy.entry("DCA", strategy.long, qty = amt / close)
+                filledSO := n + 1
+            else
+                break
+
+// ─── Görsel: ortalama maliyet & TP çizgileri ─────────────────────
+plot(inPos ? avg : na,                          "Avg Cost", color.orange, 2, plot.style_linebr)
+plot(inPos ? avg * (1 + tpPct / 100) : na,      "TP",       color.green,  1, plot.style_linebr)
