@@ -250,12 +250,12 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div id="sPanel">
 
   <div class="card">
-    <div class="card-head">⚡ Ayar Kodu Yapıştır</div>
+    <div class="card-head">⚡ Parametre Yapıştır</div>
     <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
-      <textarea id="presetCode" rows="2" placeholder='Buraya ayar kodunu yapıştır → {"startCapital":3650,"initAmt":50,...}'
+      <textarea id="presetCode" rows="3" placeholder='Parametre metnini buraya yapıştır (Kopyala çıktısı veya verilen set)…'
         style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:11px;font-family:monospace;resize:vertical"></textarea>
       <button onclick="pasteSettings()"
-        style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--accent);background:rgba(0,212,170,.12);color:var(--accent);font-size:13px;font-weight:700;font-family:'Space Grotesk',sans-serif;cursor:pointer">⚡ Ayarları Uygula</button>
+        style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--accent);background:rgba(0,212,170,.12);color:var(--accent);font-size:13px;font-weight:700;font-family:'Space Grotesk',sans-serif;cursor:pointer">⚡ Parametreleri Uygula</button>
     </div>
   </div>
 
@@ -2314,20 +2314,45 @@ function _applySettingsObj(obj){
   return applied;
 }
 
+/* Okunabilir parametre metnini ayrıştır (Kopyala çıktısıyla aynı format) */
+function parseSettingsText(txt){
+  var o={};
+  function num(re){var m=txt.match(re);return m?parseFloat(m[1]):undefined;}
+  var v;
+  if((v=num(/Ba[şs]lang[ıi]?[çc][^:\n]*:\s*\$?\s*([\d.]+)/i))!==undefined)o.startCapital=v;
+  if((v=num(/BO\s*Miktar[^:\n]*:\s*\$?\s*([\d.]+)/i))!==undefined)o.initAmt=v;
+  if((v=num(/SO\s*Miktar[^:\n]*:\s*\$?\s*([\d.]+)/i))!==undefined)o.safeAmt=v;
+  if((v=num(/Max\s*SO[^:\n]*:\s*([\d]+)/i))!==undefined)o.maxSO=v;
+  if((v=num(/Fiyat\s*Ad[ıi]?m[^:\n]*:\s*%?\s*([\d.]+)/i))!==undefined)o.priceStep=v;
+  if((v=num(/Ad[ıi]?m\s*[ÇC]arpan[^:\n]*:\s*[×x]?\s*([\d.]+)/i))!==undefined)o.stepMult=v;
+  if((v=num(/Miktar\s*[ÇC]arpan[^:\n]*:\s*[×x]?\s*([\d.]+)/i))!==undefined)o.amtMult=v;
+  if((v=num(/K[âa]r\s*Oran[^:\n]*:\s*%?\s*([\d.]+)/i))!==undefined)o.tpPct=v;
+  if((v=num(/Komisyon[^:\n]*:\s*%?\s*([\d.]+)/i))!==undefined)o.commission=v;
+  var rm=txt.match(/Reinvest[^:\n]*:\s*(Evet|Hay[ıi]?r|Yes|No|true|false)(?:[^%\d]*%?\s*([\d.]+))?/i);
+  if(rm){o.reinvest=/evet|yes|true/i.test(rm[1]); if(rm[2]!==undefined)o.reinvestPct=parseFloat(rm[2]);}
+  var tm=txt.match(/TTP[^:\n]*:\s*(Evet|Hay[ıi]?r|Yes|No|true|false)(?:[^%\d]*%?\s*([\d.]+))?/i);
+  if(tm){o.ttpEnabled=/evet|yes|true/i.test(tm[1]); if(tm[2]!==undefined)o.ttpPct=parseFloat(tm[2]);}
+  var pm=txt.match(/K[âa]r\s*Modu[^:\n]*:\s*([A-Za-z]+)/i);
+  if(pm)o.profitMode=/base/i.test(pm[1])?"base":"quote";
+  if(/Strateji[^:\n]*:\s*An[ıi]?nda/i.test(txt))o.cond="instant";
+  var cm=txt.match(/Sembol[^:\n]*:\s*([A-Za-z0-9]+)\s*\//i);
+  if(cm){var c=COINS.find(function(x){return x.sym.toLowerCase()===cm[1].toLowerCase();}); if(c)o.coin=c.id;}
+  return o;
+}
+
 function pasteSettings(){
   var el=document.getElementById("presetCode");
   var txt=(el?el.value:"").trim();
-  if(!txt){showToast("⚠ Önce ayar kodunu yapıştır");return;}
-  txt=txt.replace(/^DCASET:/i,"").trim();
-  var obj;
-  try{obj=JSON.parse(txt);}
-  catch(e){showToast("⚠ Geçersiz kod (JSON hatası)");return;}
-  if(typeof obj!=="object"||obj===null){showToast("⚠ Geçersiz kod");return;}
+  if(!txt){showToast("⚠ Önce parametreleri yapıştır");return;}
+  var obj=null;
+  /* JSON da kabul et, değilse okunabilir metni ayrıştır */
+  try{var j=JSON.parse(txt.replace(/^DCASET:/i,"").trim()); if(j&&typeof j==="object")obj=j;}catch(e){}
+  if(!obj)obj=parseSettingsText(txt);
   var n=_applySettingsObj(obj);
   if(n>0){
     if(el)el.value="";
-    showToast("✓ "+n+" ayar uygulandı — MUM İNDİR sonra ▶ BACKTEST");
-  } else showToast("⚠ Tanınan ayar bulunamadı");
+    showToast("✓ "+n+" parametre algılandı — MUM İNDİR sonra ▶ BACKTEST");
+  } else showToast("⚠ Parametre algılanamadı — formatı kontrol et");
 }
 
 /* ═══════════════════════════════
