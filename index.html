@@ -971,7 +971,9 @@ async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
 async function _fetchNew(coinId,okxBar,latestTs){
   var coin=COINS.find(function(c){return c.id===coinId;});
   var isBybit=coin.src==="bybit";
-  var all=[],reqCount=0,maxReq=5;
+  var barMs=BAR_MS[okxBar]||3600000;
+  var all=[],reqCount=0,maxReq=300;  // şimdiye yetişene dek devam et (yüksek tavan)
+  var nowTs=Date.now();
 
   if(isBybit){
     var symbol=coin.sym+"USDT";
@@ -988,14 +990,16 @@ async function _fetchNew(coinId,okxBar,latestTs){
       var list=j.result.list;
       all=all.concat(list);
       reqCount++;
-      if(list.length<200)break;
-      // Newest first — next page starts after the newest we got
-      startTs=String(parseInt(list[0][0])+1);
+      if(list.length<200)break;                       // daha fazla veri yok
+      var newest=parseInt(list[0][0]);                // bu sayfanın en yenisi
+      if(nowTs-newest<=barMs)break;                   // şimdiye yetiştik
+      startTs=String(newest+1);
+      await new Promise(function(res){setTimeout(res,40);});
     }
     return all;
   }
 
-  /* OKX path */
+  /* OKX path — "before" = istenen ts'den DAHA YENİ kayıtları döndürür (ileri çekim) */
   var instId=coin.sym+"-USDT";
   var before=String(latestTs);
   while(reqCount<maxReq){
@@ -1009,7 +1013,10 @@ async function _fetchNew(coinId,okxBar,latestTs){
     all=all.concat(j.data);
     reqCount++;
     if(j.data.length<300)break;
+    var newestO=parseInt(j.data[0][0]);              // data[0] = en yeni
+    if(nowTs-newestO<=barMs)break;                   // şimdiye yetiştik
     before=j.data[0][0];
+    await new Promise(function(res){setTimeout(res,40);});
   }
   return all;
 }
