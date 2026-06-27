@@ -250,6 +250,11 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div id="sPanel">
 
   <div class="card">
+    <div class="card-head">⚡ Hazır Stratejiler (BTC backtest'te bulundu)</div>
+    <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px" id="presetBox"></div>
+  </div>
+
+  <div class="card">
     <div class="card-head">🪙 İşlem Çifti</div>
     <div style="padding:12px 14px"><select class="coin-sel" id="coinC" onchange="selCoin(this.value)"></select></div>
   </div>
@@ -2272,6 +2277,63 @@ function applyOptParams(profileId){
 }
 
 /* ═══════════════════════════════
+   HAZIR STRATEJİLER (PRESET)
+   2022-01 → 2026-06 BTC 1m verisinde doğrulandı
+═══════════════════════════════ */
+var PRESETS=[
+  { id:"vurkac", name:"⚡ Vur-Kaç", color:"#00d4aa",
+    desc:"En düşük tutma (~0.5g) · +68% · 3072 döngü · DD %62",
+    s:{coin:"bitcoin",startCapital:3650,initAmt:50,safeAmt:50,maxSO:10,
+       priceStep:0.6,stepMult:1.1,amtMult:1.4,tpPct:0.4,
+       ttpEnabled:false,ttpPct:0.5,reinvest:true,reinvestPct:100,
+       commission:0.1,profitMode:"quote",cond:"instant"} },
+  { id:"yuksekapr", name:"💰 Yüksek APR", color:"#fbbf24",
+    desc:"APR %27.8 · gerçekleşen +124% · tutma ~1.2g · DD %62",
+    s:{coin:"bitcoin",startCapital:3650,initAmt:129,safeAmt:129,maxSO:10,
+       priceStep:0.6,stepMult:1.1,amtMult:1.2,tpPct:0.6,
+       ttpEnabled:true,ttpPct:0.3,reinvest:true,reinvestPct:100,
+       commission:0.1,profitMode:"quote",cond:"instant"} },
+  { id:"buyukorder", name:"🏦 Büyük Order", color:"#0099ff",
+    desc:"En yüksek toplam +79% · gerçekleşen +179% · 3 SO · DD %62 (10k sermaye)",
+    s:{coin:"bitcoin",startCapital:10000,initAmt:1750,safeAmt:1750,maxSO:3,
+       priceStep:4.0,stepMult:1.2,amtMult:1.4,tpPct:1.2,
+       ttpEnabled:false,ttpPct:0.5,reinvest:true,reinvestPct:100,
+       commission:0.1,profitMode:"quote",cond:"instant"} },
+];
+
+function applyPreset(id){
+  var pr=PRESETS.find(function(p){return p.id===id;});
+  if(!pr)return;
+  Object.keys(pr.s).forEach(function(k){S[k]=pr.s[k];});
+  saveState();
+  /* UI yenile */
+  STEPPERS.forEach(function(cfg){
+    var inp=document.getElementById("inp-"+cfg.k);
+    if(inp)inp.value=S[cfg.k];
+  });
+  var cc=document.getElementById("coinC");if(cc)cc.value=S.coin;
+  var rc=document.getElementById("chkReinvest");if(rc)rc.checked=S.reinvest;
+  var tc=document.getElementById("chkTtp");if(tc)tc.checked=S.ttpEnabled;
+  toggleReinvestSub();toggleTtpSub();
+  buildProfitMode();updateBadge();updateCap();
+  refreshCacheRange();loadCandleRange();updateFetchBtnState();
+  showToast("✓ "+pr.name+" yüklendi — MUM İNDİR sonra ▶ BACKTEST");
+}
+
+function buildPresets(){
+  var box=document.getElementById("presetBox");if(!box)return;
+  box.innerHTML="";
+  PRESETS.forEach(function(p){
+    var b=document.createElement("button");
+    b.onclick=function(){applyPreset(p.id);};
+    b.style.cssText="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid "+p.color+"44;background:"+p.color+"11;color:var(--text);cursor:pointer;font-family:'Space Grotesk',sans-serif;width:100%";
+    b.innerHTML='<div style="font-size:13px;font-weight:700;color:'+p.color+'">'+p.name+'</div>'+
+                '<div style="font-size:11px;color:var(--text3);margin-top:2px;line-height:1.4">'+p.desc+'</div>';
+    box.appendChild(b);
+  });
+}
+
+/* ═══════════════════════════════
    TAB NAVIGATION
 ═══════════════════════════════ */
 function setTab(tab){
@@ -2313,6 +2375,7 @@ function closeSplash(){
 ═══════════════════════════════ */
 loadState();
 STEPPERS.forEach(function(cfg){buildStepper(cfg.k);});
+buildPresets();
 buildMainChips();
 buildProfitMode();
 setOptProfitMode(_optProfitMode);
