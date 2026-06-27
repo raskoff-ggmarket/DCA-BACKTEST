@@ -1,0 +1,41 @@
+name: version-bump
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: version-bump
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    # Kendi bump commit'ini tekrar işlemesin (GITHUB_TOKEN zaten recursion'ı engeller, bu ek güvenlik)
+    if: ${{ !contains(github.event.head_commit.message, '[version-bump]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Build numarasını artır
+        run: |
+          n=$(grep -oP 'data-build="\K[0-9]+' index.html | head -1)
+          if [ -z "$n" ]; then n=0; fi
+          n=$((n+1))
+          echo "Yeni build: $n"
+          sed -i -E "s/data-build=\"[0-9]+\"/data-build=\"$n\"/" index.html
+          sed -i -E "s|(<span id=\"appVer\"[^>]*>)[^<]*(</span>)|\1build $n\2|" index.html
+          echo "BUILD_NO=$n" >> "$GITHUB_ENV"
+
+      - name: Commit & push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "chore: build ${BUILD_NO} [version-bump]" || { echo "değişiklik yok"; exit 0; }
+          git push
