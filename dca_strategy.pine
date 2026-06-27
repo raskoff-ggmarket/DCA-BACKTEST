@@ -35,6 +35,12 @@ ttpPct    = input.float(0.5,  "TTP Deviation %",            group="DCA", step=0.
 reinvest    = input.bool (false, "Kârı Reinvest Et",  group="Reinvest")
 reinvestPct = input.float(100,   "Reinvest Oranı %",  group="Reinvest", minval=0, maxval=100, step=5)
 
+// ─── Tarih Aralığı ───────────────────────────────────────────────
+useRange  = input.bool(false, "Tarih Araligi Kullan", group="Tarih")
+startDate = input.time(timestamp("2020-01-01 00:00"), "Baslangic", group="Tarih")
+endDate   = input.time(timestamp("2030-01-01 00:00"), "Bitis",     group="Tarih")
+inRange   = not useRange or (time >= startDate and time <= endDate)
+
 // ─── Durum değişkenleri ──────────────────────────────────────────
 var float entryPrice = na      // mevcut döngünün ilk alım fiyatı
 var int   filledSO   = 0       // dolan güvenlik emri sayısı
@@ -50,6 +56,10 @@ if na(dynBase)
 
 avg   = strategy.position_avg_price
 inPos = strategy.position_size > 0
+
+var int firstBarT = na          // ilk yüklenen mum zamanı
+if na(firstBarT)
+    firstBarT := time
 
 // ─── SO tetik fiyatı (0-tabanlı n) — uygulamayla birebir ─────────
 // cumPct tam hassasiyetle birikir, kullanılan değer 2 ondalığa kırpılır (3Commas)
@@ -72,25 +82,26 @@ totalOrderBase(init, safe) =>
 
 // ═══════════════════════ İŞLEM MANTIĞI ══════════════════════════
 
-// 1) Pozisyon yoksa → (önce bekleyen reinvest'i uygula) → Base Order aç
+// 1) Pozisyon yoksa → (tarih aralığındaysa) → reinvest uygula → Base Order aç
 if not inPos
-    // Bir önceki döngü kapandıysa, motorun gerçekleşen kârından reinvest yap
-    if pendingReinvest
-        profit = strategy.closedtrades.profit(strategy.closedtrades - 1)
-        if reinvest and profit > 0
-            add  = profit * reinvestPct / 100
-            base = totalOrderBase(dynBase, dynSafe)
-            if base > 0
-                ratio   = (base + add) / base
-                dynBase := dynBase * ratio
-                dynSafe := dynSafe * ratio
-        pendingReinvest := false
+    if inRange
+        // Bir önceki döngü kapandıysa, motorun gerçekleşen kârından reinvest yap
+        if pendingReinvest
+            profit = strategy.closedtrades.profit(strategy.closedtrades - 1)
+            if reinvest and profit > 0
+                add  = profit * reinvestPct / 100
+                base = totalOrderBase(dynBase, dynSafe)
+                if base > 0
+                    ratio   = (base + add) / base
+                    dynBase := dynBase * ratio
+                    dynSafe := dynSafe * ratio
+            pendingReinvest := false
 
-    entryPrice := close
-    filledSO   := 0
-    ttpActive  := false
-    ttpPeak    := na
-    strategy.entry("DCA", strategy.long, qty = dynBase / close)
+        entryPrice := close
+        filledSO   := 0
+        ttpActive  := false
+        ttpPeak    := na
+        strategy.entry("DCA", strategy.long, qty = dynBase / close)
 
 // 2) Pozisyon varsa → önce TP, sonra SO doldurma (uygulama sırası)
 else
@@ -130,7 +141,7 @@ plot(inPos ? avg * (1 + tpPct / 100) : na, "TP",       color.green,  1, plot.sty
 
 // ─── Sonuç paneli (grafik üzerinde) ──────────────────────────────
 showPanel = input.bool(true, "Sonuc Panelini Goster", group="Panel")
-var table t = table.new(position.top_right, 2, 7, border_width=1, frame_width=1, frame_color=color.gray)
+var table t = table.new(position.top_right, 2, 8, border_width=1, frame_width=1, frame_color=color.gray)
 if showPanel and barstate.islast
     netP   = strategy.netprofit
     netPct = strategy.netprofit / strategy.initial_capital * 100
@@ -151,3 +162,6 @@ if showPanel and barstate.islast
     table.cell(t, 1, 5, str.tostring(filledSO) + "/" + str.tostring(maxSO), text_color=color.white, bgcolor=bg)
     table.cell(t, 0, 6, "Bakiye",     text_color=color.gray,  bgcolor=bg)
     table.cell(t, 1, 6, str.tostring(strategy.equity, "#.##"), text_color=color.white, bgcolor=bg)
+    dRange = str.format_time(firstBarT, "yyyy-MM-dd", syminfo.timezone) + " > " + str.format_time(time, "yyyy-MM-dd", syminfo.timezone)
+    table.cell(t, 0, 7, "Tarih",      text_color=color.gray,  bgcolor=bg)
+    table.cell(t, 1, 7, dRange,       text_color=color.white, bgcolor=bg, text_size=size.small)
