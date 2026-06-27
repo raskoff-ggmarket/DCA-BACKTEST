@@ -49,6 +49,9 @@ var float ttpPeak    = na
 var float dynBase    = na      // reinvest ile büyüyen base tutarı
 var float dynSafe    = na      // reinvest ile büyüyen safety tutarı
 var bool  pendingReinvest = false  // kapanan döngünün kârı işlenmeyi bekliyor
+var int   dealStartT = na      // mevcut döngünün açılış zamanı
+var float sumHold    = 0.0     // kapanan döngülerin toplam tutma süresi (gün)
+var int   holdN      = 0       // kapanan döngü sayısı
 
 if na(dynBase)
     dynBase := baseOrder
@@ -101,6 +104,7 @@ if not inPos
         filledSO   := 0
         ttpActive  := false
         ttpPeak    := na
+        dealStartT := time
         strategy.entry("DCA", strategy.long, qty = dynBase / close)
 
 // 2) Pozisyon varsa → önce TP, sonra SO doldurma (uygulama sırası)
@@ -124,6 +128,9 @@ else
 
     if closed
         pendingReinvest := true   // kâr bir sonraki bar (pozisyon kapanınca) işlenir
+        if not na(dealStartT)
+            sumHold := sumHold + (time - dealStartT) / 86400000.0
+            holdN   := holdN + 1
 
     // TP olmadıysa güvenlik emirlerini doldur
     if not closed and filledSO < maxSO
@@ -141,7 +148,7 @@ plot(inPos ? avg * (1 + tpPct / 100) : na, "TP",       color.green,  1, plot.sty
 
 // ─── Sonuç paneli (grafik üzerinde) ──────────────────────────────
 showPanel = input.bool(true, "Sonuc Panelini Goster", group="Panel")
-var table t = table.new(position.top_right, 2, 8, border_width=1, frame_width=1, frame_color=color.gray)
+var table t = table.new(position.top_right, 2, 10, border_width=1, frame_width=1, frame_color=color.gray)
 if showPanel and barstate.islast
     netP   = strategy.netprofit
     netPct = strategy.netprofit / strategy.initial_capital * 100
@@ -162,6 +169,12 @@ if showPanel and barstate.islast
     table.cell(t, 1, 5, str.tostring(filledSO) + "/" + str.tostring(maxSO), text_color=color.white, bgcolor=bg)
     table.cell(t, 0, 6, "Bakiye",     text_color=color.gray,  bgcolor=bg)
     table.cell(t, 1, 6, str.tostring(strategy.equity, "#.##"), text_color=color.white, bgcolor=bg)
+    avgHold  = holdN > 0 ? sumHold / holdN : 0.0
+    openDays = inPos and not na(dealStartT) ? (time - dealStartT) / 86400000.0 : 0.0
+    table.cell(t, 0, 7, "Ort. Tutma", text_color=color.gray,  bgcolor=bg)
+    table.cell(t, 1, 7, str.tostring(avgHold, "#.#") + " gun",  text_color=color.white, bgcolor=bg)
+    table.cell(t, 0, 8, "Acik Sure",  text_color=color.gray,  bgcolor=bg)
+    table.cell(t, 1, 8, inPos ? str.tostring(openDays, "#.#") + " gun" : "-", text_color=color.white, bgcolor=bg)
     dRange = str.format_time(firstBarT, "yyyy-MM-dd", syminfo.timezone) + " > " + str.format_time(time, "yyyy-MM-dd", syminfo.timezone)
-    table.cell(t, 0, 7, "Tarih",      text_color=color.gray,  bgcolor=bg)
-    table.cell(t, 1, 7, dRange,       text_color=color.white, bgcolor=bg, text_size=size.small)
+    table.cell(t, 0, 9, "Tarih",      text_color=color.gray,  bgcolor=bg)
+    table.cell(t, 1, 9, dRange,       text_color=color.white, bgcolor=bg, text_size=size.small)
