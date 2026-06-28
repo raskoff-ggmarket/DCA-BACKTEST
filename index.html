@@ -368,16 +368,20 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </label>
     </div>
 
-    <!-- Stop Loss (50 SMA gün kapanışı) -->
-    <div class="toggle-wrap">
-      <div class="toggle-info">
-        <div class="toggle-lbl">🛑 Stop Loss (Günlük 50 SMA)</div>
-        <div class="toggle-sub">Pozisyon açıkken gün <b>50 SMA altında kapanırsa</b> zararına kapat</div>
+    <!-- Stop Loss -->
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <div class="toggle-lbl">🛑 Stop Loss</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap" id="slModeChips"></div>
       </div>
-      <label class="toggle" style="margin-left:12px">
-        <input type="checkbox" id="chkSl" onchange="S.slSma=this.checked;saveState()"/>
-        <span class="toggle-slider"></span>
-      </label>
+      <div id="slPctRow" style="display:none;align-items:center;gap:8px;margin-top:8px">
+        <span class="rs">Ortalama maliyetin</span>
+        <input type="number" id="slPctInp" value="15" min="1" max="90" step="1"
+          style="width:70px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 8px;color:var(--text);font-size:13px;text-align:right;font-family:'Space Grotesk',sans-serif"
+          oninput="S.slPct=parseFloat(this.value)||15;saveState()">
+        <span class="rs">% altına düşünce kapat</span>
+      </div>
+      <div id="slDesc" class="rs" style="margin-top:6px"></div>
     </div>
 
     <!-- Borsa Komisyonu -->
@@ -595,7 +599,7 @@ var DEFAULTS = {
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
   maxSO:10, tpPct:1.5,
   reinvest:false, reinvestPct:100, ttpEnabled:false, ttpPct:0.5,
-  commission:0.1, smaFilter:false, slSma:false,
+  commission:0.1, smaFilter:false, slMode:"off", slPct:15,
   profitMode:"quote",
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
@@ -1342,8 +1346,10 @@ function backtest(prices, rsiArr){
   var dynSafeAmt=S.safeAmt;
 
   var smaOn=!!S.smaFilter;
-  var slOn=!!S.slSma;
-  var smaArr=(smaOn||slOn)?calcDailySMA(prices):null;
+  var slMode=S.slMode||"off";
+  var slOn=slMode!=="off";
+  var slNeedsSma=slMode==="sma50"||slMode==="sma200";
+  var smaArr=(smaOn||slNeedsSma)?calcDailySMA(prices):null;
 
   function totalOrderBase(init,safe){
     var t=init,a=safe;
@@ -1460,16 +1466,21 @@ function backtest(prices, rsiArr){
         }
       }
     }
-    /* Stop Loss: pozisyon açıkken gün 50 SMA altında kapanırsa kapat */
+    /* Stop Loss: moda göre */
     if(slOn&&inDeal){
-      var dayClose=(i===prices.length-1)||
-        (Math.floor(prices[i+1].ts/86400000)!==Math.floor(prices[i].ts/86400000));
-      if(dayClose){
-        var sl50=smaArr.sma50[i];
-        if(!isNaN(sl50)&&price<sl50){
-          closeDealAt(price,date,"SL");
+      var doSL=false;
+      if(slMode==="pct"){
+        var slTrig=deal.avgCost*(1-(S.slPct||15)/100);
+        if(price<=slTrig)doSL=true;
+      } else {
+        var dayClose=(i===prices.length-1)||
+          (Math.floor(prices[i+1].ts/86400000)!==Math.floor(prices[i].ts/86400000));
+        if(dayClose){
+          var ref=slMode==="sma200"?smaArr.sma200[i]:smaArr.sma50[i];
+          if(!isNaN(ref)&&price<ref)doSL=true;
         }
       }
+      if(doSL)closeDealAt(price,date,"SL");
     }
     equity.push({date:date,value:eqVal(price),price:price});
   }
@@ -1830,7 +1841,7 @@ function saveSettings(){
     "Reinvest        : "+(S.reinvest?"Evet (%"+S.reinvestPct+")":"Hayır"),
     "TTP             : "+(S.ttpEnabled?"Evet (%"+S.ttpPct+")":"Hayır"),
     "Trend Filtresi  : "+(S.smaFilter?"Evet (50&200 SMA)":"Hayır"),
-    "Stop Loss       : "+(S.slSma?"Evet (50 SMA gün kapanışı)":"Hayır"),
+    "Stop Loss       : "+(S.slMode==="sma50"?"50 SMA (gün kapanışı)":S.slMode==="sma200"?"200 SMA (gün kapanışı)":S.slMode==="pct"?"%"+(S.slPct||15)+" Zarar":"Hayır"),
     "Komisyon        : %"+S.commission,
   ];
   var txt=lines.join("\n");
@@ -2098,6 +2109,38 @@ function setOptSma(v){
   document.getElementById("optSmaOff").className="chip"+(v==="off"?" on":"");
   document.getElementById("optSmaOn").className="chip"+(v==="on"?" on":"");
   document.getElementById("optSmaAuto").className="chip"+(v==="auto"?" on":"");
+}
+var SL_MODES=[
+  {v:"off",   l:"Kapalı", d:""},
+  {v:"sma50", l:"50 SMA", d:"Gün 50 SMA altında kapanırsa kapat"},
+  {v:"sma200",l:"200 SMA",d:"Gün 200 SMA altında kapanırsa kapat (daha gevşek)"},
+  {v:"pct",   l:"%Zarar", d:"Ortalama maliyetin %X altına düşünce kapat"},
+];
+function buildSlChips(){
+  var box=document.getElementById("slModeChips");if(!box)return;
+  box.innerHTML="";
+  SL_MODES.forEach(function(m){
+    var b=document.createElement("button");
+    b.className="chip"+((S.slMode||"off")===m.v?" on-p":"");
+    b.style.cssText="padding:5px 11px;cursor:pointer;font-family:'Space Grotesk',sans-serif";
+    b.textContent=m.l;
+    b.onclick=function(){setSlMode(m.v);};
+    box.appendChild(b);
+  });
+  _updateSlUI();
+}
+function setSlMode(v){
+  S.slMode=v;saveState();
+  var box=document.getElementById("slModeChips");
+  if(box)box.querySelectorAll(".chip").forEach(function(c){
+    c.className="chip"+(c.textContent===(SL_MODES.find(function(m){return m.v===v;})||{}).l?" on-p":"");
+  });
+  _updateSlUI();
+}
+function _updateSlUI(){
+  var m=SL_MODES.find(function(x){return x.v===(S.slMode||"off");})||SL_MODES[0];
+  var pr=document.getElementById("slPctRow");if(pr)pr.style.display=(S.slMode==="pct")?"flex":"none";
+  var d=document.getElementById("slDesc");if(d)d.textContent=m.d;
 }
 function _getOptProfitMode(){return _optProfitMode;}
 function setOptReinvest(on){
@@ -2382,7 +2425,7 @@ function applyOptParams(profileId){
 ═══════════════════════════════ */
 var SETTINGS_KEYS=["coin","startCapital","initAmt","safeAmt","maxSO","priceStep",
   "stepMult","amtMult","tpPct","ttpEnabled","ttpPct","reinvest","reinvestPct",
-  "commission","profitMode","cond","dateFrom","dateTo","smaFilter","slSma"];
+  "commission","profitMode","cond","dateFrom","dateTo","smaFilter","slMode","slPct"];
 
 function _applySettingsObj(obj){
   var applied=0;
@@ -2404,7 +2447,8 @@ function _applySettingsObj(obj){
   var rc=document.getElementById("chkReinvest");if(rc)rc.checked=!!S.reinvest;
   var tc=document.getElementById("chkTtp");if(tc)tc.checked=!!S.ttpEnabled;
   var sc=document.getElementById("chkSma");if(sc)sc.checked=!!S.smaFilter;
-  var slc=document.getElementById("chkSl");if(slc)slc.checked=!!S.slSma;
+  buildSlChips();
+  var slp=document.getElementById("slPctInp");if(slp)slp.value=S.slPct||15;
   toggleReinvestSub();toggleTtpSub();
   buildProfitMode();updateBadge();updateCap();
   refreshCacheRange();loadCandleRange();updateFetchBtnState();
@@ -2434,8 +2478,15 @@ function parseSettingsText(txt){
   if(/Strateji[^:\n]*:\s*An[ıi]?nda/i.test(txt))o.cond="instant";
   var sm=txt.match(/Trend\s*Filtre[^:\n]*:\s*(Evet|Hay[ıi]?r|Yes|No|true|false|A[çc][ıi]?k|Kapal[ıi]?)/i);
   if(sm)o.smaFilter=/evet|yes|true|a[çc]/i.test(sm[1]);
-  var sl=txt.match(/Stop\s*Loss[^:\n]*:\s*(Evet|Hay[ıi]?r|Yes|No|true|false|A[çc][ıi]?k|Kapal[ıi]?)/i);
-  if(sl)o.slSma=/evet|yes|true|a[çc]/i.test(sl[1]);
+  var sl=txt.match(/Stop\s*Loss[^:\n]*:\s*([^\n]+)/i);
+  if(sl){
+    var slv=sl[1];
+    if(/200\s*sma/i.test(slv))o.slMode="sma200";
+    else if(/50\s*sma/i.test(slv))o.slMode="sma50";
+    else if(/%|zarar|pct|percent/i.test(slv)){o.slMode="pct"; var pm2=slv.match(/([\d.]+)\s*%/)||slv.match(/%\s*([\d.]+)/); if(pm2)o.slPct=parseFloat(pm2[1]);}
+    else if(/hay[ıi]?r|kapal|off|no|false/i.test(slv))o.slMode="off";
+    else if(/evet|a[çc][ıi]?k|yes|true/i.test(slv))o.slMode="sma50";
+  }
   var cm=txt.match(/Sembol[^:\n]*:\s*([A-Za-z0-9]+)\s*\//i);
   if(cm){var c=COINS.find(function(x){return x.sym.toLowerCase()===cm[1].toLowerCase();}); if(c)o.coin=c.id;}
   return o;
@@ -2510,7 +2561,8 @@ updateCap();
 document.getElementById("chkReinvest").checked = S.reinvest;
 document.getElementById("chkTtp").checked = S.ttpEnabled;
 var _cs=document.getElementById("chkSma");if(_cs)_cs.checked=!!S.smaFilter;
-var _csl=document.getElementById("chkSl");if(_csl)_csl.checked=!!S.slSma;
+buildSlChips();
+var _slp=document.getElementById("slPctInp");if(_slp)_slp.value=S.slPct||15;
 toggleReinvestSub();
 toggleTtpSub();
 
