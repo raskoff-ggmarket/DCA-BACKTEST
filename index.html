@@ -356,6 +356,18 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
     </div>
 
+    <!-- Trend Filtresi -->
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-lbl">📈 Trend Filtresi (Günlük 50 & 200 SMA)</div>
+        <div class="toggle-sub">Sadece fiyat günlük 50 SMA <b>ve</b> 200 SMA üstündeyken yeni döngü açar</div>
+      </div>
+      <label class="toggle" style="margin-left:12px">
+        <input type="checkbox" id="chkSma" onchange="S.smaFilter=this.checked;saveState()"/>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
     <!-- Borsa Komisyonu -->
     <div class="row" id="row-commission">
       <div>
@@ -560,7 +572,7 @@ var DEFAULTS = {
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
   maxSO:10, tpPct:1.5,
   reinvest:false, reinvestPct:100, ttpEnabled:false, ttpPct:0.5,
-  commission:0.1,
+  commission:0.1, smaFilter:false,
   profitMode:"quote",
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
@@ -1269,6 +1281,30 @@ function calcRSI(prices, period){
 }
 
 /* ═══════════════════════════════
+   GÜNLÜK SMA (trend filtresi)
+   Her mum için, ÖNCEKİ tamamlanmış günlerin SMA'sı (lookahead yok)
+═══════════════════════════════ */
+function calcDailySMA(prices){
+  var sma50=new Array(prices.length), sma200=new Array(prices.length);
+  var dClose=[], sum50=0, sum200=0, curDay=null, lastP=null;
+  function pushDay(c){
+    dClose.push(c);
+    sum50+=c; if(dClose.length>50)sum50-=dClose[dClose.length-51];
+    sum200+=c; if(dClose.length>200)sum200-=dClose[dClose.length-201];
+  }
+  for(var i=0;i<prices.length;i++){
+    var dk=Math.floor(prices[i].ts/86400000);
+    if(curDay===null){curDay=dk;}
+    else if(dk!==curDay){pushDay(lastP);curDay=dk;}
+    lastP=prices[i].price;
+    var n=dClose.length;
+    sma50[i] = n>=50  ? sum50/50   : NaN;
+    sma200[i]= n>=200 ? sum200/200 : NaN;
+  }
+  return {sma50:sma50, sma200:sma200};
+}
+
+/* ═══════════════════════════════
    BACKTEST (OKX mantığı + 3Commas Reinvest)
 ═══════════════════════════════ */
 function backtest(prices, rsiArr){
@@ -1281,6 +1317,9 @@ function backtest(prices, rsiArr){
 
   var dynInitAmt=S.initAmt;
   var dynSafeAmt=S.safeAmt;
+
+  var smaOn=!!S.smaFilter;
+  var smaArr=smaOn?calcDailySMA(prices):null;
 
   function totalOrderBase(init,safe){
     var t=init,a=safe;
@@ -1338,6 +1377,13 @@ function backtest(prices, rsiArr){
 
     if(!inDeal){
       if(cdLeft>0){cdLeft--;if(S.cond==="rsi")waitRSI=true;equity.push({date:date,value:eqVal(price),price:price});continue;}
+      // Trend filtresi: sadece fiyat > günlük 50 SMA ve > 200 SMA iken yeni döngü aç
+      if(smaOn){
+        var s50=smaArr.sma50[i], s200=smaArr.sma200[i];
+        if(isNaN(s50)||isNaN(s200)||price<=s50||price<=s200){
+          equity.push({date:date,value:eqVal(price),price:price});continue;
+        }
+      }
       if(cash<dynInitAmt){equity.push({date:date,value:eqVal(price),price:price});continue;}
       cash-=dynInitAmt;
 
@@ -1748,6 +1794,7 @@ function saveSettings(){
     "Kâr Modu        : "+(S.profitMode==="base"?coin.sym+" (Base)":"Quote (USDT)"),
     "Reinvest        : "+(S.reinvest?"Evet (%"+S.reinvestPct+")":"Hayır"),
     "TTP             : "+(S.ttpEnabled?"Evet (%"+S.ttpPct+")":"Hayır"),
+    "Trend Filtresi  : "+(S.smaFilter?"Evet (50&200 SMA)":"Hayır"),
     "Komisyon        : %"+S.commission,
   ];
   var txt=lines.join("\n");
@@ -2287,7 +2334,7 @@ function applyOptParams(profileId){
 ═══════════════════════════════ */
 var SETTINGS_KEYS=["coin","startCapital","initAmt","safeAmt","maxSO","priceStep",
   "stepMult","amtMult","tpPct","ttpEnabled","ttpPct","reinvest","reinvestPct",
-  "commission","profitMode","cond","dateFrom","dateTo"];
+  "commission","profitMode","cond","dateFrom","dateTo","smaFilter"];
 
 function _applySettingsObj(obj){
   var applied=0;
@@ -2308,6 +2355,7 @@ function _applySettingsObj(obj){
   var cc=document.getElementById("coinC");if(cc)cc.value=S.coin;
   var rc=document.getElementById("chkReinvest");if(rc)rc.checked=!!S.reinvest;
   var tc=document.getElementById("chkTtp");if(tc)tc.checked=!!S.ttpEnabled;
+  var sc=document.getElementById("chkSma");if(sc)sc.checked=!!S.smaFilter;
   toggleReinvestSub();toggleTtpSub();
   buildProfitMode();updateBadge();updateCap();
   refreshCacheRange();loadCandleRange();updateFetchBtnState();
@@ -2335,6 +2383,8 @@ function parseSettingsText(txt){
   var pm=txt.match(/K[âa]r\s*Modu[^:\n]*:\s*([A-Za-z]+)/i);
   if(pm)o.profitMode=/base/i.test(pm[1])?"base":"quote";
   if(/Strateji[^:\n]*:\s*An[ıi]?nda/i.test(txt))o.cond="instant";
+  var sm=txt.match(/Trend\s*Filtre[^:\n]*:\s*(Evet|Hay[ıi]?r|Yes|No|true|false|A[çc][ıi]?k|Kapal[ıi]?)/i);
+  if(sm)o.smaFilter=/evet|yes|true|a[çc]/i.test(sm[1]);
   var cm=txt.match(/Sembol[^:\n]*:\s*([A-Za-z0-9]+)\s*\//i);
   if(cm){var c=COINS.find(function(x){return x.sym.toLowerCase()===cm[1].toLowerCase();}); if(c)o.coin=c.id;}
   return o;
@@ -2407,6 +2457,7 @@ updateCap();
 /* Toggle başlangıç durumları */
 document.getElementById("chkReinvest").checked = S.reinvest;
 document.getElementById("chkTtp").checked = S.ttpEnabled;
+var _cs=document.getElementById("chkSma");if(_cs)_cs.checked=!!S.smaFilter;
 toggleReinvestSub();
 toggleTtpSub();
 
