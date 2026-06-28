@@ -368,6 +368,18 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </label>
     </div>
 
+    <!-- Stop Loss (50 SMA gün kapanışı) -->
+    <div class="toggle-wrap">
+      <div class="toggle-info">
+        <div class="toggle-lbl">🛑 Stop Loss (Günlük 50 SMA)</div>
+        <div class="toggle-sub">Pozisyon açıkken gün <b>50 SMA altında kapanırsa</b> zararına kapat</div>
+      </div>
+      <label class="toggle" style="margin-left:12px">
+        <input type="checkbox" id="chkSl" onchange="S.slSma=this.checked;saveState()"/>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
     <!-- Borsa Komisyonu -->
     <div class="row" id="row-commission">
       <div>
@@ -583,7 +595,7 @@ var DEFAULTS = {
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
   maxSO:10, tpPct:1.5,
   reinvest:false, reinvestPct:100, ttpEnabled:false, ttpPct:0.5,
-  commission:0.1, smaFilter:false,
+  commission:0.1, smaFilter:false, slSma:false,
   profitMode:"quote",
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
@@ -1330,7 +1342,8 @@ function backtest(prices, rsiArr){
   var dynSafeAmt=S.safeAmt;
 
   var smaOn=!!S.smaFilter;
-  var smaArr=smaOn?calcDailySMA(prices):null;
+  var slOn=!!S.slSma;
+  var smaArr=(smaOn||slOn)?calcDailySMA(prices):null;
 
   function totalOrderBase(init,safe){
     var t=init,a=safe;
@@ -1447,6 +1460,17 @@ function backtest(prices, rsiArr){
         }
       }
     }
+    /* Stop Loss: pozisyon açıkken gün 50 SMA altında kapanırsa kapat */
+    if(slOn&&inDeal){
+      var dayClose=(i===prices.length-1)||
+        (Math.floor(prices[i+1].ts/86400000)!==Math.floor(prices[i].ts/86400000));
+      if(dayClose){
+        var sl50=smaArr.sma50[i];
+        if(!isNaN(sl50)&&price<sl50){
+          closeDealAt(price,date,"SL");
+        }
+      }
+    }
     equity.push({date:date,value:eqVal(price),price:price});
   }
 
@@ -1474,7 +1498,7 @@ function backtest(prices, rsiArr){
   var firstTs=prices[0].ts||0,lastTs=prices[prices.length-1].ts||0;
   var daysEl=lastTs&&firstTs?(lastTs-firstTs)/86400000:S.days;
 
-  var closedDeals=deals.filter(function(d){return d.why==="TP"||d.why==="TTP";});
+  var closedDeals=deals.filter(function(d){return d.why==="TP"||d.why==="TTP"||d.why==="SL";});
   var realizedPnL,unrealizedPnL;
   if(isBase){
     realizedPnL=accumBase*lastPrice;
@@ -1806,6 +1830,7 @@ function saveSettings(){
     "Reinvest        : "+(S.reinvest?"Evet (%"+S.reinvestPct+")":"Hayır"),
     "TTP             : "+(S.ttpEnabled?"Evet (%"+S.ttpPct+")":"Hayır"),
     "Trend Filtresi  : "+(S.smaFilter?"Evet (50&200 SMA)":"Hayır"),
+    "Stop Loss       : "+(S.slSma?"Evet (50 SMA gün kapanışı)":"Hayır"),
     "Komisyon        : %"+S.commission,
   ];
   var txt=lines.join("\n");
@@ -2357,7 +2382,7 @@ function applyOptParams(profileId){
 ═══════════════════════════════ */
 var SETTINGS_KEYS=["coin","startCapital","initAmt","safeAmt","maxSO","priceStep",
   "stepMult","amtMult","tpPct","ttpEnabled","ttpPct","reinvest","reinvestPct",
-  "commission","profitMode","cond","dateFrom","dateTo","smaFilter"];
+  "commission","profitMode","cond","dateFrom","dateTo","smaFilter","slSma"];
 
 function _applySettingsObj(obj){
   var applied=0;
@@ -2379,6 +2404,7 @@ function _applySettingsObj(obj){
   var rc=document.getElementById("chkReinvest");if(rc)rc.checked=!!S.reinvest;
   var tc=document.getElementById("chkTtp");if(tc)tc.checked=!!S.ttpEnabled;
   var sc=document.getElementById("chkSma");if(sc)sc.checked=!!S.smaFilter;
+  var slc=document.getElementById("chkSl");if(slc)slc.checked=!!S.slSma;
   toggleReinvestSub();toggleTtpSub();
   buildProfitMode();updateBadge();updateCap();
   refreshCacheRange();loadCandleRange();updateFetchBtnState();
@@ -2408,6 +2434,8 @@ function parseSettingsText(txt){
   if(/Strateji[^:\n]*:\s*An[ıi]?nda/i.test(txt))o.cond="instant";
   var sm=txt.match(/Trend\s*Filtre[^:\n]*:\s*(Evet|Hay[ıi]?r|Yes|No|true|false|A[çc][ıi]?k|Kapal[ıi]?)/i);
   if(sm)o.smaFilter=/evet|yes|true|a[çc]/i.test(sm[1]);
+  var sl=txt.match(/Stop\s*Loss[^:\n]*:\s*(Evet|Hay[ıi]?r|Yes|No|true|false|A[çc][ıi]?k|Kapal[ıi]?)/i);
+  if(sl)o.slSma=/evet|yes|true|a[çc]/i.test(sl[1]);
   var cm=txt.match(/Sembol[^:\n]*:\s*([A-Za-z0-9]+)\s*\//i);
   if(cm){var c=COINS.find(function(x){return x.sym.toLowerCase()===cm[1].toLowerCase();}); if(c)o.coin=c.id;}
   return o;
@@ -2482,6 +2510,7 @@ updateCap();
 document.getElementById("chkReinvest").checked = S.reinvest;
 document.getElementById("chkTtp").checked = S.ttpEnabled;
 var _cs=document.getElementById("chkSma");if(_cs)_cs.checked=!!S.smaFilter;
+var _csl=document.getElementById("chkSl");if(_csl)_csl.checked=!!S.slSma;
 toggleReinvestSub();
 toggleTtpSub();
 
