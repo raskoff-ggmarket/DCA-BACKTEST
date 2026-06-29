@@ -289,7 +289,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div class="card">
     <div class="card-head">💰 Sermaye</div>
     <div class="row" id="row-startCapital">
-      <div><div class="rl">Başlangıç Sermayesi ($)</div><div class="rs">Botun kullanacağı toplam bakiye</div></div>
+      <div><div class="rl" id="lblCap">Başlangıç Sermayesi ($)</div><div class="rs">Botun kullanacağı toplam bakiye</div></div>
     </div>
     <div class="row">
       <div><div class="rl">Kâr Modu</div><div class="rs" id="profitModeDesc">TP kârı USDT olarak tahakkuk eder</div></div>
@@ -457,7 +457,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div id="optPanel" class="hidden">
   <div style="padding:14px">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BAŞLANGIÇ SERMAYESİ (USDT)</div>
+      <div id="lblOptCap" style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BAŞLANGIÇ SERMAYESİ (USDT)</div>
       <input type="number" id="optCapital" value="1000" min="100" step="100"
         style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:15px;font-weight:700;font-family:'Space Grotesk',sans-serif">
     </div>
@@ -644,7 +644,10 @@ var STEPPERS = [
 
 function f(n,d){ d=d===undefined?2:d; return (n||0).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d}); }
 function _quoteSym(){var c=COINS.find(function(x){return x.id===S.coin;});return (c&&c.quote)?c.quote:"$";}
+function _quoteName(){return _quoteSym()==="$"?"USDT":_quoteSym();}
+function _pairLabel(c){c=c||COINS.find(function(x){return x.id===S.coin;})||{};return c.sym+"/"+(c.quote?c.quote:"USDT");}
 function fu(n){ var q=_quoteSym(); return (q==="$"?"$"+f(n,2):f(n,2)+" "+q); }
+function fu0(n){ var q=_quoteSym(); return (q==="$"?"$"+f(n,0):f(n,0)+" "+q); }
 function fp(n){ return (n>=0?"+":"")+f(n,1)+"%"; }
 function setLoad(p){ document.getElementById("lBar").style.width=p+"%"; }
 
@@ -1695,7 +1698,7 @@ function render(res, source, mumCnt, dateFrom, dateTo){
   var pcU =stats.unrealizedPnL>=0?"var(--green)":"var(--red)";
 
   var isBase=stats.isBase;
-  document.getElementById("hMeta").textContent=coin.sym+"/USDT · "+dateFrom+" – "+dateTo+" · "+mumCnt.toLocaleString()+" mum"+(isBase?" · Base ₿":"");
+  document.getElementById("hMeta").textContent=_pairLabel(coin)+" · "+dateFrom+" – "+dateTo+" · "+mumCnt.toLocaleString()+" mum"+(isBase?" · Base ₿":"");
   document.getElementById("hPct").textContent=fp(stats.totalPnLPct);
   document.getElementById("hPct").style.color=pcT;
   document.getElementById("hUsd").textContent="Toplam PnL: "+(stats.totalPnL>=0?"+":"")+fu(stats.totalPnL);
@@ -1898,18 +1901,18 @@ function saveSettings(){
   var lines=[
     "DCA Backtest Ayarları — "+now,
     "══════════════════════════════════",
-    "Sembol          : "+coin.sym+"/USDT",
+    "Sembol          : "+_pairLabel(coin),
     "Dönem           : "+S.dateFrom+" – "+S.dateTo,
     "Strateji        : "+(S.cond==="rsi"?"RSI("+S.rsiTP+") "+(S.rsiDir==="lt"?"< ":"> ")+S.rsiThr+" · "+S.rsiTf:"Anında (1m)"),
-    "Başlangıç Ser.  : $"+S.startCapital,
-    "BO Miktarı      : $"+S.initAmt,
-    "SO Miktarı      : $"+S.safeAmt,
+    "Başlangıç Ser.  : "+fu0(S.startCapital),
+    "BO Miktarı      : "+fu0(S.initAmt),
+    "SO Miktarı      : "+fu0(S.safeAmt),
     "Max SO          : "+S.maxSO,
     "Fiyat Adımı     : %"+S.priceStep,
     "Adım Çarpanı    : ×"+S.stepMult,
     "Miktar Çarpanı  : ×"+S.amtMult,
     "Kâr Oranı       : %"+S.tpPct,
-    "Kâr Modu        : "+(S.profitMode==="base"?coin.sym+" (Base)":"Quote (USDT)"),
+    "Kâr Modu        : "+(S.profitMode==="base"?coin.sym+" (Base)":"Quote ("+_quoteName()+")"),
     "Reinvest        : "+(S.reinvest?"Evet (%"+S.reinvestPct+")":"Hayır"),
     "TTP             : "+(S.ttpEnabled?"Evet (%"+S.ttpPct+")":"Hayır"),
     "Trend Filtresi  : "+(S.smaFilter?"Evet (50&200 SMA)":"Hayır"),
@@ -1930,12 +1933,12 @@ function copyResults(){
   var lines=[
     "DCA Backtest Sonuçları — "+now,
     "════════════════════════════════════",
-    "Sembol     : "+coin.sym+"/USDT",
+    "Sembol     : "+_pairLabel(coin),
     "Dönem      : "+r.dateFrom+" – "+r.dateTo,
     "Mum Sayısı : "+r.mumCnt.toLocaleString(),
     "",
     "─── Performans ───",
-    "Toplam PnL   : "+pnlSign+"$"+s.totalPnL.toFixed(2)+" ("+pnlSign+s.totalPnLPct.toFixed(2)+"%)",
+    "Toplam PnL   : "+pnlSign+(_quoteSym()==="$"?"$":"")+s.totalPnL.toFixed(2)+(_quoteSym()==="$"?"":" "+_quoteSym())+" ("+pnlSign+s.totalPnLPct.toFixed(2)+"%)",
     "Arb. APR     : %"+s.arbitrageAPR.toFixed(2),
     "Toplam APR   : %"+s.totalAPR.toFixed(2),
     "Max Drawdown : -%"+s.maxDrawdown.toFixed(2),
@@ -1943,9 +1946,9 @@ function copyResults(){
     "Döngüler     : "+s.completedCycles,
     "",
     "─── Parametreler ───",
-    "Sermaye      : $"+S.startCapital,
-    "İlk Alım     : $"+S.initAmt,
-    "SO Miktarı   : $"+S.safeAmt,
+    "Sermaye      : "+fu0(S.startCapital),
+    "İlk Alım     : "+fu0(S.initAmt),
+    "SO Miktarı   : "+fu0(S.safeAmt),
     "Fiyat Adımı  : %"+S.priceStep,
     "Adım Çarpanı : ×"+S.stepMult,
     "Miktar Çarp. : ×"+S.amtMult,
@@ -2014,7 +2017,7 @@ function buildProfitMode(){
   var el=document.getElementById("profitModeGroup");
   var coin=COINS.find(function(c){return c.id===S.coin;});
   el.innerHTML="";
-  [{v:"quote",l:"USDT"},{v:"base",l:coin.sym}].forEach(function(o){
+  [{v:"quote",l:_quoteName()},{v:"base",l:coin.sym}].forEach(function(o){
     var b=document.createElement("button");
     b.className="chip"+(S.profitMode===o.v?" on":"");
     b.style.padding="6px 14px";
@@ -2032,7 +2035,7 @@ function buildProfitMode(){
         note.textContent="Base modunda Reinvest devre dışıdır";
         note.style.color="var(--red)";
       } else {
-        desc.textContent="TP kârı USDT olarak tahakkuk eder";
+        desc.textContent="TP kârı "+_quoteName()+" olarak tahakkuk eder";
         desc.style.color="";
         note.textContent="Her TP sonrası kârın belirlenen %'i sermayeye eklenir";
         note.style.color="";
@@ -2053,6 +2056,9 @@ function updateMarketNav(){
   if(bs)bs.className="mode-btn"+(m==="stock"?" on":"");
   var head=document.getElementById("assetHead");
   if(head)head.textContent=(m==="stock"?"📈 Hisse (lot · ₺)":"🪙 Varlık");
+  var qn=_quoteName(), qs=_quoteSym();
+  var lc=document.getElementById("lblCap");if(lc)lc.textContent="Başlangıç Sermayesi ("+qs+")";
+  var lo=document.getElementById("lblOptCap");if(lo)lo.textContent="BAŞLANGIÇ SERMAYESİ ("+qn+")";
 }
 function setMarket(m){
   S.market=m;
@@ -2080,7 +2086,7 @@ function buildMainChips(){
   cc.value=S.coin;
   if(!cc.value){var f=COINS.find(function(c){return _coinMarket(c)===mk;})||COINS[0];S.coin=f.id;cc.value=S.coin;}
 }
-function selCoin(id){S.coin=id;S.dateFrom="";S.dateTo="";updateBadge();buildProfitMode();setOptProfitMode(_optProfitMode);saveState();refreshCacheRange();loadCandleRange();updateFetchBtnState();}
+function selCoin(id){S.coin=id;S.dateFrom="";S.dateTo="";updateMarketNav();updateBadge();buildProfitMode();setOptProfitMode(_optProfitMode);updateCap();saveState();refreshCacheRange();loadCandleRange();updateFetchBtnState();}
 function refreshMainChips(){
   document.getElementById("coinC").value=S.coin;
 }
@@ -2134,7 +2140,7 @@ function updateCap(){
   var ok=t<=S.startCapital;
   document.getElementById("capD").style.background=ok?"var(--green)":"var(--red)";
   document.getElementById("capT").style.color=ok?"var(--green)":"var(--red)";
-  document.getElementById("capT").textContent=ok?"✓ Yeterli — $"+Math.ceil(t)+" gerekli":"⚠ Tek döngü maks: $"+Math.ceil(t)+" — yetersiz";
+  document.getElementById("capT").textContent=ok?"✓ Yeterli — "+fu0(Math.ceil(t))+" gerekli":"⚠ Tek döngü maks: "+fu0(Math.ceil(t))+" — yetersiz";
   var btn=document.getElementById("fabBtn");
   btn.disabled=!ok; btn.textContent=ok?"▶ BACKTEST":"⚠ Sermaye Yetersiz";
   /* Kapsama göstergesi */
@@ -2257,13 +2263,14 @@ function setOptTtp(on){
 function setOptProfitMode(mode){
   _optProfitMode=mode;
   var coin=COINS.find(function(c){return c.id===S.coin;})||{sym:"Coin"};
-  document.getElementById("optProfitQuote").className="chip"+(mode==="quote"?" on":"");
+  var qpe=document.getElementById("optProfitQuote");
+  qpe.className="chip"+(mode==="quote"?" on":"");qpe.textContent=_quoteName();
   document.getElementById("optProfitBase").className="chip"+(mode==="base"?" on":"");
   document.getElementById("optProfitBase").textContent=coin.sym;
   var desc=document.getElementById("optProfitDesc");
   if(desc)desc.textContent=mode==="base"
     ?"TP'de yatırım geri alınır, kâr "+coin.sym+" olarak birikir"
-    :"TP kârı USDT olarak tahakkuk eder";
+    :"TP kârı "+_quoteName()+" olarak tahakkuk eder";
 }
 
 
@@ -2383,7 +2390,7 @@ async function runOptimizer(){
   var statusEl=document.getElementById("optStatus");
   var resultsEl=document.getElementById("optResults");
   var capital=parseFloat(document.getElementById("optCapital").value)||1000;
-  if(capital<100){statusEl.textContent="⚠ Minimum 100 USDT";return;}
+  if(capital<100){statusEl.textContent="⚠ Minimum 100 "+_quoteName();return;}
 
   btn.disabled=true;
   btn.innerHTML='<span class="spinner" style="border-color:rgba(0,212,170,.2);border-top-color:var(--accent);width:13px;height:13px;border-width:2px;vertical-align:middle;margin-right:6px"></span> Taranıyor...';
@@ -2474,8 +2481,8 @@ function _renderOptProfile(profile,best){
   html+='<span>Skor <span style="color:var(--text)">'+best.score.toFixed(1)+'</span></span>';
   html+='</div>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px;font-size:11px;margin-bottom:10px">';
-  html+='<div style="color:var(--text3)">BO <span style="color:var(--text);font-weight:700">$'+p.initAmt+'</span></div>';
-  html+='<div style="color:var(--text3)">SO <span style="color:var(--text);font-weight:700">$'+p.safeAmt+'</span></div>';
+  html+='<div style="color:var(--text3)">BO <span style="color:var(--text);font-weight:700">'+fu0(p.initAmt)+'</span></div>';
+  html+='<div style="color:var(--text3)">SO <span style="color:var(--text);font-weight:700">'+fu0(p.safeAmt)+'</span></div>';
   html+='<div style="color:var(--text3)">MaxSO <span style="color:var(--text);font-weight:700">'+p.maxSO+'</span></div>';
   html+='<div style="color:var(--text3)">Step <span style="color:var(--text);font-weight:700">%'+p.priceStep+'</span></div>';
   html+='<div style="color:var(--text3)">SM <span style="color:var(--text);font-weight:700">×'+p.stepMult+'</span></div>';
