@@ -239,6 +239,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div class="hdr-badge" id="hdrBadge">₿ BTC · 1Y</div>
 </div>
 
+<div class="mode-nav" id="marketNav" style="padding-bottom:4px">
+  <button class="mode-btn on" id="mktCrypto" onclick="setMarket('crypto')">🪙 Kripto</button>
+  <button class="mode-btn" id="mktStock" onclick="setMarket('stock')">📈 Hisse (lot)</button>
+</div>
 <div class="mode-nav" id="mainNav">
   <button class="mode-btn on" id="tabAyarlar" onclick="setTab('ayarlar')">⚙️ Ayarlar</button>
   <button class="mode-btn" id="tabSonuclar" onclick="setTab('sonuclar')">📊 Sonuçlar</button>
@@ -260,9 +264,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
 
   <div class="card">
-    <div class="card-head">🪙 Piyasa & Varlık</div>
-    <div style="padding:10px 14px 0;display:flex;gap:6px" id="marketChips"></div>
-    <div style="padding:10px 14px"><select class="coin-sel" id="coinC" onchange="selCoin(this.value)"></select></div>
+    <div class="card-head" id="assetHead">🪙 Varlık</div>
+    <div style="padding:12px 14px"><select class="coin-sel" id="coinC" onchange="selCoin(this.value)"></select></div>
   </div>
 
   <div class="card">
@@ -2043,21 +2046,17 @@ function buildProfitMode(){
 function _isStock(c){return !!(c&&(c.market==="stock"||c.lot||c.src==="yahoo"));}
 function _coinMarket(c){return _isStock(c)?"stock":"crypto";}
 
-function buildMarketChips(){
-  var box=document.getElementById("marketChips");if(!box)return;
-  box.innerHTML="";
-  [{v:"crypto",l:"🪙 Kripto"},{v:"stock",l:"📈 Hisse"}].forEach(function(m){
-    var b=document.createElement("button");
-    b.className="chip"+((S.market||"crypto")===m.v?" on":"");
-    b.style.cssText="padding:6px 14px;cursor:pointer;font-family:'Space Grotesk',sans-serif";
-    b.textContent=m.l;
-    b.onclick=function(){setMarket(m.v);};
-    box.appendChild(b);
-  });
+function updateMarketNav(){
+  var m=S.market||"crypto";
+  var bc=document.getElementById("mktCrypto"),bs=document.getElementById("mktStock");
+  if(bc)bc.className="mode-btn"+(m==="crypto"?" on":"");
+  if(bs)bs.className="mode-btn"+(m==="stock"?" on":"");
+  var head=document.getElementById("assetHead");
+  if(head)head.textContent=(m==="stock"?"📈 Hisse (lot · ₺)":"🪙 Varlık");
 }
 function setMarket(m){
   S.market=m;
-  buildMarketChips();
+  updateMarketNav();
   buildMainChips();           // listeyi filtrele
   /* seçili coin bu markette değilse ilkine geç */
   var cur=COINS.find(function(c){return c.id===S.coin;});
@@ -2544,7 +2543,7 @@ function _applySettingsObj(obj){
     if(inp)inp.value=S[cfg.k];
   });
   var _ac=COINS.find(function(c){return c.id===S.coin;});if(_ac)S.market=_coinMarket(_ac);
-  buildMarketChips();buildMainChips();
+  updateMarketNav();buildMainChips();
   var cc=document.getElementById("coinC");if(cc)cc.value=S.coin;
   var rc=document.getElementById("chkReinvest");if(rc)rc.checked=!!S.reinvest;
   var tc=document.getElementById("chkTtp");if(tc)tc.checked=!!S.ttpEnabled;
@@ -2653,7 +2652,7 @@ loadState();
 STEPPERS.forEach(function(cfg){buildStepper(cfg.k);});
 var _initC=COINS.find(function(c){return c.id===S.coin;});
 if(_initC)S.market=_coinMarket(_initC);
-buildMarketChips();
+updateMarketNav();
 buildMainChips();
 buildProfitMode();
 setOptProfitMode(_optProfitMode);
