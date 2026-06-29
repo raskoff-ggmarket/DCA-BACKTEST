@@ -570,6 +570,7 @@ var COINS = [
   {id:"spcx",       sym:"SPCX",   e:"", src:"bybit"},
   {id:"rlusd",      sym:"RLUSD",  e:"", src:"bybit"},
   {id:"usdc",       sym:"USDC",   e:"", src:"bybit"},
+  {id:"garan",      sym:"GARAN",  e:"", src:"yahoo", yahoo:"GARAN.IS", quote:"₺", daily:true},
 ];
 var PERS = [
   {l:"1A", d:30},
@@ -638,7 +639,8 @@ var STEPPERS = [
 ];
 
 function f(n,d){ d=d===undefined?2:d; return (n||0).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d}); }
-function fu(n){ return "$"+f(n,2); }
+function _quoteSym(){var c=COINS.find(function(x){return x.id===S.coin;});return (c&&c.quote)?c.quote:"$";}
+function fu(n){ var q=_quoteSym(); return (q==="$"?"$"+f(n,2):f(n,2)+" "+q); }
 function fp(n){ return (n>=0?"+":"")+f(n,1)+"%"; }
 function setLoad(p){ document.getElementById("lBar").style.width=p+"%"; }
 
@@ -976,6 +978,42 @@ function _barToBybit(bar){
   return {"1m":"1","30m":"30","1H":"60","4H":"240","1D":"D"}[bar]||"1";
 }
 
+/* Yahoo Finance günlük mum (CORS proxy fallback) → [[tsMs,c,c,c,c], ...] artan sıra */
+async function _fetchYahooDaily(coin){
+  var sym=coin.yahoo||coin.sym;
+  var p1=Math.floor(new Date("2015-01-01").getTime()/1000);
+  var p2=Math.floor(Date.now()/1000)+86400;
+  var yurl="https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(sym)+
+           "?interval=1d&period1="+p1+"&period2="+p2;
+  var eps=[
+    yurl,
+    "https://corsproxy.io/?url="+encodeURIComponent(yurl),
+    "https://api.allorigins.win/raw?url="+encodeURIComponent(yurl),
+  ];
+  var j=null;
+  for(var e=0;e<eps.length;e++){
+    try{
+      var r=await _timedFetch(eps[e]);
+      if(!r.ok)continue;
+      var txt=await r.text();
+      var pj=JSON.parse(txt);
+      if(pj&&pj.chart&&pj.chart.result&&pj.chart.result[0]){j=pj;break;}
+    }catch(err){}
+  }
+  if(!j)throw new Error(sym+" çekilemedi (CORS engeli olabilir). 📂 İçe Aktar ile CSV yükleyebilirsin.");
+  var res=j.chart.result[0];
+  var ts=res.timestamp||[];
+  var cl=(res.indicators&&res.indicators.quote&&res.indicators.quote[0]&&res.indicators.quote[0].close)||[];
+  var out=[];
+  for(var i=0;i<ts.length;i++){
+    var c=cl[i];
+    if(c==null)continue;
+    var t=ts[i]*1000;
+    out.push([t,c,c,c,c]);   // parseRawCandles [0]=ts, [4]=close
+  }
+  return out; // artan sıra
+}
+
 /* afterTs: ms timestamp — bu ts'den daha eski mumları çek ("" = şimdiden başla)
    onProgress(oldestTs, totalFetched)
    onBatch(rawBatch, oldestTs) → true döndürürse dur
@@ -984,6 +1022,13 @@ async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
   var coin=COINS.find(function(c){return c.id===coinId;});
   var isBybit=coin.src==="bybit";
   var all=[],totalFetched=0,reqCount=0;
+
+  if(coin.src==="yahoo"){
+    var rows=await _fetchYahooDaily(coin);   // artan: rows[0] en eski
+    if(onProgress)onProgress(rows.length?rows[0][0]:0,rows.length);
+    if(onBatch){await onBatch(rows,rows.length?rows[0][0]:0);return [];}
+    return rows;
+  }
 
   if(isBybit){
     var symbol=coin.sym+"USDT";
@@ -1048,6 +1093,10 @@ async function _fetchNew(coinId,okxBar,latestTs){
   var barMs=BAR_MS[okxBar]||3600000;
   var all=[],reqCount=0,maxReq=300;  // şimdiye yetişene dek devam et (yüksek tavan)
   var nowTs=Date.now();
+
+  if(coin.src==="yahoo"){
+    try{return await _fetchYahooDaily(coin);}catch(e){return [];}  // dedup'ı çağıran yapar
+  }
 
   if(isBybit){
     var symbol=coin.sym+"USDT";
