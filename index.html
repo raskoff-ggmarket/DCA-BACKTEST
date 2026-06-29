@@ -260,8 +260,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
 
   <div class="card">
-    <div class="card-head">🪙 İşlem Çifti</div>
-    <div style="padding:12px 14px"><select class="coin-sel" id="coinC" onchange="selCoin(this.value)"></select></div>
+    <div class="card-head">🪙 Piyasa & Varlık</div>
+    <div style="padding:10px 14px 0;display:flex;gap:6px" id="marketChips"></div>
+    <div style="padding:10px 14px"><select class="coin-sel" id="coinC" onchange="selCoin(this.value)"></select></div>
   </div>
 
   <div class="card">
@@ -600,7 +601,7 @@ var DEFAULTS = {
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
   maxSO:10, tpPct:1.5,
   reinvest:false, reinvestPct:100, ttpEnabled:false, ttpPct:0.5,
-  commission:0.1, smaFilter:false, slMode:"off", slPct:15,
+  commission:0.1, smaFilter:false, slMode:"off", slPct:15, market:"crypto",
   profitMode:"quote",
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
@@ -2039,15 +2040,46 @@ function buildProfitMode(){
   });
 }
 
+function _isStock(c){return !!(c&&(c.market==="stock"||c.lot||c.src==="yahoo"));}
+function _coinMarket(c){return _isStock(c)?"stock":"crypto";}
+
+function buildMarketChips(){
+  var box=document.getElementById("marketChips");if(!box)return;
+  box.innerHTML="";
+  [{v:"crypto",l:"🪙 Kripto"},{v:"stock",l:"📈 Hisse"}].forEach(function(m){
+    var b=document.createElement("button");
+    b.className="chip"+((S.market||"crypto")===m.v?" on":"");
+    b.style.cssText="padding:6px 14px;cursor:pointer;font-family:'Space Grotesk',sans-serif";
+    b.textContent=m.l;
+    b.onclick=function(){setMarket(m.v);};
+    box.appendChild(b);
+  });
+}
+function setMarket(m){
+  S.market=m;
+  buildMarketChips();
+  buildMainChips();           // listeyi filtrele
+  /* seçili coin bu markette değilse ilkine geç */
+  var cur=COINS.find(function(c){return c.id===S.coin;});
+  if(!cur||_coinMarket(cur)!==m){
+    var first=COINS.find(function(c){return _coinMarket(c)===m;});
+    if(first)selCoin(first.id);
+  } else {
+    saveState();
+  }
+}
+
 function buildMainChips(){
   var cc=document.getElementById("coinC");
-  COINS.forEach(function(c){
+  cc.innerHTML="";
+  var mk=S.market||"crypto";
+  COINS.filter(function(c){return _coinMarket(c)===mk;}).forEach(function(c){
     var o=document.createElement("option");
     o.value=c.id;o.textContent=(c.e?c.e+" ":"")+c.sym;
     cc.appendChild(o);
   });
   cc.value=S.coin;
-  if(!cc.value){S.coin=COINS[0].id;cc.value=S.coin;}
+  if(!cc.value){var f=COINS.find(function(c){return _coinMarket(c)===mk;})||COINS[0];S.coin=f.id;cc.value=S.coin;}
 }
 function selCoin(id){S.coin=id;S.dateFrom="";S.dateTo="";updateBadge();buildProfitMode();setOptProfitMode(_optProfitMode);saveState();refreshCacheRange();loadCandleRange();updateFetchBtnState();}
 function refreshMainChips(){
@@ -2511,6 +2543,8 @@ function _applySettingsObj(obj){
     var inp=document.getElementById("inp-"+cfg.k);
     if(inp)inp.value=S[cfg.k];
   });
+  var _ac=COINS.find(function(c){return c.id===S.coin;});if(_ac)S.market=_coinMarket(_ac);
+  buildMarketChips();buildMainChips();
   var cc=document.getElementById("coinC");if(cc)cc.value=S.coin;
   var rc=document.getElementById("chkReinvest");if(rc)rc.checked=!!S.reinvest;
   var tc=document.getElementById("chkTtp");if(tc)tc.checked=!!S.ttpEnabled;
@@ -2617,6 +2651,9 @@ function closeSplash(){
 ═══════════════════════════════ */
 loadState();
 STEPPERS.forEach(function(cfg){buildStepper(cfg.k);});
+var _initC=COINS.find(function(c){return c.id===S.coin;});
+if(_initC)S.market=_coinMarket(_initC);
+buildMarketChips();
 buildMainChips();
 buildProfitMode();
 setOptProfitMode(_optProfitMode);
