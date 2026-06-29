@@ -570,7 +570,7 @@ var COINS = [
   {id:"spcx",       sym:"SPCX",   e:"", src:"bybit"},
   {id:"rlusd",      sym:"RLUSD",  e:"", src:"bybit"},
   {id:"usdc",       sym:"USDC",   e:"", src:"bybit"},
-  {id:"garan",      sym:"GARAN",  e:"", src:"yahoo", yahoo:"GARAN.IS", quote:"₺", daily:true},
+  {id:"garan",      sym:"GARAN",  e:"", src:"yahoo", yahoo:"GARAN.IS", quote:"₺", daily:true, lot:1},
 ];
 var PERS = [
   {l:"1A", d:30},
@@ -683,6 +683,12 @@ function filterByDateRange(candles,dateFrom,dateTo){
 ═══════════════════════════════ */
 var BAR_MS={"1m":60000,"3m":180000,"5m":300000,"15m":900000,"30m":1800000,"1H":3600000,"4H":14400000};
 var HISTORY_START_TS=new Date("2022-01-01T00:00:00Z").getTime();
+var HISTORY_START_DAILY=new Date("2020-01-01T00:00:00Z").getTime();
+/* GARAN gibi günlük/yahoo coinler 2020'den, kripto (1m) 2022'den başlar */
+function _histStart(coinId){
+  var c=COINS.find(function(x){return x.id===coinId;});
+  return (c&&(c.daily||c.src==="yahoo"))?HISTORY_START_DAILY:HISTORY_START_TS;
+}
 var _cacheStatus="";
 var _hasResult=false;
 var _db=null;
@@ -931,7 +937,7 @@ async function importCandles(input){
         return {ts:d.ts,price:d.price,date:d.date||new Date(d.ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
       });
     }
-    candles=candles.filter(function(c){return c.ts>=HISTORY_START_TS;}).sort(function(a,b){return a.ts-b.ts;});
+    candles=candles.filter(function(c){return c.ts>=_histStart(S.coin);}).sort(function(a,b){return a.ts-b.ts;});
     if(!candles.length){showToast("⚠ Geçerli mum bulunamadı");if(infoEl)infoEl.textContent="";input.value="";return;}
     var key=S.coin+"_"+INSTANT_BAR.okx;
     var total=candles.length;
@@ -1052,7 +1058,7 @@ async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
       var oldest=parseInt(endTs);
       if(onProgress)onProgress(oldest,totalFetched);
       if(onBatch){var stop=await onBatch(batch,oldest);if(stop)break;}
-      if(oldest<=HISTORY_START_TS)break;
+      if(oldest<=_histStart(coinId))break;
       if(batch.length<200)break;
       await new Promise(function(res){setTimeout(res,50);});
     }
@@ -1080,7 +1086,7 @@ async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
     var oldest=parseInt(after);
     if(onProgress)onProgress(oldest,totalFetched);
     if(onBatch){var stop=await onBatch(batch,oldest);if(stop)break;}
-    if(oldest<=HISTORY_START_TS)break;
+    if(oldest<=_histStart(coinId))break;
     if(batch.length<300)break;
     await new Promise(function(res){setTimeout(res,50);});
   }
@@ -1178,14 +1184,14 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
   var histAdded=0;
   if(histFetch){
     var oldestTs=cached.length>0?cached[0].ts:Date.now();
-    if(oldestTs>HISTORY_START_TS){
+    if(oldestTs>_histStart(coinId)){
       var bn=0,pend=[];
       await _fetchHistorical(
         coinId,okxBar,oldestTs,
         function(ts,n){showFetchProgress(ts,n,30000);},
         async function(batch,bOldest){
           var cap=oldestTs;
-          var p=parseRawCandles(batch).filter(function(c){return c.ts<cap&&c.ts>=HISTORY_START_TS&&!tsSet.has(c.ts);});
+          var p=parseRawCandles(batch).filter(function(c){return c.ts<cap&&c.ts>=_histStart(coinId)&&!tsSet.has(c.ts);});
           p.forEach(function(c){tsSet.add(c.ts);});
           if(p.length){
             pend=p.concat(pend);histAdded+=p.length;changed=true;
@@ -1195,7 +1201,7 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
               if(cached.length)oldestTs=cached[0].ts;
             }
           }
-          return bOldest<=HISTORY_START_TS;
+          return bOldest<=_histStart(coinId);
         }
       );
       if(pend.length){cached=pend.concat(cached);changed=true;}
@@ -1206,7 +1212,7 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
   if(!cached.length){
     var raw=await _fetchHistorical(coinId,okxBar,"",null,null);
     if(!raw.length)throw new Error("Borsadan veri gelmedi.");
-    cached=parseRawCandles(raw).filter(function(c){return c.ts>=HISTORY_START_TS;});
+    cached=parseRawCandles(raw).filter(function(c){return c.ts>=_histStart(coinId);});
     changed=true;
   }
 
@@ -1225,7 +1231,7 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
   }
 
   /* 7. Durum mesajı */
-  var histDone=cached[0].ts<=HISTORY_START_TS;
+  var histDone=cached[0].ts<=_histStart(coinId);
   if(histFetch){
     _cacheStatus=histDone
       ?"✅ 2022-01-01'den bugüne tamam · "+cached.length.toLocaleString()+" mum"+(newCnt?" (+"+newCnt+" yeni)":"")
@@ -1262,7 +1268,7 @@ async function loadCandleRange(){
       if(!S.dateTo||S.dateTo>to||S.dateTo<from)S.dateTo=to;
       inpFrom.value=S.dateFrom;
       inpTo.value=S.dateTo;
-      var histDone=cached[0].ts<=HISTORY_START_TS;
+      var histDone=cached[0].ts<=_histStart(coinId);
       var days=Math.round((cached[cached.length-1].ts-cached[0].ts)/(864e5));
       infoEl.textContent=(histDone?"✅ ":"⏳ ")+cached.length.toLocaleString()+" mum · "+days+" gün · "+from+" – "+to+(histDone?"":" · Geçmiş eksik");
       saveState();
@@ -1318,7 +1324,7 @@ async function updateFetchBtnState(){
   var complete=false;
   try{
     var d=await cGet(key);
-    complete=d&&d.length>0&&d[0].ts<=HISTORY_START_TS;
+    complete=d&&d.length>0&&d[0].ts<=_histStart(S.coin);
   }catch(e){}
   if(complete){
     btn.innerHTML="✅ Tarih Tamam";
@@ -1390,6 +1396,16 @@ function backtest(prices, rsiArr){
   var accumBase=0;
   var isBase=S.profitMode==="base";
   var feeRate=(S.commission||0)/100;
+
+  /* Lot: GARAN gibi hisselerde tam pay alınır (kesirli değil) */
+  var _coinObj=COINS.find(function(c){return c.id===S.coin;})||{};
+  var lot=_coinObj.lot||0;
+  function buyQC(amount,price){
+    var qty=amount*(1-feeRate)/price;
+    if(lot)qty=Math.floor(qty/lot)*lot;
+    var cost=lot?(qty>0?qty*price/(1-feeRate):0):amount;
+    return {qty:qty,cost:cost};
+  }
 
   var dynInitAmt=S.initAmt;
   var dynSafeAmt=S.safeAmt;
@@ -1463,8 +1479,9 @@ function backtest(prices, rsiArr){
           equity.push({date:date,value:eqVal(price),price:price});continue;
         }
       }
-      if(cash<dynInitAmt){equity.push({date:date,value:eqVal(price),price:price});continue;}
-      cash-=dynInitAmt;
+      var bq=buyQC(dynInitAmt,price);
+      if(bq.qty<=0||cash<bq.cost){equity.push({date:date,value:eqVal(price),price:price});continue;}
+      cash-=bq.cost;
 
       var so=[];
       // 3Commas mantığı: SO trigger = giriş × (1 - kümülatif_lineer_sapma%)
@@ -1477,8 +1494,8 @@ function backtest(prices, rsiArr){
         stepNow*=S.stepMult;
       }
       deal={startDate:date,initPrice:price,
-            orders:[{date:date,price:price,size:dynInitAmt,qty:dynInitAmt*(1-feeRate)/price}],
-            totalCost:dynInitAmt,totalQty:dynInitAmt*(1-feeRate)/price,
+            orders:[{date:date,price:price,size:bq.cost,qty:bq.qty}],
+            totalCost:bq.cost,totalQty:bq.qty,
             avgCost:price,safetyCount:0,so:so,
             ttpActive:false,ttpPeak:0,
             snapshotInitAmt:dynInitAmt,snapshotSafeAmt:dynSafeAmt};
@@ -1506,10 +1523,12 @@ function backtest(prices, rsiArr){
       for(var n=0;n<deal.so.length;n++){
         var lv=deal.so[n];
         if(!lv.filled&&price<=lv.price){
-          if(cash<lv.amt)break;
-          cash-=lv.amt;
-          deal.orders.push({date:date,price:price,size:lv.amt,qty:lv.amt*(1-feeRate)/price});
-          deal.totalCost+=lv.amt;deal.totalQty+=lv.amt*(1-feeRate)/price;
+          var sq=buyQC(lv.amt,price);
+          if(sq.qty<=0)continue;        // bütçe 1 lot almaya yetmiyor (daha düşük fiyatta dolabilir)
+          if(cash<sq.cost)break;
+          cash-=sq.cost;
+          deal.orders.push({date:date,price:price,size:sq.cost,qty:sq.qty});
+          deal.totalCost+=sq.cost;deal.totalQty+=sq.qty;
           deal.avgCost=deal.totalCost/deal.totalQty;
           deal.safetyCount++;lv.filled=true;
         }
