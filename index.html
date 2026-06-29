@@ -233,16 +233,12 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <img src="android-chrome-192x192.png" alt="logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover">
     <div>
       <div class="hdr-t">Backtest</div>
-      <div class="hdr-s">DCA PARAMETRELERİ · <span id="appVer" data-build="20" style="color:var(--accent)">build 20</span></div>
+      <div class="hdr-s">DCA PARAMETRELERİ · <span id="appVer" data-build="15" style="color:var(--accent)">build 15</span></div>
     </div>
   </div>
   <div class="hdr-badge" id="hdrBadge">₿ BTC · 1Y</div>
 </div>
 
-<div class="mode-nav" id="marketNav" style="padding-bottom:4px">
-  <button class="mode-btn on" id="mktCrypto" onclick="setMarket('crypto')">🪙 Kripto</button>
-  <button class="mode-btn" id="mktStock" onclick="setMarket('stock')">📈 Hisse (lot)</button>
-</div>
 <div class="mode-nav" id="mainNav">
   <button class="mode-btn on" id="tabAyarlar" onclick="setTab('ayarlar')">⚙️ Ayarlar</button>
   <button class="mode-btn" id="tabSonuclar" onclick="setTab('sonuclar')">📊 Sonuçlar</button>
@@ -264,7 +260,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
 
   <div class="card">
-    <div class="card-head" id="assetHead">🪙 Varlık</div>
+    <div class="card-head">🪙 İşlem Çifti</div>
     <div style="padding:12px 14px"><select class="coin-sel" id="coinC" onchange="selCoin(this.value)"></select></div>
   </div>
 
@@ -289,7 +285,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div class="card">
     <div class="card-head">💰 Sermaye</div>
     <div class="row" id="row-startCapital">
-      <div><div class="rl" id="lblCap">Başlangıç Sermayesi ($)</div><div class="rs">Botun kullanacağı toplam bakiye</div></div>
+      <div><div class="rl">Başlangıç Sermayesi ($)</div><div class="rs">Botun kullanacağı toplam bakiye</div></div>
     </div>
     <div class="row">
       <div><div class="rl">Kâr Modu</div><div class="rs" id="profitModeDesc">TP kârı USDT olarak tahakkuk eder</div></div>
@@ -457,7 +453,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div id="optPanel" class="hidden">
   <div style="padding:14px">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
-      <div id="lblOptCap" style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BAŞLANGIÇ SERMAYESİ (USDT)</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BAŞLANGIÇ SERMAYESİ (USDT)</div>
       <input type="number" id="optCapital" value="1000" min="100" step="100"
         style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:15px;font-weight:700;font-family:'Space Grotesk',sans-serif">
     </div>
@@ -574,7 +570,6 @@ var COINS = [
   {id:"spcx",       sym:"SPCX",   e:"", src:"bybit"},
   {id:"rlusd",      sym:"RLUSD",  e:"", src:"bybit"},
   {id:"usdc",       sym:"USDC",   e:"", src:"bybit"},
-  {id:"garan",      sym:"GARAN",  e:"", src:"yahoo", yahoo:"GARAN.IS", quote:"₺", daily:true, lot:1},
 ];
 var PERS = [
   {l:"1A", d:30},
@@ -604,7 +599,7 @@ var DEFAULTS = {
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
   maxSO:10, tpPct:1.5,
   reinvest:false, reinvestPct:100, ttpEnabled:false, ttpPct:0.5,
-  commission:0.1, smaFilter:false, slMode:"off", slPct:15, market:"crypto",
+  commission:0.1, smaFilter:false, slMode:"off", slPct:15,
   profitMode:"quote",
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
@@ -643,11 +638,7 @@ var STEPPERS = [
 ];
 
 function f(n,d){ d=d===undefined?2:d; return (n||0).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d}); }
-function _quoteSym(){var c=COINS.find(function(x){return x.id===S.coin;});return (c&&c.quote)?c.quote:"$";}
-function _quoteName(){return _quoteSym()==="$"?"USDT":_quoteSym();}
-function _pairLabel(c){c=c||COINS.find(function(x){return x.id===S.coin;})||{};return c.sym+"/"+(c.quote?c.quote:"USDT");}
-function fu(n){ var q=_quoteSym(); return (q==="$"?"$"+f(n,2):f(n,2)+" "+q); }
-function fu0(n){ var q=_quoteSym(); return (q==="$"?"$"+f(n,0):f(n,0)+" "+q); }
+function fu(n){ return "$"+f(n,2); }
 function fp(n){ return (n>=0?"+":"")+f(n,1)+"%"; }
 function setLoad(p){ document.getElementById("lBar").style.width=p+"%"; }
 
@@ -690,12 +681,6 @@ function filterByDateRange(candles,dateFrom,dateTo){
 ═══════════════════════════════ */
 var BAR_MS={"1m":60000,"3m":180000,"5m":300000,"15m":900000,"30m":1800000,"1H":3600000,"4H":14400000};
 var HISTORY_START_TS=new Date("2022-01-01T00:00:00Z").getTime();
-var HISTORY_START_DAILY=new Date("2020-01-01T00:00:00Z").getTime();
-/* GARAN gibi günlük/yahoo coinler 2020'den, kripto (1m) 2022'den başlar */
-function _histStart(coinId){
-  var c=COINS.find(function(x){return x.id===coinId;});
-  return (c&&(c.daily||c.src==="yahoo"))?HISTORY_START_DAILY:HISTORY_START_TS;
-}
 var _cacheStatus="";
 var _hasResult=false;
 var _db=null;
@@ -944,7 +929,7 @@ async function importCandles(input){
         return {ts:d.ts,price:d.price,date:d.date||new Date(d.ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
       });
     }
-    candles=candles.filter(function(c){return c.ts>=_histStart(S.coin);}).sort(function(a,b){return a.ts-b.ts;});
+    candles=candles.filter(function(c){return c.ts>=HISTORY_START_TS;}).sort(function(a,b){return a.ts-b.ts;});
     if(!candles.length){showToast("⚠ Geçerli mum bulunamadı");if(infoEl)infoEl.textContent="";input.value="";return;}
     var key=S.coin+"_"+INSTANT_BAR.okx;
     var total=candles.length;
@@ -991,42 +976,6 @@ function _barToBybit(bar){
   return {"1m":"1","30m":"30","1H":"60","4H":"240","1D":"D"}[bar]||"1";
 }
 
-/* Yahoo Finance günlük mum (CORS proxy fallback) → [[tsMs,c,c,c,c], ...] artan sıra */
-async function _fetchYahooDaily(coin){
-  var sym=coin.yahoo||coin.sym;
-  var p1=Math.floor(new Date("2015-01-01").getTime()/1000);
-  var p2=Math.floor(Date.now()/1000)+86400;
-  var yurl="https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(sym)+
-           "?interval=1d&period1="+p1+"&period2="+p2;
-  var eps=[
-    yurl,
-    "https://corsproxy.io/?url="+encodeURIComponent(yurl),
-    "https://api.allorigins.win/raw?url="+encodeURIComponent(yurl),
-  ];
-  var j=null;
-  for(var e=0;e<eps.length;e++){
-    try{
-      var r=await _timedFetch(eps[e]);
-      if(!r.ok)continue;
-      var txt=await r.text();
-      var pj=JSON.parse(txt);
-      if(pj&&pj.chart&&pj.chart.result&&pj.chart.result[0]){j=pj;break;}
-    }catch(err){}
-  }
-  if(!j)throw new Error(sym+" çekilemedi (CORS engeli olabilir). 📂 İçe Aktar ile CSV yükleyebilirsin.");
-  var res=j.chart.result[0];
-  var ts=res.timestamp||[];
-  var cl=(res.indicators&&res.indicators.quote&&res.indicators.quote[0]&&res.indicators.quote[0].close)||[];
-  var out=[];
-  for(var i=0;i<ts.length;i++){
-    var c=cl[i];
-    if(c==null)continue;
-    var t=ts[i]*1000;
-    out.push([t,c,c,c,c]);   // parseRawCandles [0]=ts, [4]=close
-  }
-  return out; // artan sıra
-}
-
 /* afterTs: ms timestamp — bu ts'den daha eski mumları çek ("" = şimdiden başla)
    onProgress(oldestTs, totalFetched)
    onBatch(rawBatch, oldestTs) → true döndürürse dur
@@ -1035,13 +984,6 @@ async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
   var coin=COINS.find(function(c){return c.id===coinId;});
   var isBybit=coin.src==="bybit";
   var all=[],totalFetched=0,reqCount=0;
-
-  if(coin.src==="yahoo"){
-    var rows=await _fetchYahooDaily(coin);   // artan: rows[0] en eski
-    if(onProgress)onProgress(rows.length?rows[0][0]:0,rows.length);
-    if(onBatch){await onBatch(rows,rows.length?rows[0][0]:0);return [];}
-    return rows;
-  }
 
   if(isBybit){
     var symbol=coin.sym+"USDT";
@@ -1065,7 +1007,7 @@ async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
       var oldest=parseInt(endTs);
       if(onProgress)onProgress(oldest,totalFetched);
       if(onBatch){var stop=await onBatch(batch,oldest);if(stop)break;}
-      if(oldest<=_histStart(coinId))break;
+      if(oldest<=HISTORY_START_TS)break;
       if(batch.length<200)break;
       await new Promise(function(res){setTimeout(res,50);});
     }
@@ -1093,7 +1035,7 @@ async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
     var oldest=parseInt(after);
     if(onProgress)onProgress(oldest,totalFetched);
     if(onBatch){var stop=await onBatch(batch,oldest);if(stop)break;}
-    if(oldest<=_histStart(coinId))break;
+    if(oldest<=HISTORY_START_TS)break;
     if(batch.length<300)break;
     await new Promise(function(res){setTimeout(res,50);});
   }
@@ -1106,10 +1048,6 @@ async function _fetchNew(coinId,okxBar,latestTs){
   var barMs=BAR_MS[okxBar]||3600000;
   var all=[],reqCount=0,maxReq=300;  // şimdiye yetişene dek devam et (yüksek tavan)
   var nowTs=Date.now();
-
-  if(coin.src==="yahoo"){
-    try{return await _fetchYahooDaily(coin);}catch(e){return [];}  // dedup'ı çağıran yapar
-  }
 
   if(isBybit){
     var symbol=coin.sym+"USDT";
@@ -1191,14 +1129,14 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
   var histAdded=0;
   if(histFetch){
     var oldestTs=cached.length>0?cached[0].ts:Date.now();
-    if(oldestTs>_histStart(coinId)){
+    if(oldestTs>HISTORY_START_TS){
       var bn=0,pend=[];
       await _fetchHistorical(
         coinId,okxBar,oldestTs,
         function(ts,n){showFetchProgress(ts,n,30000);},
         async function(batch,bOldest){
           var cap=oldestTs;
-          var p=parseRawCandles(batch).filter(function(c){return c.ts<cap&&c.ts>=_histStart(coinId)&&!tsSet.has(c.ts);});
+          var p=parseRawCandles(batch).filter(function(c){return c.ts<cap&&c.ts>=HISTORY_START_TS&&!tsSet.has(c.ts);});
           p.forEach(function(c){tsSet.add(c.ts);});
           if(p.length){
             pend=p.concat(pend);histAdded+=p.length;changed=true;
@@ -1208,7 +1146,7 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
               if(cached.length)oldestTs=cached[0].ts;
             }
           }
-          return bOldest<=_histStart(coinId);
+          return bOldest<=HISTORY_START_TS;
         }
       );
       if(pend.length){cached=pend.concat(cached);changed=true;}
@@ -1219,7 +1157,7 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
   if(!cached.length){
     var raw=await _fetchHistorical(coinId,okxBar,"",null,null);
     if(!raw.length)throw new Error("Borsadan veri gelmedi.");
-    cached=parseRawCandles(raw).filter(function(c){return c.ts>=_histStart(coinId);});
+    cached=parseRawCandles(raw).filter(function(c){return c.ts>=HISTORY_START_TS;});
     changed=true;
   }
 
@@ -1238,7 +1176,7 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
   }
 
   /* 7. Durum mesajı */
-  var histDone=cached[0].ts<=_histStart(coinId);
+  var histDone=cached[0].ts<=HISTORY_START_TS;
   if(histFetch){
     _cacheStatus=histDone
       ?"✅ 2022-01-01'den bugüne tamam · "+cached.length.toLocaleString()+" mum"+(newCnt?" (+"+newCnt+" yeni)":"")
@@ -1275,7 +1213,7 @@ async function loadCandleRange(){
       if(!S.dateTo||S.dateTo>to||S.dateTo<from)S.dateTo=to;
       inpFrom.value=S.dateFrom;
       inpTo.value=S.dateTo;
-      var histDone=cached[0].ts<=_histStart(coinId);
+      var histDone=cached[0].ts<=HISTORY_START_TS;
       var days=Math.round((cached[cached.length-1].ts-cached[0].ts)/(864e5));
       infoEl.textContent=(histDone?"✅ ":"⏳ ")+cached.length.toLocaleString()+" mum · "+days+" gün · "+from+" – "+to+(histDone?"":" · Geçmiş eksik");
       saveState();
@@ -1331,7 +1269,7 @@ async function updateFetchBtnState(){
   var complete=false;
   try{
     var d=await cGet(key);
-    complete=d&&d.length>0&&d[0].ts<=_histStart(S.coin);
+    complete=d&&d.length>0&&d[0].ts<=HISTORY_START_TS;
   }catch(e){}
   if(complete){
     btn.innerHTML="✅ Tarih Tamam";
@@ -1403,16 +1341,6 @@ function backtest(prices, rsiArr){
   var accumBase=0;
   var isBase=S.profitMode==="base";
   var feeRate=(S.commission||0)/100;
-
-  /* Lot: GARAN gibi hisselerde tam pay alınır (kesirli değil) */
-  var _coinObj=COINS.find(function(c){return c.id===S.coin;})||{};
-  var lot=_coinObj.lot||0;
-  function buyQC(amount,price){
-    var qty=amount*(1-feeRate)/price;
-    if(lot)qty=Math.floor(qty/lot)*lot;
-    var cost=lot?(qty>0?qty*price/(1-feeRate):0):amount;
-    return {qty:qty,cost:cost};
-  }
 
   var dynInitAmt=S.initAmt;
   var dynSafeAmt=S.safeAmt;
@@ -1486,9 +1414,8 @@ function backtest(prices, rsiArr){
           equity.push({date:date,value:eqVal(price),price:price});continue;
         }
       }
-      var bq=buyQC(dynInitAmt,price);
-      if(bq.qty<=0||cash<bq.cost){equity.push({date:date,value:eqVal(price),price:price});continue;}
-      cash-=bq.cost;
+      if(cash<dynInitAmt){equity.push({date:date,value:eqVal(price),price:price});continue;}
+      cash-=dynInitAmt;
 
       var so=[];
       // 3Commas mantığı: SO trigger = giriş × (1 - kümülatif_lineer_sapma%)
@@ -1501,8 +1428,8 @@ function backtest(prices, rsiArr){
         stepNow*=S.stepMult;
       }
       deal={startDate:date,initPrice:price,
-            orders:[{date:date,price:price,size:bq.cost,qty:bq.qty}],
-            totalCost:bq.cost,totalQty:bq.qty,
+            orders:[{date:date,price:price,size:dynInitAmt,qty:dynInitAmt*(1-feeRate)/price}],
+            totalCost:dynInitAmt,totalQty:dynInitAmt*(1-feeRate)/price,
             avgCost:price,safetyCount:0,so:so,
             ttpActive:false,ttpPeak:0,
             snapshotInitAmt:dynInitAmt,snapshotSafeAmt:dynSafeAmt};
@@ -1530,12 +1457,10 @@ function backtest(prices, rsiArr){
       for(var n=0;n<deal.so.length;n++){
         var lv=deal.so[n];
         if(!lv.filled&&price<=lv.price){
-          var sq=buyQC(lv.amt,price);
-          if(sq.qty<=0)continue;        // bütçe 1 lot almaya yetmiyor (daha düşük fiyatta dolabilir)
-          if(cash<sq.cost)break;
-          cash-=sq.cost;
-          deal.orders.push({date:date,price:price,size:sq.cost,qty:sq.qty});
-          deal.totalCost+=sq.cost;deal.totalQty+=sq.qty;
+          if(cash<lv.amt)break;
+          cash-=lv.amt;
+          deal.orders.push({date:date,price:price,size:lv.amt,qty:lv.amt*(1-feeRate)/price});
+          deal.totalCost+=lv.amt;deal.totalQty+=lv.amt*(1-feeRate)/price;
           deal.avgCost=deal.totalCost/deal.totalQty;
           deal.safetyCount++;lv.filled=true;
         }
@@ -1698,7 +1623,7 @@ function render(res, source, mumCnt, dateFrom, dateTo){
   var pcU =stats.unrealizedPnL>=0?"var(--green)":"var(--red)";
 
   var isBase=stats.isBase;
-  document.getElementById("hMeta").textContent=_pairLabel(coin)+" · "+dateFrom+" – "+dateTo+" · "+mumCnt.toLocaleString()+" mum"+(isBase?" · Base ₿":"");
+  document.getElementById("hMeta").textContent=coin.sym+"/USDT · "+dateFrom+" – "+dateTo+" · "+mumCnt.toLocaleString()+" mum"+(isBase?" · Base ₿":"");
   document.getElementById("hPct").textContent=fp(stats.totalPnLPct);
   document.getElementById("hPct").style.color=pcT;
   document.getElementById("hUsd").textContent="Toplam PnL: "+(stats.totalPnL>=0?"+":"")+fu(stats.totalPnL);
@@ -1901,18 +1826,18 @@ function saveSettings(){
   var lines=[
     "DCA Backtest Ayarları — "+now,
     "══════════════════════════════════",
-    "Sembol          : "+_pairLabel(coin),
+    "Sembol          : "+coin.sym+"/USDT",
     "Dönem           : "+S.dateFrom+" – "+S.dateTo,
     "Strateji        : "+(S.cond==="rsi"?"RSI("+S.rsiTP+") "+(S.rsiDir==="lt"?"< ":"> ")+S.rsiThr+" · "+S.rsiTf:"Anında (1m)"),
-    "Başlangıç Ser.  : "+fu0(S.startCapital),
-    "BO Miktarı      : "+fu0(S.initAmt),
-    "SO Miktarı      : "+fu0(S.safeAmt),
+    "Başlangıç Ser.  : $"+S.startCapital,
+    "BO Miktarı      : $"+S.initAmt,
+    "SO Miktarı      : $"+S.safeAmt,
     "Max SO          : "+S.maxSO,
     "Fiyat Adımı     : %"+S.priceStep,
     "Adım Çarpanı    : ×"+S.stepMult,
     "Miktar Çarpanı  : ×"+S.amtMult,
     "Kâr Oranı       : %"+S.tpPct,
-    "Kâr Modu        : "+(S.profitMode==="base"?coin.sym+" (Base)":"Quote ("+_quoteName()+")"),
+    "Kâr Modu        : "+(S.profitMode==="base"?coin.sym+" (Base)":"Quote (USDT)"),
     "Reinvest        : "+(S.reinvest?"Evet (%"+S.reinvestPct+")":"Hayır"),
     "TTP             : "+(S.ttpEnabled?"Evet (%"+S.ttpPct+")":"Hayır"),
     "Trend Filtresi  : "+(S.smaFilter?"Evet (50&200 SMA)":"Hayır"),
@@ -1933,12 +1858,12 @@ function copyResults(){
   var lines=[
     "DCA Backtest Sonuçları — "+now,
     "════════════════════════════════════",
-    "Sembol     : "+_pairLabel(coin),
+    "Sembol     : "+coin.sym+"/USDT",
     "Dönem      : "+r.dateFrom+" – "+r.dateTo,
     "Mum Sayısı : "+r.mumCnt.toLocaleString(),
     "",
     "─── Performans ───",
-    "Toplam PnL   : "+pnlSign+(_quoteSym()==="$"?"$":"")+s.totalPnL.toFixed(2)+(_quoteSym()==="$"?"":" "+_quoteSym())+" ("+pnlSign+s.totalPnLPct.toFixed(2)+"%)",
+    "Toplam PnL   : "+pnlSign+"$"+s.totalPnL.toFixed(2)+" ("+pnlSign+s.totalPnLPct.toFixed(2)+"%)",
     "Arb. APR     : %"+s.arbitrageAPR.toFixed(2),
     "Toplam APR   : %"+s.totalAPR.toFixed(2),
     "Max Drawdown : -%"+s.maxDrawdown.toFixed(2),
@@ -1946,9 +1871,9 @@ function copyResults(){
     "Döngüler     : "+s.completedCycles,
     "",
     "─── Parametreler ───",
-    "Sermaye      : "+fu0(S.startCapital),
-    "İlk Alım     : "+fu0(S.initAmt),
-    "SO Miktarı   : "+fu0(S.safeAmt),
+    "Sermaye      : $"+S.startCapital,
+    "İlk Alım     : $"+S.initAmt,
+    "SO Miktarı   : $"+S.safeAmt,
     "Fiyat Adımı  : %"+S.priceStep,
     "Adım Çarpanı : ×"+S.stepMult,
     "Miktar Çarp. : ×"+S.amtMult,
@@ -2017,7 +1942,7 @@ function buildProfitMode(){
   var el=document.getElementById("profitModeGroup");
   var coin=COINS.find(function(c){return c.id===S.coin;});
   el.innerHTML="";
-  [{v:"quote",l:_quoteName()},{v:"base",l:coin.sym}].forEach(function(o){
+  [{v:"quote",l:"USDT"},{v:"base",l:coin.sym}].forEach(function(o){
     var b=document.createElement("button");
     b.className="chip"+(S.profitMode===o.v?" on":"");
     b.style.padding="6px 14px";
@@ -2035,7 +1960,7 @@ function buildProfitMode(){
         note.textContent="Base modunda Reinvest devre dışıdır";
         note.style.color="var(--red)";
       } else {
-        desc.textContent="TP kârı "+_quoteName()+" olarak tahakkuk eder";
+        desc.textContent="TP kârı USDT olarak tahakkuk eder";
         desc.style.color="";
         note.textContent="Her TP sonrası kârın belirlenen %'i sermayeye eklenir";
         note.style.color="";
@@ -2046,47 +1971,17 @@ function buildProfitMode(){
   });
 }
 
-function _isStock(c){return !!(c&&(c.market==="stock"||c.lot||c.src==="yahoo"));}
-function _coinMarket(c){return _isStock(c)?"stock":"crypto";}
-
-function updateMarketNav(){
-  var m=S.market||"crypto";
-  var bc=document.getElementById("mktCrypto"),bs=document.getElementById("mktStock");
-  if(bc)bc.className="mode-btn"+(m==="crypto"?" on":"");
-  if(bs)bs.className="mode-btn"+(m==="stock"?" on":"");
-  var head=document.getElementById("assetHead");
-  if(head)head.textContent=(m==="stock"?"📈 Hisse (lot · ₺)":"🪙 Varlık");
-  var qn=_quoteName(), qs=_quoteSym();
-  var lc=document.getElementById("lblCap");if(lc)lc.textContent="Başlangıç Sermayesi ("+qs+")";
-  var lo=document.getElementById("lblOptCap");if(lo)lo.textContent="BAŞLANGIÇ SERMAYESİ ("+qn+")";
-}
-function setMarket(m){
-  S.market=m;
-  updateMarketNav();
-  buildMainChips();           // listeyi filtrele
-  /* seçili coin bu markette değilse ilkine geç */
-  var cur=COINS.find(function(c){return c.id===S.coin;});
-  if(!cur||_coinMarket(cur)!==m){
-    var first=COINS.find(function(c){return _coinMarket(c)===m;});
-    if(first)selCoin(first.id);
-  } else {
-    saveState();
-  }
-}
-
 function buildMainChips(){
   var cc=document.getElementById("coinC");
-  cc.innerHTML="";
-  var mk=S.market||"crypto";
-  COINS.filter(function(c){return _coinMarket(c)===mk;}).forEach(function(c){
+  COINS.forEach(function(c){
     var o=document.createElement("option");
     o.value=c.id;o.textContent=(c.e?c.e+" ":"")+c.sym;
     cc.appendChild(o);
   });
   cc.value=S.coin;
-  if(!cc.value){var f=COINS.find(function(c){return _coinMarket(c)===mk;})||COINS[0];S.coin=f.id;cc.value=S.coin;}
+  if(!cc.value){S.coin=COINS[0].id;cc.value=S.coin;}
 }
-function selCoin(id){S.coin=id;S.dateFrom="";S.dateTo="";updateMarketNav();updateBadge();buildProfitMode();setOptProfitMode(_optProfitMode);updateCap();saveState();refreshCacheRange();loadCandleRange();updateFetchBtnState();}
+function selCoin(id){S.coin=id;S.dateFrom="";S.dateTo="";updateBadge();buildProfitMode();setOptProfitMode(_optProfitMode);saveState();refreshCacheRange();loadCandleRange();updateFetchBtnState();}
 function refreshMainChips(){
   document.getElementById("coinC").value=S.coin;
 }
@@ -2140,7 +2035,7 @@ function updateCap(){
   var ok=t<=S.startCapital;
   document.getElementById("capD").style.background=ok?"var(--green)":"var(--red)";
   document.getElementById("capT").style.color=ok?"var(--green)":"var(--red)";
-  document.getElementById("capT").textContent=ok?"✓ Yeterli — "+fu0(Math.ceil(t))+" gerekli":"⚠ Tek döngü maks: "+fu0(Math.ceil(t))+" — yetersiz";
+  document.getElementById("capT").textContent=ok?"✓ Yeterli — $"+Math.ceil(t)+" gerekli":"⚠ Tek döngü maks: $"+Math.ceil(t)+" — yetersiz";
   var btn=document.getElementById("fabBtn");
   btn.disabled=!ok; btn.textContent=ok?"▶ BACKTEST":"⚠ Sermaye Yetersiz";
   /* Kapsama göstergesi */
@@ -2263,14 +2158,13 @@ function setOptTtp(on){
 function setOptProfitMode(mode){
   _optProfitMode=mode;
   var coin=COINS.find(function(c){return c.id===S.coin;})||{sym:"Coin"};
-  var qpe=document.getElementById("optProfitQuote");
-  qpe.className="chip"+(mode==="quote"?" on":"");qpe.textContent=_quoteName();
+  document.getElementById("optProfitQuote").className="chip"+(mode==="quote"?" on":"");
   document.getElementById("optProfitBase").className="chip"+(mode==="base"?" on":"");
   document.getElementById("optProfitBase").textContent=coin.sym;
   var desc=document.getElementById("optProfitDesc");
   if(desc)desc.textContent=mode==="base"
     ?"TP'de yatırım geri alınır, kâr "+coin.sym+" olarak birikir"
-    :"TP kârı "+_quoteName()+" olarak tahakkuk eder";
+    :"TP kârı USDT olarak tahakkuk eder";
 }
 
 
@@ -2390,7 +2284,7 @@ async function runOptimizer(){
   var statusEl=document.getElementById("optStatus");
   var resultsEl=document.getElementById("optResults");
   var capital=parseFloat(document.getElementById("optCapital").value)||1000;
-  if(capital<100){statusEl.textContent="⚠ Minimum 100 "+_quoteName();return;}
+  if(capital<100){statusEl.textContent="⚠ Minimum 100 USDT";return;}
 
   btn.disabled=true;
   btn.innerHTML='<span class="spinner" style="border-color:rgba(0,212,170,.2);border-top-color:var(--accent);width:13px;height:13px;border-width:2px;vertical-align:middle;margin-right:6px"></span> Taranıyor...';
@@ -2481,8 +2375,8 @@ function _renderOptProfile(profile,best){
   html+='<span>Skor <span style="color:var(--text)">'+best.score.toFixed(1)+'</span></span>';
   html+='</div>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px;font-size:11px;margin-bottom:10px">';
-  html+='<div style="color:var(--text3)">BO <span style="color:var(--text);font-weight:700">'+fu0(p.initAmt)+'</span></div>';
-  html+='<div style="color:var(--text3)">SO <span style="color:var(--text);font-weight:700">'+fu0(p.safeAmt)+'</span></div>';
+  html+='<div style="color:var(--text3)">BO <span style="color:var(--text);font-weight:700">$'+p.initAmt+'</span></div>';
+  html+='<div style="color:var(--text3)">SO <span style="color:var(--text);font-weight:700">$'+p.safeAmt+'</span></div>';
   html+='<div style="color:var(--text3)">MaxSO <span style="color:var(--text);font-weight:700">'+p.maxSO+'</span></div>';
   html+='<div style="color:var(--text3)">Step <span style="color:var(--text);font-weight:700">%'+p.priceStep+'</span></div>';
   html+='<div style="color:var(--text3)">SM <span style="color:var(--text);font-weight:700">×'+p.stepMult+'</span></div>';
@@ -2549,8 +2443,6 @@ function _applySettingsObj(obj){
     var inp=document.getElementById("inp-"+cfg.k);
     if(inp)inp.value=S[cfg.k];
   });
-  var _ac=COINS.find(function(c){return c.id===S.coin;});if(_ac)S.market=_coinMarket(_ac);
-  updateMarketNav();buildMainChips();
   var cc=document.getElementById("coinC");if(cc)cc.value=S.coin;
   var rc=document.getElementById("chkReinvest");if(rc)rc.checked=!!S.reinvest;
   var tc=document.getElementById("chkTtp");if(tc)tc.checked=!!S.ttpEnabled;
@@ -2657,9 +2549,6 @@ function closeSplash(){
 ═══════════════════════════════ */
 loadState();
 STEPPERS.forEach(function(cfg){buildStepper(cfg.k);});
-var _initC=COINS.find(function(c){return c.id===S.coin;});
-if(_initC)S.market=_coinMarket(_initC);
-updateMarketNav();
 buildMainChips();
 buildProfitMode();
 setOptProfitMode(_optProfitMode);
