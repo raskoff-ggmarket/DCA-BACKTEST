@@ -455,12 +455,13 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <!-- OPTIMIZER PANEL -->
 <div id="optPanel" class="hidden">
   <div style="padding:14px">
-    <button onclick="optPullSettings()"
-      style="width:100%;margin-bottom:12px;padding:10px;border-radius:10px;border:1px solid var(--accent2);background:rgba(0,153,255,.1);color:var(--accent2);font-size:13px;font-weight:700;font-family:'Space Grotesk',sans-serif;cursor:pointer">⚙️ Ayarlar sayfasındaki değerleri çek</button>
+    <div style="background:rgba(0,153,255,.06);border:1px solid rgba(0,153,255,.25);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--text3);line-height:1.5">
+      ⚙️ Tüm ayarlar <b>Ayarlar sayfasından</b> alınır (sermaye, reinvest, TTP, trend filtresi, stop loss, komisyon, coin, tarih). Optimizer bu değerlerin <b>etrafında</b> en iyi maxSO / adım / çarpan / TP kombinasyonunu bulur.
+    </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BAŞLANGIÇ SERMAYESİ (USDT)</div>
-      <input type="number" id="optCapital" value="1000" min="100" step="100"
-        style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:15px;font-weight:700;font-family:'Space Grotesk',sans-serif">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BAŞLANGIÇ SERMAYESİ (Ayarlar'dan)</div>
+      <input type="number" id="optCapital" value="1000" min="100" step="100" readonly
+        style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text2);font-size:15px;font-weight:700;font-family:'Space Grotesk',sans-serif;opacity:.8">
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
       <div style="font-size:12px;color:var(--text3);margin-bottom:10px;font-weight:600;letter-spacing:.05em">TARİH ARALIĞI</div>
@@ -477,7 +478,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
       <div id="optDateInfo" style="font-size:11px;color:var(--text3);margin-top:7px;line-height:1.4"></div>
     </div>
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+    <div style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
       <div style="font-size:12px;color:var(--text3);margin-bottom:12px;font-weight:600;letter-spacing:.05em">GELİŞMİŞ AYARLAR</div>
       <!-- Kâr Modu -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -2192,28 +2193,11 @@ function setOptProfitMode(mode){
 }
 
 
+/* Profiller artık AYARLAR değerlerinin etrafında arama genişliğidir */
 var OPT_PROFILES=[
-  {
-    id:"kisa",label:"⚡ Kısa Vade",color:"var(--accent2)",
-    ranges:{
-      maxSO:[2,6],priceStep:[0.5,2.5],stepMult:[1.0,1.4],
-      amtMult:[1.0,1.4],tpPct:[0.3,2.0],
-    }
-  },
-  {
-    id:"orta",label:"⚖️ Orta Vade",color:"var(--accent)",
-    ranges:{
-      maxSO:[4,12],priceStep:[1.5,5.0],stepMult:[1.0,1.7],
-      amtMult:[1.0,1.7],tpPct:[0.8,3.5],
-    }
-  },
-  {
-    id:"uzun",label:"🏔️ Uzun Vade",color:"var(--purple)",
-    ranges:{
-      maxSO:[8,20],priceStep:[3.0,10.0],stepMult:[1.0,2.0],
-      amtMult:[1.0,2.0],tpPct:[1.5,6.0],
-    }
-  }
+  {id:"dar",  label:"🎯 Dar Arama (±%25)",  color:"var(--accent2)", w:0.25},
+  {id:"orta", label:"⚖️ Orta Arama (±%50)", color:"var(--accent)",  w:0.50},
+  {id:"genis",label:"🌐 Geniş Arama (±%80)", color:"var(--purple)",  w:0.80},
 ];
 
 function _rnd(min,max,dec){
@@ -2222,15 +2206,20 @@ function _rnd(min,max,dec){
 }
 
 function _sampleParams(profile,capital){
-  var r=profile.ranges;
-  var maxSO=_rnd(r.maxSO[0],r.maxSO[1]);
-  var priceStep=_rnd(r.priceStep[0],r.priceStep[1],2);
-  var stepMult=_rnd(r.stepMult[0],r.stepMult[1],2);
-  var amtMult=_rnd(r.amtMult[0],r.amtMult[1],2);
-  var tpPct=_rnd(r.tpPct[0],r.tpPct[1],2);
-  var reinvestPct=parseFloat(document.getElementById("optReinvestPct").value)||100;
-  /* TTP açıksa 0.1–3.0% arasında otomatik örnekle, kapalıysa varsayılan */
-  var ttpPct=_optTtp?_rnd(0.1,3.0,1):0.5;
+  var w=profile.w||0.5;
+  /* Ayarlar değerini merkez al, ±w bandında ara (min/max sınırlarına kırp) */
+  function band(center,lo,hi,dec){
+    center=center||lo;
+    var mn=Math.max(lo,center*(1-w)), mx=Math.min(hi,center*(1+w));
+    if(mn>=mx){mn=lo;mx=hi;}
+    return _rnd(mn,mx,dec);
+  }
+  var maxSO=Math.max(1,Math.round(band(S.maxSO||8,1,50,0)));
+  var priceStep=band(S.priceStep||1,0.1,15,2);
+  var stepMult=band(S.stepMult||1,1.0,2.5,2);
+  var amtMult=band(S.amtMult||1.2,1.0,2.5,2);
+  var tpPct=band(S.tpPct||1.5,0.2,8,2);
+  var ttpPct=S.ttpEnabled?band(S.ttpPct||0.5,0.1,3,1):(S.ttpPct||0.5);
 
   /* initAmt + safeAmt: sermayeye sığacak şekilde */
   var budget=capital;
@@ -2238,18 +2227,17 @@ function _sampleParams(profile,capital){
   for(var n=0;n<maxSO;n++)totalOrders+=Math.pow(amtMult,n);
   var unitAmt=Math.max(10,Math.floor(budget/totalOrders/10)*10);
 
-  var smaF=_optSma==="on"?true:_optSma==="off"?false:(Math.random()<0.5);
-
+  /* Tüm bayraklar AYARLAR sayfasından — SL de S.slMode/S.slPct ile korunur */
   return{
     startCapital:capital,
     initAmt:unitAmt,safeAmt:unitAmt,
     priceStep:priceStep,stepMult:stepMult,amtMult:amtMult,
     maxSO:maxSO,tpPct:tpPct,
-    reinvest:_optReinvest,reinvestPct:reinvestPct,
-    ttpEnabled:_optTtp,ttpPct:ttpPct,
-    smaFilter:smaF,
+    reinvest:!!S.reinvest,reinvestPct:S.reinvestPct||100,
+    ttpEnabled:!!S.ttpEnabled,ttpPct:ttpPct,
+    smaFilter:!!S.smaFilter,
     commission:S.commission||0,
-    cond:"instant",profitMode:_getOptProfitMode()
+    cond:"instant",profitMode:S.profitMode||"quote"
   };
 }
 
@@ -2307,8 +2295,10 @@ async function runOptimizer(){
   var btn=document.getElementById("optBtn");
   var statusEl=document.getElementById("optStatus");
   var resultsEl=document.getElementById("optResults");
-  var capital=parseFloat(document.getElementById("optCapital").value)||1000;
-  if(capital<100){statusEl.textContent="⚠ Minimum 100 USDT";return;}
+  /* Sermaye AYARLAR sayfasından alınır (optimizer ile aynı) */
+  var capital=parseFloat(S.startCapital)||1000;
+  var capEl=document.getElementById("optCapital");if(capEl)capEl.value=capital;
+  if(capital<100){statusEl.textContent="⚠ Minimum 100";return;}
 
   btn.disabled=true;
   btn.innerHTML='<span class="spinner" style="border-color:rgba(0,212,170,.2);border-top-color:var(--accent);width:13px;height:13px;border-width:2px;vertical-align:middle;margin-right:6px"></span> Taranıyor...';
@@ -2318,15 +2308,7 @@ async function runOptimizer(){
 
   try{
     var prices=await stGet(S.coin+"_"+INSTANT_BAR.okx);
-    /* Veri yoksa/eksikse otomatik çek */
-    if(!prices||prices.length<20){
-      statusEl.textContent="📡 Veri yok — indiriliyor…";
-      try{ await fetchOKXCandles(S.coin,INSTANT_BAR.okx,true); }
-      catch(fe){ throw new Error("Veri çekilemedi: "+fe.message); }
-      prices=await stGet(S.coin+"_"+INSTANT_BAR.okx);
-      await loadOptDateRange();
-    }
-    if(!prices||prices.length<20)throw new Error("Bu varlık için veri bulunamadı.");
+    if(!prices||prices.length<20)throw new Error("Cache'de veri yok — Ayarlar'da coini seçip bir kez veri indirin.");
     var dateFrom=document.getElementById("optDateFrom").value;
     var dateTo=document.getElementById("optDateTo").value;
     if(dateFrom||dateTo)prices=filterByDateRange(prices,dateFrom,dateTo);
@@ -2553,7 +2535,7 @@ function setTab(tab){
   document.getElementById("rPanel").classList.toggle("hidden",tab!=="sonuclar");
   var optPanel=document.getElementById("optPanel");
   if(optPanel)optPanel.classList.toggle("hidden",tab!=="opt");
-  if(tab==="opt")loadOptDateRange();
+  if(tab==="opt"){loadOptDateRange();optPullSettings();}
   document.getElementById("fabW").classList.toggle("hidden",tab!=="ayarlar");
   document.getElementById("backBtn").classList.toggle("hidden",tab!=="sonuclar");
   if(tab==="ayarlar"){
