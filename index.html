@@ -2301,7 +2301,15 @@ async function runOptimizer(){
 
   try{
     var prices=await stGet(S.coin+"_"+INSTANT_BAR.okx);
-    if(!prices||prices.length<20)throw new Error("Önce 📥 MUM İNDİR ile veri yükleyin.");
+    /* Veri yoksa/eksikse otomatik çek */
+    if(!prices||prices.length<20){
+      statusEl.textContent="📡 Veri yok — indiriliyor…";
+      try{ await fetchOKXCandles(S.coin,INSTANT_BAR.okx,true); }
+      catch(fe){ throw new Error("Veri çekilemedi: "+fe.message); }
+      prices=await stGet(S.coin+"_"+INSTANT_BAR.okx);
+      await loadOptDateRange();
+    }
+    if(!prices||prices.length<20)throw new Error("Bu varlık için veri bulunamadı.");
     var dateFrom=document.getElementById("optDateFrom").value;
     var dateTo=document.getElementById("optDateTo").value;
     if(dateFrom||dateTo)prices=filterByDateRange(prices,dateFrom,dateTo);
