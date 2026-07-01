@@ -356,19 +356,27 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
     </div>
 
-    <!-- Trend Filtresi -->
-    <div class="toggle-wrap">
-      <div class="toggle-info">
-        <div class="toggle-lbl">📈 Trend Filtresi <span style="font-size:10px;color:var(--accent);font-weight:700">ÖNERİLİR</span></div>
-        <div class="toggle-sub">Sadece fiyat günlük <b>50 VE 200 SMA</b> üstündeyken yeni döngü açar. Ayı/düşüş piyasasında yeni pozisyon açılmaz → çöküşte sıkışma önlenir. Açık döngüler normal yönetilir (SO doldurur, TP olur).</div>
+    <!-- MA Koşulları (3Commas tarzı) -->
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+      <div class="toggle-lbl" style="margin-bottom:2px">📈 MA Koşulları (Günlük SMA)</div>
+      <div class="rs" style="margin-bottom:10px">3Commas tarzı. <b>Giriş</b>: döngü ne zaman açılır. <b>Averaging</b>: safety order'lar için ek koşul.</div>
+
+      <div style="font-size:11px;color:var(--accent);font-weight:700;margin-bottom:5px">GİRİŞ (Deal Start)</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
+        <div style="display:flex;gap:5px;flex-wrap:wrap" id="entryMaChips"></div>
+        <select id="entryMaLen" onchange="S.entryMaLen=+this.value;saveState()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:5px 8px;color:var(--text);font-size:12px;font-family:'Space Grotesk',sans-serif">
+          <option value="50">50 SMA</option><option value="100">100 SMA</option><option value="200">200 SMA</option>
+        </select>
       </div>
-      <label class="toggle" style="margin-left:12px">
-        <input type="checkbox" id="chkSma" onchange="S.smaFilter=this.checked;toggleSmaHint();saveState()"/>
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-    <div id="smaHint" style="display:none;padding:0 16px 12px;font-size:11px;color:var(--accent);line-height:1.5">
-      ✓ Trend filtresi açık: bot yalnızca net yükseliş trendinde alım yapar. BTC testinde drawdown'u <b>%61 → %21</b> düşürdü, getiriyi <b>artırdı</b>. Uzun vadeli/güvenli DCA için önerilir.
+
+      <div style="font-size:11px;color:var(--purple);font-weight:700;margin:12px 0 5px">AVERAGING (Safety Order)</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+        <div style="display:flex;gap:5px;flex-wrap:wrap" id="soMaChips"></div>
+        <select id="soMaLen" onchange="S.soMaLen=+this.value;saveState()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:5px 8px;color:var(--text);font-size:12px;font-family:'Space Grotesk',sans-serif">
+          <option value="50">50 SMA</option><option value="100">100 SMA</option><option value="200">200 SMA</option>
+        </select>
+      </div>
+      <div id="maHint" class="rs" style="margin-top:8px;color:var(--text3);line-height:1.5"></div>
     </div>
 
     <!-- Stop Loss -->
@@ -605,7 +613,8 @@ var DEFAULTS = {
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
   maxSO:10, tpPct:1.5,
   reinvest:false, reinvestPct:100, ttpEnabled:false, ttpPct:0.5,
-  commission:0.1, smaFilter:false, slMode:"off", slPct:15,
+  commission:0.1, slMode:"off", slPct:15,
+  entryMaMode:"off", entryMaLen:200, soMaMode:"off", soMaLen:50,
   profitMode:"quote",
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
@@ -618,6 +627,8 @@ function loadState() {
   try {
     var saved = JSON.parse(localStorage.getItem("dca_v2") || "{}");
     Object.keys(DEFAULTS).forEach(function(k){ if(saved[k]!==undefined) S[k]=saved[k]; });
+    /* Geriye uyum: eski smaFilter → yeni entryMaMode */
+    if(saved.smaFilter===true && (S.entryMaMode===undefined||S.entryMaMode==="off")) S.entryMaMode="gt_both";
   } catch(e){}
 }
 function saveState() {
@@ -1317,24 +1328,29 @@ function calcRSI(prices, period){
    GÜNLÜK SMA (trend filtresi)
    Her mum için, ÖNCEKİ tamamlanmış günlerin SMA'sı (lookahead yok)
 ═══════════════════════════════ */
-function calcDailySMA(prices){
-  var sma50=new Array(prices.length), sma200=new Array(prices.length);
-  var dClose=[], sum50=0, sum200=0, curDay=null, lastP=null;
-  function pushDay(c){
-    dClose.push(c);
-    sum50+=c; if(dClose.length>50)sum50-=dClose[dClose.length-51];
-    sum200+=c; if(dClose.length>200)sum200-=dClose[dClose.length-201];
-  }
+function calcDailySMA(prices, lens){
+  /* lens: uzunluk dizisi (örn [50,200]). Her mum için, ÖNCEKİ tamamlanmış
+     günlerin SMA'sı (lookahead yok). Dönen: { L: [array], ... } */
+  lens=lens&&lens.length?lens:[50,200];
+  var out={}, sums={};
+  lens.forEach(function(L){out[L]=new Array(prices.length);sums[L]=0;});
+  var dClose=[], curDay=null, lastP=null;
   for(var i=0;i<prices.length;i++){
     var dk=Math.floor(prices[i].ts/86400000);
     if(curDay===null){curDay=dk;}
-    else if(dk!==curDay){pushDay(lastP);curDay=dk;}
+    else if(dk!==curDay){
+      dClose.push(lastP);
+      lens.forEach(function(L){
+        sums[L]+=lastP;
+        if(dClose.length>L)sums[L]-=dClose[dClose.length-1-L];
+      });
+      curDay=dk;
+    }
     lastP=prices[i].price;
     var n=dClose.length;
-    sma50[i] = n>=50  ? sum50/50   : NaN;
-    sma200[i]= n>=200 ? sum200/200 : NaN;
+    lens.forEach(function(L){ out[L][i]= n>=L ? sums[L]/L : NaN; });
   }
-  return {sma50:sma50, sma200:sma200};
+  return out;
 }
 
 /* ═══════════════════════════════
@@ -1351,11 +1367,33 @@ function backtest(prices, rsiArr){
   var dynInitAmt=S.initAmt;
   var dynSafeAmt=S.safeAmt;
 
-  var smaOn=!!S.smaFilter;
   var slMode=S.slMode||"off";
   var slOn=slMode!=="off";
-  var slNeedsSma=slMode==="sma50"||slMode==="sma200";
-  var smaArr=(smaOn||slNeedsSma)?calcDailySMA(prices):null;
+  var entryMaMode=S.entryMaMode||"off";
+  var entryMaLen=S.entryMaLen||200;
+  var soMaMode=S.soMaMode||"off";
+  var soMaLen=S.soMaLen||50;
+  /* Gerekli SMA uzunluklarını topla */
+  var _lensNeed={};
+  if(entryMaMode==="gt"||entryMaMode==="lt")_lensNeed[entryMaLen]=1;
+  if(entryMaMode==="gt_both"||entryMaMode==="cross"){_lensNeed[50]=1;_lensNeed[200]=1;}
+  if(soMaMode==="gt"||soMaMode==="lt")_lensNeed[soMaLen]=1;
+  if(slMode==="sma50")_lensNeed[50]=1;
+  if(slMode==="sma200")_lensNeed[200]=1;
+  var _lens=Object.keys(_lensNeed).map(Number);
+  var smaMap=_lens.length?calcDailySMA(prices,_lens):null;
+  function _entryOk(i,c){
+    if(entryMaMode==="off")return true;
+    if(entryMaMode==="gt_both"){var a=smaMap[50][i],b=smaMap[200][i];return !isNaN(a)&&!isNaN(b)&&c>a&&c>b;}
+    if(entryMaMode==="cross"){var a2=smaMap[50][i],b2=smaMap[200][i];return !isNaN(a2)&&!isNaN(b2)&&a2>b2;}
+    var v=smaMap[entryMaLen][i]; if(isNaN(v))return false;
+    return entryMaMode==="gt"?c>v:c<v;
+  }
+  function _soOk(i,c){
+    if(soMaMode==="off")return true;
+    var v=smaMap[soMaLen][i]; if(isNaN(v))return true; /* veri yetersizse engelleme */
+    return soMaMode==="gt"?c>v:c<v;
+  }
 
   function totalOrderBase(init,safe){
     var t=init,a=safe;
@@ -1413,12 +1451,9 @@ function backtest(prices, rsiArr){
 
     if(!inDeal){
       if(cdLeft>0){cdLeft--;if(S.cond==="rsi")waitRSI=true;equity.push({date:date,value:eqVal(price),price:price});continue;}
-      // Trend filtresi: sadece fiyat > günlük 50 SMA ve > 200 SMA iken yeni döngü aç
-      if(smaOn){
-        var s50=smaArr.sma50[i], s200=smaArr.sma200[i];
-        if(isNaN(s50)||isNaN(s200)||price<=s50||price<=s200){
-          equity.push({date:date,value:eqVal(price),price:price});continue;
-        }
+      // MA giriş koşulu (deal start): fiyat >/< MA, veya 50&200, veya golden cross
+      if(entryMaMode!=="off"&&!_entryOk(i,price)){
+        equity.push({date:date,value:eqVal(price),price:price});continue;
       }
       if(cash<dynInitAmt){equity.push({date:date,value:eqVal(price),price:price});continue;}
       cash-=dynInitAmt;
@@ -1462,7 +1497,7 @@ function backtest(prices, rsiArr){
 
       for(var n=0;n<deal.so.length;n++){
         var lv=deal.so[n];
-        if(!lv.filled&&price<=lv.price){
+        if(!lv.filled&&price<=lv.price&&_soOk(i,price)){
           if(cash<lv.amt)break;
           cash-=lv.amt;
           deal.orders.push({date:date,price:price,size:lv.amt,qty:lv.amt*(1-feeRate)/price});
@@ -1482,7 +1517,7 @@ function backtest(prices, rsiArr){
         var dayClose=(i===prices.length-1)||
           (Math.floor(prices[i+1].ts/86400000)!==Math.floor(prices[i].ts/86400000));
         if(dayClose){
-          var ref=slMode==="sma200"?smaArr.sma200[i]:smaArr.sma50[i];
+          var ref=slMode==="sma200"?smaMap[200][i]:smaMap[50][i];
           if(!isNaN(ref)&&price<ref)doSL=true;
         }
       }
@@ -1846,7 +1881,8 @@ function saveSettings(){
     "Kâr Modu        : "+(S.profitMode==="base"?coin.sym+" (Base)":"Quote (USDT)"),
     "Reinvest        : "+(S.reinvest?"Evet (%"+S.reinvestPct+")":"Hayır"),
     "TTP             : "+(S.ttpEnabled?"Evet (%"+S.ttpPct+")":"Hayır"),
-    "Trend Filtresi  : "+(S.smaFilter?"Evet (50&200 SMA)":"Hayır"),
+    "Giris MA        : "+_maLabel("entry"),
+    "Averaging MA    : "+_maLabel("so"),
     "Stop Loss       : "+(S.slMode==="sma50"?"50 SMA (gün kapanışı)":S.slMode==="sma200"?"200 SMA (gün kapanışı)":S.slMode==="pct"?"%"+(S.slPct||15)+" Zarar":"Hayır"),
     "Komisyon        : %"+S.commission,
   ];
@@ -2102,9 +2138,65 @@ function toggleReinvestSub(){
 function toggleTtpSub(){
   document.getElementById("ttpSubPanel").classList.toggle("hidden",!S.ttpEnabled);
 }
-function toggleSmaHint(){
-  var h=document.getElementById("smaHint");
-  if(h)h.style.display=S.smaFilter?"block":"none";
+var ENTRY_MA_MODES=[
+  {v:"off",    l:"Kapalı"},
+  {v:"gt",     l:"Fiyat > MA"},
+  {v:"lt",     l:"Fiyat < MA"},
+  {v:"gt_both",l:"F > 50 & 200"},
+  {v:"cross",  l:"Golden Cross"},
+];
+var SO_MA_MODES=[
+  {v:"off",l:"Kapalı"},
+  {v:"gt", l:"Fiyat > MA"},
+  {v:"lt", l:"Fiyat < MA"},
+];
+function _maChipRow(boxId,modes,cur,setter){
+  var box=document.getElementById(boxId);if(!box)return;
+  box.innerHTML="";
+  modes.forEach(function(m){
+    var b=document.createElement("button");
+    b.className="chip"+(cur===m.v?" on":"");
+    b.style.cssText="padding:5px 10px;cursor:pointer;font-family:'Space Grotesk',sans-serif";
+    b.textContent=m.l;
+    b.onclick=function(){setter(m.v);};
+    box.appendChild(b);
+  });
+}
+function buildMaChips(){
+  _maChipRow("entryMaChips",ENTRY_MA_MODES,S.entryMaMode||"off",setEntryMa);
+  _maChipRow("soMaChips",SO_MA_MODES,S.soMaMode||"off",setSoMa);
+  var el=document.getElementById("entryMaLen");if(el)el.value=S.entryMaLen||200;
+  var so=document.getElementById("soMaLen");if(so)so.value=S.soMaLen||50;
+  _updateMaUI();
+}
+function setEntryMa(v){S.entryMaMode=v;saveState();buildMaChips();}
+function setSoMa(v){S.soMaMode=v;saveState();buildMaChips();}
+/* Kopyala/özet için MA açıklaması */
+function _maLabel(kind){
+  var m=kind==="entry"?(S.entryMaMode||"off"):(S.soMaMode||"off");
+  var L=kind==="entry"?(S.entryMaLen||200):(S.soMaLen||50);
+  if(m==="off")return "Hayır";
+  if(m==="gt")return "Fiyat > "+L+" SMA";
+  if(m==="lt")return "Fiyat < "+L+" SMA";
+  if(m==="gt_both")return "Fiyat > 50 & 200 SMA";
+  if(m==="cross")return "Golden Cross (50>200)";
+  return "Hayır";
+}
+function _updateMaUI(){
+  var em=S.entryMaMode||"off", sm=S.soMaMode||"off";
+  var el=document.getElementById("entryMaLen");if(el)el.style.display=(em==="gt"||em==="lt")?"":"none";
+  var so=document.getElementById("soMaLen");if(so)so.style.display=(sm==="gt"||sm==="lt")?"":"none";
+  var h=document.getElementById("maHint");
+  if(h){
+    var parts=[];
+    if(em==="gt")parts.push("Giriş: fiyat "+(S.entryMaLen||200)+" SMA <b>üstünde</b>yken aç (trend takibi)");
+    else if(em==="lt")parts.push("Giriş: fiyat "+(S.entryMaLen||200)+" SMA <b>altında</b>yken aç (dip avı)");
+    else if(em==="gt_both")parts.push("Giriş: fiyat 50 <b>ve</b> 200 SMA üstünde (güçlü trend · önerilir)");
+    else if(em==="cross")parts.push("Giriş: 50 SMA > 200 SMA (golden cross rejimi)");
+    if(sm==="gt")parts.push("Averaging: safety order sadece fiyat "+(S.soMaLen||50)+" SMA üstündeyken dolar");
+    else if(sm==="lt")parts.push("Averaging: safety order sadece fiyat "+(S.soMaLen||50)+" SMA altındayken dolar");
+    h.innerHTML=parts.length?("✓ "+parts.join(" · ")):"MA koşulu yok — klasik DCA.";
+  }
 }
 
 /* ═══════════════════════════════
@@ -2159,14 +2251,13 @@ function optPullSettings(){
   var rp=document.getElementById("optReinvestPct");if(rp)rp.value=S.reinvestPct||100;
   setOptReinvest(!!S.reinvest);
   setOptTtp(!!S.ttpEnabled);
-  setOptSma(S.smaFilter?"on":"off");
   setOptProfitMode(S.profitMode||"quote");
   /* tarih aralığı da Ayarlar'dan */
   var of=document.getElementById("optDateFrom"),ot=document.getElementById("optDateTo");
   if(of&&S.dateFrom)of.value=S.dateFrom;
   if(ot&&S.dateTo)ot.value=S.dateTo;
   var sl=(S.slMode&&S.slMode!=="off")?(" · SL "+(S.slMode==="pct"?("%"+(S.slPct||15)):S.slMode)) :"";
-  showToast("✓ Ayarlar çekildi: $"+S.startCapital+(S.reinvest?" · Reinv":"")+(S.ttpEnabled?" · TTP":"")+(S.smaFilter?" · Trend":"")+sl);
+  showToast("✓ Ayarlar çekildi: $"+S.startCapital+(S.reinvest?" · Reinv":"")+(S.ttpEnabled?" · TTP":"")+((S.entryMaMode&&S.entryMaMode!=="off")?" · GirişMA":"")+sl);
 }
 function setOptReinvest(on){
   _optReinvest=on;
@@ -2235,7 +2326,6 @@ function _sampleParams(profile,capital){
     maxSO:maxSO,tpPct:tpPct,
     reinvest:!!S.reinvest,reinvestPct:S.reinvestPct||100,
     ttpEnabled:!!S.ttpEnabled,ttpPct:ttpPct,
-    smaFilter:!!S.smaFilter,
     commission:S.commission||0,
     cond:"instant",profitMode:S.profitMode||"quote"
   };
@@ -2398,7 +2488,7 @@ function _renderOptProfile(profile,best){
   html+='<div style="color:var(--text3)">TP <span style="color:var(--text);font-weight:700">%'+p.tpPct+'</span></div>';
   if(p.reinvest)html+='<div style="color:var(--text3)">Reinv <span style="color:var(--accent);font-weight:700">%'+p.reinvestPct+'</span></div>';
   if(p.ttpEnabled)html+='<div style="color:var(--text3)">TTP <span style="color:var(--yellow);font-weight:700">%'+p.ttpPct+'</span></div>';
-  if(p.smaFilter)html+='<div style="color:var(--text3)">Trend <span style="color:var(--purple);font-weight:700">SMA</span></div>';
+  if(S.entryMaMode&&S.entryMaMode!=="off"){var _eml=(ENTRY_MA_MODES.find(function(m){return m.v===S.entryMaMode;})||{}).l||"MA";html+='<div style="color:var(--text3)">GirişMA <span style="color:var(--purple);font-weight:700">'+_eml+'</span></div>';}
   html+='<div style="color:var(--text3)">Kom. <span style="color:var(--text);font-weight:700">%'+p.commission+'</span></div>';
   html+='</div>';
   html+='<button onclick="applyOptParams(\''+profile.id+'\')" '
@@ -2416,7 +2506,7 @@ function applyOptParams(profileId){
   if(!pr||!pr.best)return;
   var p=pr.best.params;
   var keys=["startCapital","initAmt","safeAmt","priceStep","stepMult","amtMult",
-            "maxSO","tpPct","reinvest","reinvestPct","ttpEnabled","ttpPct","smaFilter","cond","profitMode"];
+            "maxSO","tpPct","reinvest","reinvestPct","ttpEnabled","ttpPct","cond","profitMode"];
   keys.forEach(function(k){if(p[k]!==undefined)S[k]=p[k];});
   saveState();
   /* Rebuild UI steppers */
@@ -2426,7 +2516,6 @@ function applyOptParams(profileId){
   });
   document.getElementById("chkReinvest").checked=S.reinvest;
   document.getElementById("chkTtp").checked=S.ttpEnabled;
-  var _cs2=document.getElementById("chkSma");if(_cs2)_cs2.checked=!!S.smaFilter;
   toggleReinvestSub();toggleTtpSub();
   updateCap();updateBadge();
   showToast("✓ Parametreler uygulandı — Ayarlar sekmesine geç");
@@ -2439,7 +2528,7 @@ function applyOptParams(profileId){
 ═══════════════════════════════ */
 var SETTINGS_KEYS=["coin","startCapital","initAmt","safeAmt","maxSO","priceStep",
   "stepMult","amtMult","tpPct","ttpEnabled","ttpPct","reinvest","reinvestPct",
-  "commission","profitMode","cond","dateFrom","dateTo","smaFilter","slMode","slPct"];
+  "commission","profitMode","cond","dateFrom","dateTo","entryMaMode","entryMaLen","soMaMode","soMaLen","slMode","slPct"];
 
 function _applySettingsObj(obj){
   var applied=0;
@@ -2460,8 +2549,7 @@ function _applySettingsObj(obj){
   var cc=document.getElementById("coinC");if(cc)cc.value=S.coin;
   var rc=document.getElementById("chkReinvest");if(rc)rc.checked=!!S.reinvest;
   var tc=document.getElementById("chkTtp");if(tc)tc.checked=!!S.ttpEnabled;
-  var sc=document.getElementById("chkSma");if(sc)sc.checked=!!S.smaFilter;
-  toggleSmaHint();
+  buildMaChips();
   buildSlChips();
   var slp=document.getElementById("slPctInp");if(slp)slp.value=S.slPct||15;
   toggleReinvestSub();toggleTtpSub();
@@ -2491,8 +2579,25 @@ function parseSettingsText(txt){
   var pm=txt.match(/K[âa]r\s*Modu[^:\n]*:\s*([A-Za-z]+)/i);
   if(pm)o.profitMode=/base/i.test(pm[1])?"base":"quote";
   if(/Strateji[^:\n]*:\s*An[ıi]?nda/i.test(txt))o.cond="instant";
-  var sm=txt.match(/Trend\s*Filtre[^:\n]*:\s*(Evet|Hay[ıi]?r|Yes|No|true|false|A[çc][ıi]?k|Kapal[ıi]?)/i);
-  if(sm)o.smaFilter=/evet|yes|true|a[çc]/i.test(sm[1]);
+  /* MA koşulları: "Giris MA / Averaging MA" satırlarını çöz */
+  function _parseMa(line){
+    if(!line)return null;
+    var r={};
+    if(/hay[ıi]?r|kapal|off|yok/i.test(line))return {mode:"off"};
+    if(/golden|cross|kesişim|kesisim/i.test(line))return {mode:"cross"};
+    if(/50\s*&\s*200|50\s*ve\s*200|both/i.test(line))return {mode:"gt_both"};
+    var lm=line.match(/(\d+)\s*SMA/i); if(lm)r.len=parseInt(lm[1]);
+    if(/>|üst|ust|greater|buyuk|büyük/i.test(line))r.mode="gt";
+    else if(/<|alt|less|kuc|küç/i.test(line))r.mode="lt";
+    return r.mode?r:null;
+  }
+  var em=txt.match(/Giri[şs]\s*MA[^:\n]*:\s*([^\n]+)/i);
+  if(em){var e=_parseMa(em[1]); if(e){o.entryMaMode=e.mode; if(e.len)o.entryMaLen=e.len;}}
+  var am=txt.match(/Averaging\s*MA[^:\n]*:\s*([^\n]+)/i);
+  if(am){var a=_parseMa(am[1]); if(a){o.soMaMode=a.mode; if(a.len)o.soMaLen=a.len;}}
+  /* Eski format geriye uyum: "Trend Filtresi : Evet" → gt_both */
+  var sm=txt.match(/Trend\s*Filtre[^:\n]*:\s*(Evet|A[çc][ıi]?k|Yes|true)/i);
+  if(sm&&o.entryMaMode===undefined)o.entryMaMode="gt_both";
   var sl=txt.match(/Stop\s*Loss[^:\n]*:\s*([^\n]+)/i);
   if(sl){
     var slv=sl[1];
@@ -2575,8 +2680,7 @@ updateCap();
 /* Toggle başlangıç durumları */
 document.getElementById("chkReinvest").checked = S.reinvest;
 document.getElementById("chkTtp").checked = S.ttpEnabled;
-var _cs=document.getElementById("chkSma");if(_cs)_cs.checked=!!S.smaFilter;
-toggleSmaHint();
+buildMaChips();
 buildSlChips();
 var _slp=document.getElementById("slPctInp");if(_slp)_slp.value=S.slPct||15;
 toggleReinvestSub();
