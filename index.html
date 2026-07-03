@@ -409,11 +409,17 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <div id="slDesc" class="rs" style="margin-top:6px"></div>
     </div>
 
-    <!-- Borsa Komisyonu -->
-    <div class="row" id="row-commission">
+    <!-- Komisyon: Maker / Taker -->
+    <div class="row" id="row-makerFee">
       <div>
-        <div class="rl">Borsa Komisyonu (%)</div>
-        <div class="rs">Her alım ve satımda kesilen işlem ücreti</div>
+        <div class="rl">Maker Komisyonu (%)</div>
+        <div class="rs">Limit emir · safety order'lar ve TP</div>
+      </div>
+    </div>
+    <div class="row" id="row-takerFee">
+      <div>
+        <div class="rl">Taker Komisyonu (%)</div>
+        <div class="rs">Market emir · base order, TTP ve stop loss</div>
       </div>
     </div>
 
@@ -627,7 +633,7 @@ var DEFAULTS = {
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
   maxSO:10, tpPct:1.5,
   reinvest:false, reinvestPct:100, ttpEnabled:false, ttpPct:0.5,
-  commission:0.1, slMode:"off", slPct:15,
+  makerFee:0.1, takerFee:0.1, slMode:"off", slPct:15,
   entryMaMode:"off", entryMaLen:200, soMaMode:"off", soMaLen:50,
   profitMode:"quote",
   cond:"instant",
@@ -643,6 +649,8 @@ function loadState() {
     Object.keys(DEFAULTS).forEach(function(k){ if(saved[k]!==undefined) S[k]=saved[k]; });
     /* Geriye uyum: eski smaFilter → yeni entryMaMode */
     if(saved.smaFilter===true && (S.entryMaMode===undefined||S.entryMaMode==="off")) S.entryMaMode="gt_both";
+    /* Geriye uyum: eski tek komisyon → maker+taker */
+    if(saved.commission!==undefined && saved.makerFee===undefined){S.makerFee=saved.commission;S.takerFee=saved.commission;}
   } catch(e){}
 }
 function saveState() {
@@ -663,7 +671,8 @@ var STEPPERS = [
   {k:"tpPct",       step:0.1, min:0.1,        dec:2},
   {k:"ttpPct",      step:0.1, min:0.1,        dec:2},
   {k:"reinvestPct", step:5,   min:1, max:100,  dec:0},
-  {k:"commission",  step:0.01,min:0, max:5,    dec:2},
+  {k:"makerFee",    step:0.01,min:0, max:5,    dec:3},
+  {k:"takerFee",    step:0.01,min:0, max:5,    dec:3},
   {k:"rsiTP",       step:1,   min:2, max:50,  dec:0},
   {k:"rsiThr",      step:1,   min:1, max:99,  dec:0},
 ];
@@ -1378,7 +1387,8 @@ function backtest(prices, rsiArr){
   var cdLeft=0, waitRSI=(S.cond==="rsi");
   var accumBase=0;
   var isBase=S.profitMode==="base";
-  var feeRate=(S.commission||0)/100;
+  var makerRate=(S.makerFee!=null?S.makerFee:0.1)/100;  // limit: safety order + TP
+  var takerRate=(S.takerFee!=null?S.takerFee:0.1)/100;  // market: base order + TTP + SL
 
   var dynInitAmt=S.initAmt;
   var dynSafeAmt=S.safeAmt;
@@ -1428,14 +1438,15 @@ function backtest(prices, rsiArr){
   }
 
   function closeDealAt(price,date,why){
+    var sellRate=(why==="TP")?makerRate:takerRate;  // TP limit(maker), TTP/SL market(taker)
     var profit, bProfit=0;
     if(isBase){
-      bProfit=deal.totalQty*(1-feeRate)-deal.totalCost/price;
+      bProfit=deal.totalQty*(1-sellRate)-deal.totalCost/price;
       profit=bProfit*price;
       cash+=deal.totalCost;
       accumBase+=bProfit;
     } else {
-      profit=deal.totalQty*price*(1-feeRate)-deal.totalCost;
+      profit=deal.totalQty*price*(1-sellRate)-deal.totalCost;
       cash+=deal.totalCost+profit;
       applyReinvest(profit);
     }
@@ -1485,8 +1496,8 @@ function backtest(prices, rsiArr){
         stepNow*=S.stepMult;
       }
       deal={startDate:date,initPrice:price,
-            orders:[{date:date,price:price,size:dynInitAmt,qty:dynInitAmt*(1-feeRate)/price}],
-            totalCost:dynInitAmt,totalQty:dynInitAmt*(1-feeRate)/price,
+            orders:[{date:date,price:price,size:dynInitAmt,qty:dynInitAmt*(1-takerRate)/price}],
+            totalCost:dynInitAmt,totalQty:dynInitAmt*(1-takerRate)/price,
             avgCost:price,safetyCount:0,so:so,
             ttpActive:false,ttpPeak:0,
             snapshotInitAmt:dynInitAmt,snapshotSafeAmt:dynSafeAmt};
@@ -1516,8 +1527,8 @@ function backtest(prices, rsiArr){
         if(!lv.filled&&price<=lv.price&&_soOk(i,price)){
           if(cash<lv.amt)break;
           cash-=lv.amt;
-          deal.orders.push({date:date,price:price,size:lv.amt,qty:lv.amt*(1-feeRate)/price});
-          deal.totalCost+=lv.amt;deal.totalQty+=lv.amt*(1-feeRate)/price;
+          deal.orders.push({date:date,price:price,size:lv.amt,qty:lv.amt*(1-makerRate)/price});
+          deal.totalCost+=lv.amt;deal.totalQty+=lv.amt*(1-makerRate)/price;
           deal.avgCost=deal.totalCost/deal.totalQty;
           deal.safetyCount++;lv.filled=true;
         }
@@ -1900,7 +1911,8 @@ function saveSettings(){
     "Giris MA        : "+_maLabel("entry"),
     "Averaging MA    : "+_maLabel("so"),
     "Stop Loss       : "+(S.slMode==="sma50"?"50 SMA (gün kapanışı)":S.slMode==="sma200"?"200 SMA (gün kapanışı)":S.slMode==="pct"?"%"+(S.slPct||15)+" Zarar":"Hayır"),
-    "Komisyon        : %"+S.commission,
+    "Maker Kom.      : %"+S.makerFee,
+    "Taker Kom.      : %"+S.takerFee,
   ];
   var txt=lines.join("\n");
   navigator.clipboard.writeText(txt)
@@ -1937,7 +1949,7 @@ function copyResults(){
     "Miktar Çarp. : ×"+S.amtMult,
     "Max SO       : "+S.maxSO,
     "TP           : %"+S.tpPct,
-    "Komisyon     : %"+S.commission,
+    "Maker Kom.   : %"+S.makerFee+" · Taker: %"+S.takerFee,
   ];
   navigator.clipboard.writeText(lines.join("\n"))
     .then(function(){showToast("✓ Panoya kopyalandı");})
@@ -2342,7 +2354,6 @@ function _sampleParams(profile,capital){
     maxSO:maxSO,tpPct:tpPct,
     reinvest:!!S.reinvest,reinvestPct:S.reinvestPct||100,
     ttpEnabled:!!S.ttpEnabled,ttpPct:ttpPct,
-    commission:S.commission||0,
     cond:"instant",profitMode:S.profitMode||"quote"
   };
 }
@@ -2505,7 +2516,7 @@ function _renderOptProfile(profile,best){
   if(p.reinvest)html+='<div style="color:var(--text3)">Reinv <span style="color:var(--accent);font-weight:700">%'+p.reinvestPct+'</span></div>';
   if(p.ttpEnabled)html+='<div style="color:var(--text3)">TTP <span style="color:var(--yellow);font-weight:700">%'+p.ttpPct+'</span></div>';
   if(S.entryMaMode&&S.entryMaMode!=="off"){var _eml=(ENTRY_MA_MODES.find(function(m){return m.v===S.entryMaMode;})||{}).l||"MA";html+='<div style="color:var(--text3)">GirişMA <span style="color:var(--purple);font-weight:700">'+_eml+'</span></div>';}
-  html+='<div style="color:var(--text3)">Kom. <span style="color:var(--text);font-weight:700">%'+p.commission+'</span></div>';
+  html+='<div style="color:var(--text3)">Kom. <span style="color:var(--text);font-weight:700">M%'+S.makerFee+' T%'+S.takerFee+'</span></div>';
   html+='</div>';
   html+='<button onclick="applyOptParams(\''+profile.id+'\')" '
     +'style="width:100%;padding:8px;border-radius:8px;border:1px solid '+profile.color+'44;background:'+profile.color+'11;color:'+profile.color+';font-size:12px;font-weight:700;font-family:\'Space Grotesk\',sans-serif;cursor:pointer">'
@@ -2544,7 +2555,7 @@ function applyOptParams(profileId){
 ═══════════════════════════════ */
 var SETTINGS_KEYS=["coin","startCapital","initAmt","safeAmt","maxSO","priceStep",
   "stepMult","amtMult","tpPct","ttpEnabled","ttpPct","reinvest","reinvestPct",
-  "commission","profitMode","cond","dateFrom","dateTo","entryMaMode","entryMaLen","soMaMode","soMaLen","slMode","slPct"];
+  "makerFee","takerFee","profitMode","cond","dateFrom","dateTo","entryMaMode","entryMaLen","soMaMode","soMaLen","slMode","slPct"];
 
 function _applySettingsObj(obj){
   var applied=0;
@@ -2587,7 +2598,9 @@ function parseSettingsText(txt){
   if((v=num(/Ad[ıi]?m\s*[ÇC]arpan[^:\n]*:\s*[×x]?\s*([\d.]+)/i))!==undefined)o.stepMult=v;
   if((v=num(/Miktar\s*[ÇC]arpan[^:\n]*:\s*[×x]?\s*([\d.]+)/i))!==undefined)o.amtMult=v;
   if((v=num(/K[âa]r\s*Oran[^:\n]*:\s*%?\s*([\d.]+)/i))!==undefined)o.tpPct=v;
-  if((v=num(/Komisyon[^:\n]*:\s*%?\s*([\d.]+)/i))!==undefined)o.commission=v;
+  var mk=num(/Maker[^:\n]*:\s*%?\s*([\d.]+)/i); if(mk!==undefined)o.makerFee=mk;
+  var tk=num(/Taker[^:\n]*:\s*%?\s*([\d.]+)/i); if(tk!==undefined)o.takerFee=tk;
+  var kom=num(/Komisyon[^:\n]*:\s*%?\s*([\d.]+)/i); if(kom!==undefined){if(o.makerFee===undefined)o.makerFee=kom;if(o.takerFee===undefined)o.takerFee=kom;}
   var rm=txt.match(/Reinvest[^:\n]*:\s*(Evet|Hay[ıi]?r|Yes|No|true|false)(?:[^%\d]*%?\s*([\d.]+))?/i);
   if(rm){o.reinvest=/evet|yes|true/i.test(rm[1]); if(rm[2]!==undefined)o.reinvestPct=parseFloat(rm[2]);}
   var tm=txt.match(/TTP[^:\n]*:\s*(Evet|Hay[ıi]?r|Yes|No|true|false)(?:[^%\d]*%?\s*([\d.]+))?/i);
