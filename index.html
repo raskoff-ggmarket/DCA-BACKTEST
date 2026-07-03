@@ -1006,7 +1006,7 @@ async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
     var symbol=coin.sym+"USDT";
     var interval=_barToBybit(okxBar);
     var endTs=afterTs?String(afterTs):"";
-    var maxReq=150;
+    var maxReq=15000;  // başlangıca (2022) kadar tek basışta çek
     while(reqCount<maxReq){
       var url="https://api.bybit.com/v5/market/kline?category=spot&symbol="+symbol+
               "&interval="+interval+"&limit=200";
@@ -1034,7 +1034,7 @@ async function _fetchHistorical(coinId,okxBar,afterTs,onProgress,onBatch){
   /* OKX path */
   var instId=coin.sym+"-USDT";
   var after=afterTs?String(afterTs):"";
-  var maxReq=100;
+  var maxReq=12000;  // başlangıca (2022) kadar tek basışta çek
   while(reqCount<maxReq){
     var url="https://www.okx.com/api/v5/market/history-candles?instId="+instId+
             "&bar="+okxBar+"&limit=300";
@@ -1142,23 +1142,25 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
     }catch(e){}
   }
 
-  /* 4. Mum Çek: geriye artımlı çekim (her 20 batch'te IDB'ye kaydet) */
+  /* 4. Mum Çek: geriye TÜM geçmişi tek basışta çek, her 30000 mumda IDB'ye kaydet */
   var histAdded=0;
   if(histFetch){
     var oldestTs=cached.length>0?cached[0].ts:Date.now();
     if(oldestTs>HISTORY_START_TS){
-      var bn=0,pend=[];
+      var CHUNK=30000;
+      var histTotal=Math.max(1,Math.ceil((oldestTs-HISTORY_START_TS)/barMs)); // beklenen toplam mum
+      var pend=[];
       await _fetchHistorical(
         coinId,okxBar,oldestTs,
-        function(ts,n){showFetchProgress(ts,n,30000);},
+        function(ts,n){showFetchProgress(ts,n,histTotal);},
         async function(batch,bOldest){
           var cap=oldestTs;
           var p=parseRawCandles(batch).filter(function(c){return c.ts<cap&&c.ts>=HISTORY_START_TS&&!tsSet.has(c.ts);});
           p.forEach(function(c){tsSet.add(c.ts);});
           if(p.length){
             pend=p.concat(pend);histAdded+=p.length;changed=true;
-            if(++bn%20===0){
-              try{await cPut(key,pend);}catch(e){}  /* sadece yeni batch'i yaz */
+            if(pend.length>=CHUNK){            // her 30000 mumda diske yaz
+              try{await cPut(key,pend);}catch(e){}
               cached=pend.concat(cached);pend=[];
               if(cached.length)oldestTs=cached[0].ts;
             }
@@ -1166,7 +1168,7 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
           return bOldest<=HISTORY_START_TS;
         }
       );
-      if(pend.length){cached=pend.concat(cached);changed=true;}
+      if(pend.length){try{await cPut(key,pend);}catch(e){}cached=pend.concat(cached);changed=true;}
     }
   }
 
