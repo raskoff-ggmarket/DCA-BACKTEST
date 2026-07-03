@@ -1593,6 +1593,12 @@ function backtest(prices, rsiArr){
   var arbitrageAPR=daysEl>0?(realizedPnL/S.startCapital)/(daysEl/365)*100:0;
   var totalAPR    =daysEl>0?(totalPnL   /S.startCapital)/(daysEl/365)*100:0;
 
+  /* 3Commas tarzı ROI: gerçekleşen kâr / bir döngüde kullanılan max fon (base + tüm safety) */
+  var maxDeployed=S.initAmt;
+  for(var _dn=0;_dn<S.maxSO;_dn++)maxDeployed+=S.safeAmt*Math.pow(S.amtMult,_dn);
+  var roiRealized=maxDeployed>0?realizedPnL/maxDeployed*100:0;
+  var roiTotal   =maxDeployed>0?totalPnL   /maxDeployed*100:0;
+
   return {
     deals:deals,equity:equity,openDeal:openDeal,
     stats:{
@@ -1602,6 +1608,7 @@ function backtest(prices, rsiArr){
       realizedPnL:realizedPnL,unrealizedPnL:unrealizedPnL,totalPnL:totalPnL,
       totalPnLPct:totalPnL/S.startCapital*100,
       arbitrageAPR:arbitrageAPR,totalAPR:totalAPR,
+      maxDeployed:maxDeployed,roiRealized:roiRealized,roiTotal:roiTotal,
       maxDrawdown:maxDD,
       avgSO:deals.length?deals.reduce(function(a,d){return a+d.safetyCount;},0)/deals.length:0,
       investedAmt:openDeal?openDeal.totalCost:0,
@@ -1761,6 +1768,12 @@ function render(res, source, mumCnt, dateFrom, dateTo){
   sg.innerHTML+=fullRow("Arbitrage APR / Toplam APR",
     fp(stats.arbitrageAPR)+" / "+fp(stats.totalAPR),
     stats.arbitrageAPR>=0?"var(--green)":"var(--red)");
+
+  /* 3Commas tarzı ROI: gerçekleşen / döngüde kullanılan max fon */
+  sg.innerHTML+=fullRow("ROI (yatırılan fona) · 3Commas",
+    fp(stats.roiRealized)+" gerçekleşen",
+    stats.roiRealized>=0?"var(--green)":"var(--red)",
+    "Deployed fon: "+fu(stats.maxDeployed)+" · Toplam ROI (açık dahil): "+fp(stats.roiTotal));
 
   /* ── Al & Tut karşılaştırması ── */
   if(stats.firstPrice&&stats.firstPrice>0){
@@ -1936,6 +1949,7 @@ function copyResults(){
     "Toplam PnL   : "+pnlSign+"$"+s.totalPnL.toFixed(2)+" ("+pnlSign+s.totalPnLPct.toFixed(2)+"%)",
     "Arb. APR     : %"+s.arbitrageAPR.toFixed(2),
     "Toplam APR   : %"+s.totalAPR.toFixed(2),
+    "ROI (fona)   : %"+(s.roiRealized||0).toFixed(2)+" (deployed $"+(s.maxDeployed||0).toFixed(0)+")",
     "Max Drawdown : -%"+s.maxDrawdown.toFixed(2),
     "Win Rate     : %"+s.winRate.toFixed(1),
     "Döngüler     : "+s.completedCycles,
