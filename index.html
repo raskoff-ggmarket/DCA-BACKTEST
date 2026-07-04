@@ -1298,7 +1298,9 @@ async function fetchCandlesRun(){
   btn.disabled=true;
   btn.innerHTML='<span class="spinner" style="border-color:rgba(255,255,255,.2);border-top-color:var(--text2)"></span> Bağlanıyor…';
   document.getElementById("errBox").classList.add("hidden");
-  showToast("📡 OKX'e bağlanıyor…");
+  var _srcCoin=COINS.find(function(c){return c.id===S.coin;});
+  var _srcName=(_srcCoin&&_srcCoin.src==="bybit")?"Bybit":"OKX";
+  showToast("📡 "+_srcName+"'e bağlanıyor…");
   setLoad(3);
   try{
     if(S.cond==="rsi"){
