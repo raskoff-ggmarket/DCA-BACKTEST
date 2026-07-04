@@ -664,7 +664,7 @@ var STEPPERS = [
   {k:"startCapital",step:500, min:100,       dec:0},
   {k:"initAmt",     step:10,  min:1,          dec:0},
   {k:"safeAmt",     step:10,  min:1,          dec:0},
-  {k:"priceStep",   step:0.1, min:0.1,        dec:2},
+  {k:"priceStep",   step:0.1, min:0.2,        dec:2},
   {k:"stepMult",    step:0.1, min:1,          dec:2},
   {k:"amtMult",     step:0.1, min:1,          dec:2},
   {k:"maxSO",       step:1,   min:1, max:100, dec:0},
@@ -2369,7 +2369,7 @@ function _sampleParams(profile,capital){
     return _rnd(mn,mx,dec);
   }
   var maxSO=Math.max(1,Math.round(band(S.maxSO||8,1,50,0)));
-  var priceStep=band(S.priceStep||1,0.1,15,2);
+  var priceStep=band(S.priceStep||1,0.2,15,2);
   var stepMult=band(S.stepMult||1,1.0,2.5,2);
   var amtMult=band(S.amtMult||1.2,1.0,2.5,2);
   var tpPct=band(S.tpPct||1.5,0.2,8,2);
@@ -2602,6 +2602,7 @@ function _applySettingsObj(obj){
     }
     S[k]=obj[k];applied++;
   });
+  if(S.priceStep!==undefined)S.priceStep=Math.max(0.2,S.priceStep);
   saveState();
   /* UI yenile */
   STEPPERS.forEach(function(cfg){
@@ -2629,7 +2630,7 @@ function parseSettingsText(txt){
   if((v=num(/BO\s*Miktar[^:\n]*:\s*\$?\s*([\d.]+)/i))!==undefined)o.initAmt=v;
   if((v=num(/SO\s*Miktar[^:\n]*:\s*\$?\s*([\d.]+)/i))!==undefined)o.safeAmt=v;
   if((v=num(/Max\s*SO[^:\n]*:\s*([\d]+)/i))!==undefined)o.maxSO=v;
-  if((v=num(/Fiyat\s*Ad[ıi]?m[^:\n]*:\s*%?\s*([\d.]+)/i))!==undefined)o.priceStep=v;
+  if((v=num(/Fiyat\s*Ad[ıi]?m[^:\n]*:\s*%?\s*([\d.]+)/i))!==undefined)o.priceStep=Math.max(0.2,v);
   if((v=num(/Ad[ıi]?m\s*[ÇC]arpan[^:\n]*:\s*[×x]?\s*([\d.]+)/i))!==undefined)o.stepMult=v;
   if((v=num(/Miktar\s*[ÇC]arpan[^:\n]*:\s*[×x]?\s*([\d.]+)/i))!==undefined)o.amtMult=v;
   if((v=num(/K[âa]r\s*Oran[^:\n]*:\s*%?\s*([\d.]+)/i))!==undefined)o.tpPct=v;
