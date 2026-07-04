@@ -491,6 +491,13 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <input type="number" id="optCapital" value="1000" min="100" step="100" readonly
         style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text2);font-size:15px;font-weight:700;font-family:'Space Grotesk',sans-serif;opacity:.8">
     </div>
+
+    <!-- Arama Hedefi -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;font-weight:600;letter-spacing:.05em">ARAMA HEDEFİ</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="optObjChips"></div>
+      <div id="optObjDesc" style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5"></div>
+    </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
       <div style="font-size:12px;color:var(--text3);margin-bottom:10px;font-weight:600;letter-spacing:.05em">TARİH ARALIĞI</div>
       <div style="display:flex;gap:8px;align-items:flex-end">
@@ -2275,6 +2282,35 @@ function setOptSma(v){
   document.getElementById("optSmaOn").className="chip"+(v==="on"?" on":"");
   document.getElementById("optSmaAuto").className="chip"+(v==="auto"?" on":"");
 }
+
+/* Arama hedefi: skoru neye göre sıralayacağı */
+var OPT_OBJECTIVES=[
+  {v:"calmar", l:"⚖️ Dengeli",   d:"Risk-ayarlı getiri (APR/MaxDD). Genel amaçlı en güvenli seçim."},
+  {v:"cycles", l:"🔁 Çok Döngü", d:"En fazla tamamlanan işlem sayısını maksimize eder — sık işlem / yüksek hacim isteyenler için."},
+  {v:"roi",    l:"💰 Yüksek ROI",d:"Gerçekleşen kâr / yatırılan fon (3Commas ROI) en yüksek olanı bulur — risk gözetmez."},
+];
+var _optObjective="calmar";
+function setOptObjective(v){
+  _optObjective=v;
+  document.getElementById("optObjChips").querySelectorAll(".chip").forEach(function(c,i){
+    c.className="chip"+(OPT_OBJECTIVES[i].v===v?" on":"");
+  });
+  var d=document.getElementById("optObjDesc");
+  if(d){var o=OPT_OBJECTIVES.find(function(x){return x.v===v;});if(o)d.textContent=o.d;}
+}
+function buildOptObjChips(){
+  var box=document.getElementById("optObjChips");if(!box)return;
+  box.innerHTML="";
+  OPT_OBJECTIVES.forEach(function(o){
+    var b=document.createElement("button");
+    b.className="chip"+(o.v===_optObjective?" on":"");
+    b.style.cssText="padding:6px 12px;cursor:pointer;font-family:'Space Grotesk',sans-serif";
+    b.textContent=o.l;
+    b.onclick=function(){setOptObjective(o.v);};
+    box.appendChild(b);
+  });
+  setOptObjective(_optObjective);
+}
 var SL_MODES=[
   {v:"off",   l:"Kapalı", d:""},
   {v:"sma50", l:"50 SMA", d:"Gün 50 SMA altında kapanırsa kapat"},
@@ -2408,6 +2444,18 @@ function _optScore(stats){
   if(stats.maxDrawdown>60)return -Infinity;
   var floatRatio=stats.investedAmt>0?stats.unrealizedPnL/stats.investedAmt:0;
   if(floatRatio<-0.25)return -Infinity;
+
+  var obj=(typeof _optObjective!=="undefined")?_optObjective:"calmar";
+
+  if(obj==="cycles"){
+    /* Maksimum tamamlanan döngü sayısı — asıl sıralama bu, ROI ufak tie-break */
+    return stats.completedCycles + Math.max(0,stats.roiRealized||0)*0.01;
+  }
+  if(obj==="roi"){
+    /* 3Commas tarzı ROI (gerçekleşen/deployed fon) — risk gözetmeden en yüksek */
+    return (stats.roiRealized||0) + Math.min(5,Math.log(stats.completedCycles))*0.1;
+  }
+
   var apr=Math.max(0,stats.arbitrageAPR);
   var dd=Math.max(1,stats.maxDrawdown);
   /* Calmar oranı: risk başına getiri (APR/MaxDD) — dengeli ana skor */
@@ -2738,6 +2786,7 @@ buildMainChips();
 buildProfitMode();
 setOptProfitMode(_optProfitMode);
 setOptSma(_optSma);
+buildOptObjChips();
 
 S.cond="instant";
 updateBadge();
