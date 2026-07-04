@@ -778,9 +778,13 @@ async function cPutBatched(key,candles,onProgress){
 }
 function parseRawCandles(raw){
   return raw.map(function(k){
+    var c=parseFloat(k[4]);                          // close (OKX/Bybit: 0=ts,1=o,2=h,3=l,4=c)
+    var hi=k[2]!=null?parseFloat(k[2]):c;
+    var lo=k[3]!=null?parseFloat(k[3]):c;
+    if(isNaN(hi))hi=c; if(isNaN(lo))lo=c;
     return {
       ts:parseInt(k[0]),
-      price:parseFloat(k[4]),
+      price:c, high:hi, low:lo,
       date:new Date(parseInt(k[0])).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"}),
       time:new Date(parseInt(k[0])).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}),
     };
@@ -830,7 +834,7 @@ function clearCache(){
 async function opfsPut(key,candles){
   if(!navigator.storage||!navigator.storage.getDirectory)return;
   try{
-    var compact=candles.map(function(c){return [c.ts,c.price];});
+    var compact=candles.map(function(c){return (c.high!=null&&c.low!=null)?[c.ts,c.price,c.high,c.low]:[c.ts,c.price];});
     var root=await navigator.storage.getDirectory();
     var fh=await root.getFileHandle(key+".json",{create:true});
     var w=await fh.createWritable();
@@ -848,7 +852,7 @@ async function opfsGet(key){
     var text=await file.text();
     var raw=JSON.parse(text);
     return raw.map(function(d){
-      if(Array.isArray(d)){var ts=d[0];return {ts:ts,price:d[1],date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};}
+      if(Array.isArray(d)){var ts=d[0],cl=d[1];var hh=d.length>=4?d[2]:cl,ll=d.length>=4?d[3]:cl;return {ts:ts,price:cl,high:hh,low:ll,date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};}
       return d;
     });
   }catch(e){return null;}
@@ -906,7 +910,9 @@ async function exportCandles(){
   var parts=[];                          // her eleman: {arr:[], from:ts, to:ts}
   var cur=[],curBytes=2;                 // "[" + "]"
   for(var i=0;i<data.length;i++){
-    var e=[data[i].ts,data[i].price];
+    var _d=data[i];
+    // [ts, close, high, low] — OHLC varsa ekle (yoksa sadece ts,close)
+    var e=(_d.high!=null&&_d.low!=null)?[_d.ts,_d.price,_d.high,_d.low]:[_d.ts,_d.price];
     var sLen=JSON.stringify(e).length+1; // +1 virgül
     if(curBytes+sLen>MAX&&cur.length){
       parts.push(cur);cur=[];curBytes=2;
@@ -943,6 +949,7 @@ async function importCandles(input){
       var header=lines[0].toLowerCase().split(",").map(function(h){return h.trim().replace(/"/g,"");});
       var dateIdx=header.indexOf("date"),tsIdx=header.indexOf("timestamp");
       var closeIdx=header.indexOf("close"),adjIdx=header.indexOf("adj close");
+      var highIdx=header.indexOf("high"),lowIdx=header.indexOf("low");
       if(closeIdx===-1&&adjIdx===-1){showToast("⚠ CSV'de 'close' sütunu bulunamadı");if(infoEl)infoEl.textContent="";input.value="";return;}
       var priceCol=closeIdx!==-1?closeIdx:adjIdx;
       var timeCol=dateIdx!==-1?dateIdx:tsIdx;
@@ -956,7 +963,11 @@ async function importCandles(input){
           ts=isNaN(Number(raw))?new Date(raw).getTime():Number(raw)*1000;
         } else { ts=0; }
         if(!ts||isNaN(ts))continue;
-        candles.push({ts:ts,price:parseFloat(cols[priceCol]),
+        var cl=parseFloat(cols[priceCol]);
+        var hh=(highIdx!==-1&&cols[highIdx])?parseFloat(cols[highIdx]):cl;
+        var ll=(lowIdx!==-1&&cols[lowIdx])?parseFloat(cols[lowIdx]):cl;
+        if(isNaN(hh))hh=cl; if(isNaN(ll))ll=cl;
+        candles.push({ts:ts,price:cl,high:hh,low:ll,
           date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"}),
           time:new Date(ts).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})});
       }
@@ -965,8 +976,13 @@ async function importCandles(input){
       try{raw=JSON.parse(text);}catch(e){showToast("⚠ JSON hatası: "+e.message);if(infoEl)infoEl.textContent="";input.value="";return;}
       if(!Array.isArray(raw)||!raw.length){showToast("⚠ Geçersiz dosya");if(infoEl)infoEl.textContent="";input.value="";return;}
       candles=raw.map(function(d){
-        if(Array.isArray(d)){var ts=d[0];return {ts:ts,price:d[1],date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};}
-        return {ts:d.ts,price:d.price,date:d.date||new Date(d.ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
+        if(Array.isArray(d)){
+          var ts=d[0], cl=d[1];
+          // [ts,close] veya [ts,close,high,low]
+          var hh=d.length>=4?d[2]:cl, ll=d.length>=4?d[3]:cl;
+          return {ts:ts,price:cl,high:hh,low:ll,date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
+        }
+        return {ts:d.ts,price:d.price,high:d.high!=null?d.high:d.price,low:d.low!=null?d.low:d.price,date:d.date||new Date(d.ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
       });
     }
     candles=candles.filter(function(c){return c.ts>=HISTORY_START_TS;}).sort(function(a,b){return a.ts-b.ts;});
@@ -1467,6 +1483,8 @@ function backtest(prices, rsiArr){
 
   for(var i=0;i<prices.length;i++){
     var price=prices[i].price, date=prices[i].date;
+    var hi=prices[i].high!=null?prices[i].high:price;   // OHLC (yoksa close'a düşer)
+    var lo=prices[i].low!=null?prices[i].low:price;
 
     if(waitRSI&&!inDeal&&cdLeft===0){
       var rv=rsiArr?rsiArr[i]:null;
@@ -1506,29 +1524,32 @@ function backtest(prices, rsiArr){
     } else {
       var tpPrice=deal.avgCost*(1+S.tpPct/100);
 
+      // TP/TTP limit emirdir → mumun HIGH'ı hedefe değince dolar
       if(S.ttpEnabled){
-        if(!deal.ttpActive&&price>=tpPrice){deal.ttpActive=true;deal.ttpPeak=price;}
+        if(!deal.ttpActive&&hi>=tpPrice){deal.ttpActive=true;deal.ttpPeak=hi;}
         if(deal.ttpActive){
-          if(price>deal.ttpPeak)deal.ttpPeak=price;
-          if(price<=deal.ttpPeak*(1-S.ttpPct/100)){
-            closeDealAt(price,date,"TTP");
+          if(hi>deal.ttpPeak)deal.ttpPeak=hi;
+          var ttpTrig=deal.ttpPeak*(1-S.ttpPct/100);
+          if(lo<=ttpTrig){
+            closeDealAt(ttpTrig,date,"TTP");
             equity.push({date:date,value:eqVal(price),price:price});continue;
           }
         }
       } else {
-        if(price>=tpPrice){
-          closeDealAt(price,date,"TP");
+        if(hi>=tpPrice){
+          closeDealAt(tpPrice,date,"TP");   // limit fiyattan dolar
           equity.push({date:date,value:eqVal(price),price:price});continue;
         }
       }
 
+      // Safety order limit emir → mumun LOW'u seviyeye değince, seviye fiyatından dolar
       for(var n=0;n<deal.so.length;n++){
         var lv=deal.so[n];
-        if(!lv.filled&&price<=lv.price&&_soOk(i,price)){
+        if(!lv.filled&&lo<=lv.price&&_soOk(i,lv.price)){
           if(cash<lv.amt)break;
           cash-=lv.amt;
-          deal.orders.push({date:date,price:price,size:lv.amt,qty:lv.amt*(1-makerRate)/price});
-          deal.totalCost+=lv.amt;deal.totalQty+=lv.amt*(1-makerRate)/price;
+          deal.orders.push({date:date,price:lv.price,size:lv.amt,qty:lv.amt*(1-makerRate)/lv.price});
+          deal.totalCost+=lv.amt;deal.totalQty+=lv.amt*(1-makerRate)/lv.price;
           deal.avgCost=deal.totalCost/deal.totalQty;
           deal.safetyCount++;lv.filled=true;
         }
@@ -1536,19 +1557,19 @@ function backtest(prices, rsiArr){
     }
     /* Stop Loss: moda göre */
     if(slOn&&inDeal){
-      var doSL=false;
+      var doSL=false, slFill=price;
       if(slMode==="pct"){
         var slTrig=deal.avgCost*(1-(S.slPct||15)/100);
-        if(price<=slTrig)doSL=true;
+        if(lo<=slTrig){doSL=true;slFill=slTrig;}   // market benzeri, seviyeden
       } else {
         var dayClose=(i===prices.length-1)||
           (Math.floor(prices[i+1].ts/86400000)!==Math.floor(prices[i].ts/86400000));
         if(dayClose){
           var ref=slMode==="sma200"?smaMap[200][i]:smaMap[50][i];
-          if(!isNaN(ref)&&price<ref)doSL=true;
+          if(!isNaN(ref)&&price<ref){doSL=true;slFill=price;}   // gün kapanışı
         }
       }
-      if(doSL)closeDealAt(price,date,"SL");
+      if(doSL)closeDealAt(slFill,date,"SL");
     }
     equity.push({date:date,value:eqVal(price),price:price});
   }
