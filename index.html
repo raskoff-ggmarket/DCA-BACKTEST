@@ -448,6 +448,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <button onclick="redownloadOhlc()" style="width:100%;padding:9px 0;border-radius:10px;border:1px solid rgba(167,139,250,.4);background:rgba(167,139,250,.08);color:var(--purple);font-size:12px;font-weight:700;font-family:'Space Grotesk',sans-serif;cursor:pointer">🔄 Bu Coini OHLC ile Yeniden İndir</button>
       <div class="rs" style="margin-top:6px;line-height:1.5">Eski indirmeler sadece kapanış fiyatı içerir. TP/SO artık gerçek high/low ile doluyor — en doğru sonuç için seçili coini bir kez böyle yenile.</div>
     </div>
+    <div style="padding:10px 14px 0 14px">
+      <button onclick="resetAllData()" style="width:100%;padding:9px 0;border-radius:10px;border:1px solid rgba(255,79,109,.4);background:rgba(255,79,109,.08);color:var(--red);font-size:12px;font-weight:700;font-family:'Space Grotesk',sans-serif;cursor:pointer">🗑️ Tüm Mumları Sıfırla</button>
+      <div class="rs" style="margin-top:6px;line-height:1.5">TÜM coinlerin verisini siler (şifre gerekir). Sonra her coini 📥 MUM İNDİR ile sıfırdan çekmen gerekir.</div>
+    </div>
   </div>
   <div class="err hidden" id="errBox"></div>
 </div>
@@ -856,6 +860,32 @@ async function redownloadOhlc(){
      kalmış olabilir; yeniden çekmeden önce durumunu tazele */
   await updateFetchBtnState();
   await fetchCandlesRun();
+}
+
+/* OPFS'teki TÜM yerel yedek dosyalarını sil (coin bazlı degil, hepsi) */
+async function opfsClearAll(){
+  try{
+    var root=await navigator.storage.getDirectory();
+    var names=[];
+    for await (var name of root.keys()){names.push(name);}
+    for(var i=0;i<names.length;i++){
+      try{await root.removeEntry(names[i]);}catch(e){}
+    }
+  }catch(e){}
+}
+
+/* Şifre korumalı tam sıfırlama — IndexedDB + OPFS yedeği, TÜM coinler */
+async function resetAllData(){
+  var pass=prompt("Tüm mumları sıfırlamak için şifreyi gir:");
+  if(pass===null)return;
+  if(pass!=="1234"){showToast("⚠ Yanlış şifre");return;}
+  showToast("🗑 Tüm veriler siliniyor…");
+  try{await cClearAll();}catch(e){}
+  await opfsClearAll();
+  await refreshCacheRange();
+  await loadCandleRange();
+  await updateFetchBtnState();
+  showToast("✓ Sıfırlandı — şimdi 📥 MUM İNDİR ile sıfırdan indirebilirsin");
 }
 function clearCache(){
   stClear()
