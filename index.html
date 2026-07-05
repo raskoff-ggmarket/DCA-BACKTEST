@@ -852,6 +852,9 @@ async function redownloadOhlc(){
     var root=await navigator.storage.getDirectory();
     await root.removeEntry(key+".json");
   }catch(e){}
+  /* Cache silindi — buton hâlâ eski "Tarih Tamam" (disabled) durumunda
+     kalmış olabilir; yeniden çekmeden önce durumunu tazele */
+  await updateFetchBtnState();
   await fetchCandlesRun();
 }
 function clearCache(){
