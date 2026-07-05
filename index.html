@@ -444,6 +444,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <button onclick="exportCandles()" style="flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer">📤 Dışa Aktar</button>
       <label style="flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer;display:block;text-align:center">📂 İçe Aktar<input type="file" accept=".json,.csv" style="display:none" onchange="importCandles(this)"></label>
     </div>
+    <div style="padding:10px 14px 0">
+      <button onclick="redownloadOhlc()" style="width:100%;padding:9px 0;border-radius:10px;border:1px solid rgba(167,139,250,.4);background:rgba(167,139,250,.08);color:var(--purple);font-size:12px;font-weight:700;font-family:'Space Grotesk',sans-serif;cursor:pointer">🔄 Bu Coini OHLC ile Yeniden İndir</button>
+      <div class="rs" style="margin-top:6px;line-height:1.5">Eski indirmeler sadece kapanış fiyatı içerir. TP/SO artık gerçek high/low ile doluyor — en doğru sonuç için seçili coini bir kez böyle yenile.</div>
+    </div>
   </div>
   <div class="err hidden" id="errBox"></div>
 </div>
@@ -771,6 +775,19 @@ function cClearAll(){
     });
   });
 }
+function cDeleteKey(key){
+  return openDB().then(function(db){
+    return new Promise(function(res,rej){
+      var tx=db.transaction("c","readwrite");
+      var req=tx.objectStore("c").index("k").openCursor(IDBKeyRange.only(key));
+      req.onsuccess=function(e){
+        var cur=e.target.result;
+        if(cur){cur.delete();cur.continue();}
+      };
+      tx.oncomplete=res;tx.onerror=function(){rej(tx.error);};
+    });
+  });
+}
 async function cPutBatched(key,candles,onProgress){
   var CHUNK=10000,total=candles.length;
   for(var i=0;i<total;i+=CHUNK){
@@ -823,6 +840,19 @@ async function clearAllData(){
   loadCandleRange();
   updateFetchBtnState();
   showToast("✓ Tüm mumlar silindi");
+}
+async function redownloadOhlc(){
+  var coin=COINS.find(function(c){return c.id===S.coin;});
+  if(!coin){showToast("⚠ Coin bulunamadı");return;}
+  if(!confirm(coin.sym+" için önbellek silinip gerçek OHLC (high/low) ile sıfırdan indirilecek. Devam edilsin mi?"))return;
+  var key=S.coin+"_"+INSTANT_BAR.okx;
+  showToast("🗑 "+coin.sym+" önbelleği siliniyor…");
+  try{await cDeleteKey(key);}catch(e){}
+  try{
+    var root=await navigator.storage.getDirectory();
+    await root.removeEntry(key+".json");
+  }catch(e){}
+  await fetchCandlesRun();
 }
 function clearCache(){
   stClear()
