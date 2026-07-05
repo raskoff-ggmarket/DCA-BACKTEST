@@ -484,7 +484,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div id="optPanel" class="hidden">
   <div style="padding:14px">
     <div style="background:rgba(0,153,255,.06);border:1px solid rgba(0,153,255,.25);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--text3);line-height:1.5">
-      ⚙️ Tüm ayarlar <b>Ayarlar sayfasından</b> alınır (sermaye, reinvest, TTP, trend filtresi, stop loss, komisyon, coin, tarih). Optimizer bu değerlerin <b>etrafında</b> en iyi maxSO / adım / çarpan / TP kombinasyonunu bulur.
+      ⚙️ Sadece <b>sermaye</b> (ve reinvest/TTP/trend filtresi/stop loss/komisyon/coin/tarih) Ayarlar sayfasından alınır. <b>maxSO / adım / çarpan / TP tamamen serbest</b> aralıklarda taranır — Ayarlar'daki mevcut değerlere bağlı kalmaz.
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
       <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BAŞLANGIÇ SERMAYESİ (Ayarlar'dan)</div>
@@ -2353,10 +2353,16 @@ function setOptProfitMode(mode){
 
 
 /* Profiller artık AYARLAR değerlerinin etrafında arama genişliğidir */
+/* Serbest arama: Ayarlar'daki maxSO/adım/çarpan/TP değerlerine BAĞLI KALMAZ.
+   Sadece sermaye (ve reinvest/TTP/kâr modu gibi anahtar bayraklar) Ayarlar'dan
+   okunur; kombinasyonlar sabit, geniş aralıklarda tamamen serbest taranır. */
 var OPT_PROFILES=[
-  {id:"dar",  label:"🎯 Dar Arama (±%25)",  color:"var(--accent2)", w:0.25},
-  {id:"orta", label:"⚖️ Orta Arama (±%50)", color:"var(--accent)",  w:0.50},
-  {id:"genis",label:"🌐 Geniş Arama (±%80)", color:"var(--purple)",  w:0.80},
+  {id:"kisa",label:"⚡ Kısa Vade", color:"var(--accent2)",
+    ranges:{maxSO:[2,6],  priceStep:[0.2,2.5], stepMult:[1.0,1.4], amtMult:[1.0,1.4], tpPct:[0.2,2.0]}},
+  {id:"orta",label:"⚖️ Orta Vade", color:"var(--accent)",
+    ranges:{maxSO:[4,12], priceStep:[1.0,5.0], stepMult:[1.0,1.7], amtMult:[1.0,1.7], tpPct:[0.5,3.5]}},
+  {id:"uzun",label:"🏔️ Uzun Vade", color:"var(--purple)",
+    ranges:{maxSO:[8,20], priceStep:[2.0,10.0],stepMult:[1.0,2.0], amtMult:[1.0,2.5], tpPct:[1.0,6.0]}},
 ];
 
 function _rnd(min,max,dec){
@@ -2365,20 +2371,13 @@ function _rnd(min,max,dec){
 }
 
 function _sampleParams(profile,capital){
-  var w=profile.w||0.5;
-  /* Ayarlar değerini merkez al, ±w bandında ara (min/max sınırlarına kırp) */
-  function band(center,lo,hi,dec){
-    center=center||lo;
-    var mn=Math.max(lo,center*(1-w)), mx=Math.min(hi,center*(1+w));
-    if(mn>=mx){mn=lo;mx=hi;}
-    return _rnd(mn,mx,dec);
-  }
-  var maxSO=Math.max(1,Math.round(band(S.maxSO||8,1,50,0)));
-  var priceStep=band(S.priceStep||1,0.2,15,2);
-  var stepMult=band(S.stepMult||1,1.0,2.5,2);
-  var amtMult=band(S.amtMult||1.2,1.0,2.5,2);
-  var tpPct=band(S.tpPct||1.5,0.2,8,2);
-  var ttpPct=S.ttpEnabled?band(S.ttpPct||0.5,0.1,3,1):(S.ttpPct||0.5);
+  var r=profile.ranges;
+  var maxSO=Math.max(1,Math.round(_rnd(r.maxSO[0],r.maxSO[1])));
+  var priceStep=_rnd(Math.max(0.2,r.priceStep[0]),r.priceStep[1],2);
+  var stepMult=_rnd(r.stepMult[0],r.stepMult[1],2);
+  var amtMult=_rnd(r.amtMult[0],r.amtMult[1],2);
+  var tpPct=_rnd(r.tpPct[0],r.tpPct[1],2);
+  var ttpPct=S.ttpEnabled?_rnd(0.1,3.0,1):(S.ttpPct||0.5);
 
   /* initAmt + safeAmt: sermayeye sığacak şekilde */
   var budget=capital;
@@ -2386,7 +2385,8 @@ function _sampleParams(profile,capital){
   for(var n=0;n<maxSO;n++)totalOrders+=Math.pow(amtMult,n);
   var unitAmt=Math.max(10,Math.floor(budget/totalOrders/10)*10);
 
-  /* Tüm bayraklar AYARLAR sayfasından — SL de S.slMode/S.slPct ile korunur */
+  /* Sadece sermaye + reinvest/TTP/kâr modu bayrakları Ayarlar'dan;
+     maxSO/adım/çarpan/TP tamamen serbest (yukarıdaki aralıklardan) */
   return{
     startCapital:capital,
     initAmt:unitAmt,safeAmt:unitAmt,
