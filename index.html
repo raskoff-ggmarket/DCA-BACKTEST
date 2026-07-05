@@ -862,16 +862,21 @@ async function redownloadOhlc(){
   await fetchCandlesRun();
 }
 
-/* OPFS'teki TÜM yerel yedek dosyalarını sil (coin bazlı degil, hepsi) */
+/* OPFS'teki TÜM yerel yedek dosyalarını sil (coin bazlı degil, hepsi).
+   Silinen dosya sayısını döndürür (diagnostik/görünürlük için). */
 async function opfsClearAll(){
+  var removed=0, found=0, supported=true;
   try{
+    if(!navigator.storage||!navigator.storage.getDirectory){supported=false;return {supported:supported,found:0,removed:0};}
     var root=await navigator.storage.getDirectory();
     var names=[];
     for await (var name of root.keys()){names.push(name);}
+    found=names.length;
     for(var i=0;i<names.length;i++){
-      try{await root.removeEntry(names[i]);}catch(e){}
+      try{await root.removeEntry(names[i]);removed++;}catch(e){}
     }
   }catch(e){}
+  return {supported:supported,found:found,removed:removed};
 }
 
 /* Şifre korumalı tam sıfırlama — IndexedDB + OPFS yedeği, TÜM coinler */
@@ -881,11 +886,15 @@ async function resetAllData(){
   if(pass!=="1234"){showToast("⚠ Yanlış şifre");return;}
   showToast("🗑 Tüm veriler siliniyor…");
   try{await cClearAll();}catch(e){}
-  await opfsClearAll();
+  var opfsRes=await opfsClearAll();
+  /* OPFS temizliği bir sebeple eksik kalsa bile, ilk sonraki yüklemede
+     otomatik geri yüklemeyi (opfsRestore) atlaması için bayrak koy */
+  try{localStorage.setItem("dca_just_reset","1");}catch(e){}
   await refreshCacheRange();
   await loadCandleRange();
   await updateFetchBtnState();
-  showToast("✓ Sıfırlandı — şimdi 📥 MUM İNDİR ile sıfırdan indirebilirsin");
+  var opfsMsg=opfsRes.supported?(" · yerel yedek: "+opfsRes.removed+"/"+opfsRes.found+" silindi"):" · yerel yedek desteklenmiyor";
+  showToast("✓ Sıfırlandı"+opfsMsg+" — şimdi 📥 MUM İNDİR ile indir");
 }
 function clearCache(){
   stClear()
@@ -923,6 +932,13 @@ async function opfsGet(key){
   }catch(e){return null;}
 }
 async function opfsRestore(){
+  /* "Tüm Mumları Sıfırla" çalıştıysa, kullanıcı yeni veri indirene kadar
+     OPFS'ten otomatik geri yüklemeyi ATLA — yoksa sıfırlama anlamsız kalır
+     (OPFS temizliği bir sebeple tam bitmemiş olsa bile, zombi veri geri
+     gelmesin). Bayrak fetchCandlesRun() başarılı olunca temizlenir. */
+  try{
+    if(localStorage.getItem("dca_just_reset")==="1")return;
+  }catch(e){}
   var key=S.coin+"_"+INSTANT_BAR.okx;
   var idb=[];try{idb=await cGet(key);}catch(e){}
   if(idb&&idb.length)return;
@@ -1369,6 +1385,9 @@ async function fetchCandlesRun(){
     }
     await loadCandleRange();
     refreshCacheRange();
+    /* Yeni veri başarıyla indi — artık OPFS'ten eski zombi veri geri
+       yüklenmesin diye koyduğumuz koruma bayrağına gerek kalmadı */
+    try{localStorage.removeItem("dca_just_reset");}catch(e){}
     showToast(_cacheStatus||"✓ Mumlar güncellendi");
   }catch(e){
     document.getElementById("errBox").textContent="⚠ Mum çekme hatası: "+e.message;
