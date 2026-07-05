@@ -2152,10 +2152,14 @@ function updateCap(){
   if(sumEl&&S.maxSO>0){
     var s=calcOrderSummary();
     var lastRow=s.rows[s.rows.length-1];
+    var hasImpossible=s.rows.some(function(r){return r.devPct<=-100;});
     var thS="color:var(--text3);font-size:9px;padding:2px 3px;font-weight:400;text-align:right;white-space:nowrap";
     var html='<div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 4px;margin-bottom:3px;border-bottom:1px solid var(--border1)">'+
       '<span style="color:var(--text3);font-size:10px">💰 Toplam yatırım (tüm SO)</span>'+
       '<span style="font-weight:700;font-size:11px">$'+Math.ceil(lastRow.totalAmt)+'</span></div>';
+    if(hasImpossible){
+      html+='<div style="background:rgba(255,79,109,.1);border:1px solid rgba(255,79,109,.4);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:11px;color:var(--red);line-height:1.5">⚠ Fiyat %100\'ün üstünde sapamaz (sıfırın altına inemez). Kırmızı işaretli seviyeler <b>asla dolmaz</b> — Max SO veya Fiyat Adımı\'nı düşür.</div>';
+    }
     html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:300px">';
     html+='<tr>'+
       '<th style="'+thS+';text-align:left;font-size:8px">EMİR</th>'+
@@ -2163,18 +2167,21 @@ function updateCap(){
       '<th style="'+thS+';font-size:8px">TOPLAM$</th>'+
       '<th style="'+thS+';font-size:8px">TP↑ DİP</th></tr>';
     s.rows.forEach(function(r){
+      var impossible=r.devPct<=-100;
       var dev=r.devPct;
-      var devC=dev===0?"var(--text2)":dev<=-40?"var(--red)":dev<=-20?"var(--yellow)":"var(--green)";
+      var devC=impossible?"var(--red)":(dev===0?"var(--text2)":dev<=-40?"var(--red)":dev<=-20?"var(--yellow)":"var(--green)");
       var tp=r.tpFromTrigger;
       var tpC=tp>30?"var(--red)":tp>15?"var(--yellow)":"var(--green)";
       var td="text-align:right;padding:2px 3px;font-size:10px;white-space:nowrap";
       var labelColor=r.isBase?"var(--text)":"var(--accent)";
-      var rowBg=r.isBase?"background:var(--card3)":"";
+      var rowBg=r.isBase?"background:var(--card3)":(impossible?"background:rgba(255,79,109,.12)":"");
       html+='<tr style="border-top:1px solid var(--border1);'+rowBg+'">'+
         '<td style="text-align:left;padding:2px 3px;font-size:10px;font-weight:700;color:'+labelColor+'">'+r.label+'</td>'+
         '<td style="'+td+';color:'+devC+';font-weight:600">'+(dev===0?"0%":dev.toFixed(2)+"%")+'</td>'+
         '<td style="'+td+'">$'+Math.ceil(r.totalAmt)+'</td>'+
-        '<td style="'+td+';color:'+tpC+'">+'+tp.toFixed(2)+"%</td></tr>";
+        (impossible
+          ? '<td style="'+td+';color:var(--red);font-weight:700">⚠ Dolamaz</td></tr>'
+          : '<td style="'+td+';color:'+tpC+'">+'+tp.toFixed(2)+"%</td></tr>");
     });
     html+='</table></div>';
     sumEl.innerHTML=html;
@@ -2361,20 +2368,61 @@ function _rnd(min,max,dec){
   return dec?parseFloat(v.toFixed(dec)):Math.round(v);
 }
 
+/* Kümülatif fiyat sapması (3Commas mantığı: 2dp kırpma) — %100'ü
+   geçerse o safety order seviyesi ASLA dolmaz (fiyat sıfırın altına
+   inemez), yani parametre kombinasyonu anlamsızdır. */
+function _cumDeviationPct(maxSO,priceStep,stepMult){
+  var cum=0,step=priceStep;
+  for(var n=0;n<maxSO;n++){
+    cum+=step;
+    step*=stepMult;
+  }
+  return Math.floor(cum*100)/100;
+}
+
 function _sampleParams(profile,capital){
   var r=profile.ranges;
-  var maxSO=Math.max(1,Math.round(_rnd(r.maxSO[0],r.maxSO[1])));
-  var priceStep=_rnd(Math.max(0.2,r.priceStep[0]),r.priceStep[1],2);
-  var stepMult=_rnd(r.stepMult[0],r.stepMult[1],2);
-  var amtMult=_rnd(r.amtMult[0],r.amtMult[1],2);
-  var tpPct=_rnd(r.tpPct[0],r.tpPct[1],2);
+  var maxSO,priceStep,stepMult,amtMult,tpPct;
+  var tries=0;
+  do{
+    maxSO=Math.max(1,Math.round(_rnd(r.maxSO[0],r.maxSO[1])));
+    priceStep=_rnd(Math.max(0.2,r.priceStep[0]),r.priceStep[1],2);
+    stepMult=_rnd(r.stepMult[0],r.stepMult[1],2);
+    amtMult=_rnd(r.amtMult[0],r.amtMult[1],2);
+    tpPct=_rnd(r.tpPct[0],r.tpPct[1],2);
+    tries++;
+  } while(_cumDeviationPct(maxSO,priceStep,stepMult)>=95 && tries<30);
+  /* Hâlâ ulaşılamaz bir seviyeye çıkıyorsa (fiyat %95+ sapma) maxSO'yu
+     güvenli seviyeye kadar kırp — imkansız (negatif fiyat) SO üretilmesin */
+  while(maxSO>1 && _cumDeviationPct(maxSO,priceStep,stepMult)>=95){
+    maxSO--;
+  }
   var ttpPct=S.ttpEnabled?_rnd(0.1,3.0,1):(S.ttpPct||0.5);
 
-  /* initAmt + safeAmt: sermayeye sığacak şekilde */
+  /* initAmt + safeAmt: sermayeye sığacak şekilde.
+     ÖNEMLİ: sabit $10 taban kaldırıldı — yüksek maxSO + yüksek
+     miktar çarpanında totalOrders devasa büyüyüp $10 taban bütçeyi
+     onlarca/yüzlerce kat aşıyordu (örn. $156.010 deployed, $3150 bütçe).
+     En küçük anlamlı birim $0.01 — bu birimle bile toplam bütçeyi
+     aşıyorsa (totalOrders çok büyükse) maxSO kırpılarak totalOrders
+     küçültülür, aksi halde $0.01 taban tek başına bütçenin onlarca
+     katına çıkabiliyordu. */
   var budget=capital;
   var totalOrders=1;
   for(var n=0;n<maxSO;n++)totalOrders+=Math.pow(amtMult,n);
-  var unitAmt=Math.max(10,Math.floor(budget/totalOrders/10)*10);
+  while(maxSO>0 && totalOrders*0.01>budget){
+    maxSO--;
+    totalOrders=1;
+    for(var n2=0;n2<maxSO;n2++)totalOrders+=Math.pow(amtMult,n2);
+  }
+  var rawAmt=budget/totalOrders;
+  var unitAmt;
+  /* Her dal rawAmt'yi AŞAĞI yuvarlar (yukarı asla değil) — böylece
+     unitAmt*totalOrders bütçeyi hiçbir totalOrders büyüklüğünde aşamaz. */
+  if(rawAmt>=10)unitAmt=Math.floor(rawAmt/10)*10;
+  else if(rawAmt>=1)unitAmt=Math.floor(rawAmt);
+  else if(rawAmt>=0.01)unitAmt=Math.floor(rawAmt*100)/100;
+  else unitAmt=rawAmt;
 
   /* Sadece sermaye + reinvest/TTP/kâr modu bayrakları Ayarlar'dan;
      maxSO/adım/çarpan/TP tamamen serbest (yukarıdaki aralıklardan) */
