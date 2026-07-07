@@ -1153,6 +1153,7 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
 
   /* 1. IDB'den yükle; boşsa Drive'dan lazy-load */
   try{cached=await cGet(key);}catch(e){}
+  var hadCache=cached.length>0;   // zaten veri varsa asagida 2022'ye kadar otomatik backfill tetiklenmesin
 
   /* 2. Yineleme önleme seti */
   var tsSet=new Set();
@@ -1174,9 +1175,12 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
     }catch(e){}
   }
 
-  /* 4. Mum Çek: geriye TÜM geçmişi tek basışta çek, her 30000 mumda IDB'ye kaydet */
+  /* 4. Mum Çek: geriye TÜM geçmişi tek basışta çek, her 30000 mumda IDB'ye kaydet.
+     SADECE önbellek tamamen boşsa (ilk çekim) — zaten veri varsa (ör. manuel
+     içe aktarılmış geçmiş) her basışta 2022'ye kadar gereksiz backfill
+     tetiklenmesin, sadece yeni mumlar (adım 3) çekilsin. */
   var histAdded=0;
-  if(histFetch){
+  if(histFetch&&!hadCache){
     var oldestTs=cached.length>0?cached[0].ts:Date.now();
     if(oldestTs>HISTORY_START_TS){
       var CHUNK=30000;
@@ -1228,10 +1232,12 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
 
   /* 7. Durum mesajı */
   var histDone=cached[0].ts<=HISTORY_START_TS;
-  if(histFetch){
+  if(histFetch&&!hadCache){
     _cacheStatus=histDone
       ?"✅ 2022-01-01'den bugüne tamam · "+cached.length.toLocaleString()+" mum"+(newCnt?" (+"+newCnt+" yeni)":"")
       :"📡 "+histAdded.toLocaleString()+" mum eklendi · toplam "+cached.length.toLocaleString()+(newCnt?" (+"+newCnt+" yeni)":"");
+  }else if(histFetch){
+    _cacheStatus=newCnt?"💾 Önbellek + "+newCnt+" yeni mum · toplam "+cached.length.toLocaleString():"💾 Önbellekten · "+cached.length.toLocaleString()+" mum (güncel)";
   }else{
     _cacheStatus=newCnt?"💾 Önbellek + "+newCnt+" yeni mum":"💾 Önbellekten · "+cached.length.toLocaleString()+" mum";
   }
