@@ -2371,6 +2371,12 @@ var OPT_PROFILES=[
     ranges:{maxSO:[4,12], priceStep:[1.0,5.0], stepMult:[1.0,1.7], amtMult:[1.0,1.7], tpPct:[0.5,3.5]}},
   {id:"uzun",label:"🏔️ Uzun Vade", color:"var(--purple)",
     ranges:{maxSO:[8,20], priceStep:[2.0,10.0],stepMult:[1.0,2.0], amtMult:[1.0,2.5], tpPct:[1.0,6.0]}},
+  {id:"sik",label:"🎯 Sık İşlem", color:"var(--yellow)",
+    /* Az SO, kucuk fiyat adimi, kucuk TP -> sik sik acilip kapanan cok sayida
+       kucuk islem. Dusuk volatiliteli varliklarda (ör. XAUT/altin) daha uygun;
+       az SO = az "tampon" oldugundan sert bir trend dususunde pozisyon uzun
+       sure acik kalabilir, riski buna gore degerlendir. */
+    ranges:{maxSO:[1,4],  priceStep:[0.2,1.0], stepMult:[1.0,1.3], amtMult:[1.0,1.3], tpPct:[0.2,1.0]}},
 ];
 
 function _rnd(min,max,dec){
@@ -2556,7 +2562,7 @@ async function runOptimizer(){
     allProfileResults.forEach(function(pr){
       resultsEl.innerHTML+=_renderOptProfile(pr.profile,pr.best);
     });
-    statusEl.textContent="✅ Tarama tamamlandı · "+SAMPLES+" × 3 profil = "+(SAMPLES*3)+" kombinasyon · Tarih: "+(prices[0].date||"")+" – "+(prices[prices.length-1].date||"");
+    statusEl.textContent="✅ Tarama tamamlandı · "+SAMPLES+" × "+OPT_PROFILES.length+" profil = "+(SAMPLES*OPT_PROFILES.length)+" kombinasyon · Tarih: "+(prices[0].date||"")+" – "+(prices[prices.length-1].date||"");
 
   }catch(e){
     statusEl.textContent="⚠ "+e.message;
