@@ -596,7 +596,7 @@ var COINS = [
   {id:"hyperliquid",sym:"HYPE",   e:"", src:"bybit"},
   {id:"avalanche-2",sym:"AVAX",   e:"", src:"bybit"},
   {id:"mantle",     sym:"MNT",    e:"", src:"bybit"},
-  {id:"tether-gold",sym:"XAUT",   e:"", src:"bybit"},
+  {id:"tether-gold",sym:"XAUT",   e:"", src:"okx"},
   {id:"pax-gold",   sym:"PAXG",   e:"", src:"bybit"},
   {id:"tslax",      sym:"TSLAX",  e:"", src:"bybit"},
   {id:"nvdax",      sym:"NVDAX",  e:"", src:"bybit"},
@@ -1153,7 +1153,11 @@ async function fetchOKXCandles(coinId,okxBar,histFetch){
 
   /* 1. IDB'den yükle; boşsa Drive'dan lazy-load */
   try{cached=await cGet(key);}catch(e){}
-  var hadCache=cached.length>0;   // zaten veri varsa asagida 2022'ye kadar otomatik backfill tetiklenmesin
+  /* Onbellek "yeterince dolu" sayilirsa (>=30 gunluk 1dk mum) backfill atlanir —
+     az veri varsa (ör. borsada yeni listelenmis coin, ilk deneme yarim kaldi)
+     her basista tekrar denenir; borsada gercekten daha eskisi yoksa istek zaten
+     ilk sayfada <200 sonuc donup aninda biter, yavaslamaz. */
+  var hadCache=cached.length>=43200;
 
   /* 2. Yineleme önleme seti */
   var tsSet=new Set();
