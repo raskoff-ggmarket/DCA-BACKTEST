@@ -247,7 +247,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <img src="android-chrome-192x192.png" alt="logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover">
     <div>
       <div class="hdr-t">Backtest</div>
-      <div class="hdr-s">DCA PARAMETRELERİ · <span id="appVer" data-build="50" style="color:var(--accent)">build 50</span></div>
+      <div class="hdr-s">DCA PARAMETRELERİ · <span id="appVer" data-build="49" style="color:var(--accent)">build 49</span></div>
     </div>
   </div>
   <div class="hdr-badge" id="hdrBadge">₿ BTC · 1Y</div>
@@ -2412,12 +2412,6 @@ var OPT_PROFILES=[
     ranges:{maxSO:[4,12], priceStep:[1.0,5.0], stepMult:[1.0,1.7], amtMult:[1.0,1.7], tpPct:[0.5,3.5]}},
   {id:"uzun",label:"🏔️ Uzun Vade", color:"var(--purple)",
     ranges:{maxSO:[8,20], priceStep:[2.0,10.0],stepMult:[1.0,2.0], amtMult:[1.0,2.5], tpPct:[1.0,6.0]}},
-  {id:"sik",label:"🎯 Sık İşlem", color:"var(--yellow)",
-    /* Az SO, kucuk fiyat adimi, kucuk TP -> sik sik acilip kapanan cok sayida
-       kucuk islem. Dusuk volatiliteli varliklarda (ör. XAUT/altin) daha uygun;
-       az SO = az "tampon" oldugundan sert bir trend dususunde pozisyon uzun
-       sure acik kalabilir, riski buna gore degerlendir. */
-    ranges:{maxSO:[1,4],  priceStep:[0.2,1.0], stepMult:[1.0,1.3], amtMult:[1.0,1.3], tpPct:[0.2,1.0]}},
 ];
 
 function _rnd(min,max,dec){
@@ -2506,25 +2500,12 @@ function backtestWithParams(prices,rsiArr,params){
 
 function _optScore(stats){
   /* Sadece anlamlı istatistik için minimum döngü şartı sert eleme.
-     Risk (drawdown, float) artık ELEME değil CEZA — böylece volatil
-     coinlerde (XRP, SOL vb.) "geçerli sonuç bulunamadı" olmaz; en az
-     riskli/en dengeli kombinasyon her zaman bulunur. */
+     Sıralama artık karmaşık bir "skor" formülüyle değil, doğrudan
+     TOPLAM PNL (gerçekleşen + açık pozisyon) büyüklüğüne göre yapılır:
+     en yüksek PNL veren kombinasyon seçilir, düşük PNL'li (görünüşte
+     "dengeli" ama az kazandıran) kombinasyonlar önerilmez. */
   if(!stats||stats.completedCycles<5)return -Infinity;
-
-  var floatRatio=stats.investedAmt>0?stats.unrealizedPnL/stats.investedAmt:0;
-  var apr=stats.arbitrageAPR||0;
-  var dd=Math.max(1,stats.maxDrawdown);
-  /* Calmar oranı: risk başına getiri (APR/MaxDD) — dengeli ana skor */
-  var calmar=apr/dd;
-  /* Win rate bonusu: %60 üzeri her puan için 0.3 bonus */
-  var wrBonus=Math.max(0,stats.winRate-60)*0.3;
-  /* Döngü bonusu: istikrar ödülü, logaritmik tavan (max 10) */
-  var cycleBonus=Math.min(10,Math.log(stats.completedCycles)*2);
-  /* Float cezası: negatif açık pozisyon oranı kadar */
-  var floatPenalty=floatRatio<0?Math.abs(floatRatio)*20:0;
-  /* Ekstra DD cezası: %60 üzeri her puan için ağır ceza (eleme değil) */
-  var ddPenalty=dd>60?(dd-60)*2:0;
-  return calmar*10+wrBonus+cycleBonus-floatPenalty-ddPenalty;
+  return stats.totalPnL;
 }
 
 async function loadOptDateRange(){
@@ -2644,7 +2625,7 @@ function _renderOptProfile(profile,best){
   html+='<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--text3);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">';
   html+='<span>'+cyc+' döngü</span>';
   html+='<span>🛡 Kapsama <span style="color:'+covColor+';font-weight:700">%'+covTotal.toFixed(1)+'</span></span>';
-  html+='<span>Skor <span style="color:var(--text)">'+best.score.toFixed(1)+'</span></span>';
+  html+='<span>PNL <span style="color:'+(best.score>=0?"var(--green)":"var(--red)")+';font-weight:700">'+(best.score>=0?"+":"")+fu(best.score)+'</span></span>';
   html+='</div>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px;font-size:11px;margin-bottom:10px">';
   html+='<div style="color:var(--text3)">BO <span style="color:var(--text);font-weight:700">$'+p.initAmt+'</span></div>';
