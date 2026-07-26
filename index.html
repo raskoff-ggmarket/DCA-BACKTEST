@@ -247,7 +247,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <img src="android-chrome-192x192.png" alt="logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover">
     <div>
       <div class="hdr-t">Backtest</div>
-      <div class="hdr-s">DCA PARAMETRELERİ · <span id="appVer" data-build="51" style="color:var(--accent)">build 51</span></div>
+      <div class="hdr-s">DCA PARAMETRELERİ · <span id="appVer" data-build="50" style="color:var(--accent)">build 50</span></div>
     </div>
   </div>
   <div class="hdr-badge" id="hdrBadge">₿ BTC · 1Y</div>
@@ -485,7 +485,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div id="optPanel" class="hidden">
   <div style="padding:14px">
     <div style="background:rgba(0,153,255,.06);border:1px solid rgba(0,153,255,.25);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--text3);line-height:1.5">
-      ⚙️ Sadece <b>sermaye</b> (ve reinvest/TTP/trend filtresi/stop loss/komisyon/coin/tarih) Ayarlar sayfasından alınır. <b>maxSO / adım / çarpan / TP / kaldıraç tamamen serbest</b> aralıklarda taranır — Ayarlar'daki mevcut değerlere bağlı kalmaz.
+      ⚙️ Sadece <b>sermaye</b> (ve reinvest/TTP/trend filtresi/stop loss/komisyon/coin/tarih/<b>kaldıraç</b>) Ayarlar sayfasından alınır. <b>maxSO / adım / çarpan / TP tamamen serbest</b> aralıklarda taranır — Ayarlar'daki mevcut değerlere bağlı kalmaz.
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
       <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BAŞLANGIÇ SERMAYESİ (Ayarlar'dan)</div>
@@ -2456,11 +2456,11 @@ function setOptProfitMode(mode){
    okunur; kombinasyonlar sabit, geniş aralıklarda tamamen serbest taranır. */
 var OPT_PROFILES=[
   {id:"kisa",label:"⚡ Kısa Vade", color:"var(--accent2)",
-    ranges:{maxSO:[2,6],  priceStep:[0.2,2.5], stepMult:[1.0,1.4], amtMult:[1.0,1.4], tpPct:[0.2,2.0], leverage:[1,5]}},
+    ranges:{maxSO:[2,6],  priceStep:[0.2,2.5], stepMult:[1.0,1.4], amtMult:[1.0,1.4], tpPct:[0.2,2.0]}},
   {id:"orta",label:"⚖️ Orta Vade", color:"var(--accent)",
-    ranges:{maxSO:[4,12], priceStep:[1.0,5.0], stepMult:[1.0,1.7], amtMult:[1.0,1.7], tpPct:[0.5,3.5], leverage:[1,3]}},
+    ranges:{maxSO:[4,12], priceStep:[1.0,5.0], stepMult:[1.0,1.7], amtMult:[1.0,1.7], tpPct:[0.5,3.5]}},
   {id:"uzun",label:"🏔️ Uzun Vade", color:"var(--purple)",
-    ranges:{maxSO:[8,20], priceStep:[2.0,10.0],stepMult:[1.0,2.0], amtMult:[1.0,2.5], tpPct:[1.0,6.0], leverage:[1,2]}},
+    ranges:{maxSO:[8,20], priceStep:[2.0,10.0],stepMult:[1.0,2.0], amtMult:[1.0,2.5], tpPct:[1.0,6.0]}},
 ];
 
 function _rnd(min,max,dec){
@@ -2498,7 +2498,7 @@ function _sampleParams(profile,capital){
     maxSO--;
   }
   var ttpPct=S.ttpEnabled?_rnd(0.1,3.0,1):(S.ttpPct||0.5);
-  var leverage=r.leverage?Math.max(1,Math.round(_rnd(r.leverage[0],r.leverage[1]))):1;
+  var leverage=S.leverage||1;  // kaldıraç Ayarlar'dan sabit alınır, taranmaz
 
   /* initAmt + safeAmt: sermayeye sığacak şekilde.
      ÖNEMLİ: sabit $10 taban kaldırıldı — yüksek maxSO + yüksek
@@ -2526,7 +2526,7 @@ function _sampleParams(profile,capital){
   else unitAmt=rawAmt;
 
   /* Sadece sermaye + reinvest/TTP/kâr modu bayrakları Ayarlar'dan;
-     maxSO/adım/çarpan/TP/kaldıraç tamamen serbest (yukarıdaki aralıklardan) */
+     maxSO/adım/çarpan/TP tamamen serbest (yukarıdaki aralıklardan); kaldıraç Ayarlar'dan sabit */
   return{
     startCapital:capital,
     initAmt:unitAmt,safeAmt:unitAmt,
@@ -2706,7 +2706,7 @@ function applyOptParams(profileId){
   if(!pr||!pr.best)return;
   var p=pr.best.params;
   var keys=["startCapital","initAmt","safeAmt","priceStep","stepMult","amtMult",
-            "maxSO","tpPct","leverage","reinvest","reinvestPct","ttpEnabled","ttpPct","cond","profitMode"];
+            "maxSO","tpPct","reinvest","reinvestPct","ttpEnabled","ttpPct","cond","profitMode"];
   keys.forEach(function(k){if(p[k]!==undefined)S[k]=p[k];});
   saveState();
   /* Rebuild UI steppers */
