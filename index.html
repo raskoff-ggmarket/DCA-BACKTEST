@@ -322,6 +322,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="row" id="row-amtMult"><div><div class="rl">Güvenlik emri katsayısı ×</div><div class="rs">Her güvenlik emrinde miktar büyütme oranı</div></div></div>
     <div class="row" id="row-maxSO"><div><div class="rl">Maks güvenlik emri</div><div class="rs">Döngü başına açılabilecek maks emir sayısı</div></div></div>
     <div class="row" id="row-tpPct"><div><div class="rl">Döngü kârı (%)</div><div class="rs">Ortalama maliyetten TP tetikleme oranı</div></div></div>
+    <div class="row" id="row-leverage"><div><div class="rl">Kaldıraç (x)</div><div class="rs">1x = spot. &gt;1x marjin/pozisyon büyütür, likidasyon riski oluşturur</div></div></div>
   </div>
 
   <!-- Reinvest + TTP -->
@@ -484,7 +485,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div id="optPanel" class="hidden">
   <div style="padding:14px">
     <div style="background:rgba(0,153,255,.06);border:1px solid rgba(0,153,255,.25);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--text3);line-height:1.5">
-      ⚙️ Sadece <b>sermaye</b> (ve reinvest/TTP/trend filtresi/stop loss/komisyon/coin/tarih) Ayarlar sayfasından alınır. <b>maxSO / adım / çarpan / TP tamamen serbest</b> aralıklarda taranır — Ayarlar'daki mevcut değerlere bağlı kalmaz.
+      ⚙️ Sadece <b>sermaye</b> (ve reinvest/TTP/trend filtresi/stop loss/komisyon/coin/tarih) Ayarlar sayfasından alınır. <b>maxSO / adım / çarpan / TP / kaldıraç tamamen serbest</b> aralıklarda taranır — Ayarlar'daki mevcut değerlere bağlı kalmaz.
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
       <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BAŞLANGIÇ SERMAYESİ (Ayarlar'dan)</div>
@@ -633,7 +634,7 @@ var DEFAULTS = {
   coin:"bitcoin", days:365,
   startCapital:10000, initAmt:100, safeAmt:100,
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
-  maxSO:10, tpPct:1.5,
+  maxSO:10, tpPct:1.5, leverage:1,
   reinvest:false, reinvestPct:100, ttpEnabled:false, ttpPct:0.5,
   makerFee:0.1, takerFee:0.1, slMode:"off", slPct:15,
   entryMaMode:"off", entryMaLen:200, soMaMode:"off", soMaLen:50,
@@ -671,6 +672,7 @@ var STEPPERS = [
   {k:"amtMult",     step:0.1, min:1,          dec:2},
   {k:"maxSO",       step:1,   min:1, max:100, dec:0},
   {k:"tpPct",       step:0.1, min:0.1,        dec:2},
+  {k:"leverage",    step:1,   min:1, max:50,  dec:0},
   {k:"ttpPct",      step:0.1, min:0.1,        dec:2},
   {k:"reinvestPct", step:5,   min:1, max:100,  dec:0},
   {k:"makerFee",    step:0.01,min:0, max:5,    dec:3},
@@ -1451,9 +1453,17 @@ function backtest(prices, rsiArr){
   var isBase=S.profitMode==="base";
   var makerRate=(S.makerFee!=null?S.makerFee:0.1)/100;  // limit: safety order + TP
   var takerRate=(S.takerFee!=null?S.takerFee:0.1)/100;  // market: base order + TTP + SL
+  var lev=S.leverage||1;   // kaldıraç: >1 pozisyon büyüklüğünü (totalCost/totalQty) büyütür, cash sadece marjin kadar düşer
+  var liqLossQuote=0;      // base kâr modunda likidasyonla kaybedilen marjin (quote cinsinden)
 
   var dynInitAmt=S.initAmt;
   var dynSafeAmt=S.safeAmt;
+
+  function updateLiqPrice(d){
+    if(lev<=1){d.liqPrice=0;return;}
+    // Marjin tamamen eriyince likidasyon: totalQty*price - totalCost = -(totalCost/lev)
+    d.liqPrice=Math.max(0, d.totalCost*(lev-1)/lev/d.totalQty);
+  }
 
   var slMode=S.slMode||"off";
   var slOn=slMode!=="off";
@@ -1500,16 +1510,31 @@ function backtest(prices, rsiArr){
   }
 
   function closeDealAt(price,date,why){
+    if(why==="LIQ"){
+      // Kaldıraçlı likidasyon: kilitli marjin tamamen kaybedilir, geri dönüş yok
+      var marginLost=deal.totalCost/lev;
+      var profitLiq=-marginLost;
+      if(isBase)liqLossQuote+=marginLost;
+      deals.push(Object.assign({},deal,{
+        endDate:date,exitPrice:price,
+        profit:profitLiq,profitPct:-100,
+        baseProfit:0,why:"LIQ"
+      }));
+      inDeal=false;deal=null;cdLeft=0;
+      if(S.cond==="rsi")waitRSI=true;
+      return;
+    }
     var sellRate=(why==="TP")?makerRate:takerRate;  // TP limit(maker), TTP/SL market(taker)
     var profit, bProfit=0;
+    var marginBack=deal.totalCost/lev;  // kaldıraçta geri dönen sadece kilitlenen marjin
     if(isBase){
       bProfit=deal.totalQty*(1-sellRate)-deal.totalCost/price;
       profit=bProfit*price;
-      cash+=deal.totalCost;
+      cash+=marginBack;
       accumBase+=bProfit;
     } else {
       profit=deal.totalQty*price*(1-sellRate)-deal.totalCost;
-      cash+=deal.totalCost+profit;
+      cash+=marginBack+profit;
       applyReinvest(profit);
     }
     deals.push(Object.assign({},deal,{
@@ -1523,7 +1548,10 @@ function backtest(prices, rsiArr){
 
   function eqVal(price){
     var bv=isBase?accumBase*price:0;
-    if(inDeal){return bv+cash+deal.totalQty*price;}
+    if(inDeal){
+      var marginNow=deal.totalCost/lev;
+      return bv+cash+marginNow+(deal.totalQty*price-deal.totalCost);
+    }
     return bv+cash;
   }
 
@@ -1559,15 +1587,22 @@ function backtest(prices, rsiArr){
         so.push({price:price*(1-cumPctF/100),amt:dynSafeAmt*Math.pow(S.amtMult,n),filled:false});
         stepNow*=S.stepMult;
       }
+      var notional0=dynInitAmt*lev, qty0=notional0*(1-takerRate)/price;
       deal={startDate:date,initPrice:price,
-            orders:[{date:date,price:price,size:dynInitAmt,qty:dynInitAmt*(1-takerRate)/price}],
-            totalCost:dynInitAmt,totalQty:dynInitAmt*(1-takerRate)/price,
+            orders:[{date:date,price:price,size:dynInitAmt,qty:qty0}],
+            totalCost:notional0,totalQty:qty0,
             avgCost:price,safetyCount:0,so:so,
             ttpActive:false,ttpPeak:0,
             snapshotInitAmt:dynInitAmt,snapshotSafeAmt:dynSafeAmt};
+      updateLiqPrice(deal);
       inDeal=true;
 
     } else {
+      // Kaldıraçlı likidasyon kontrolü: marjin tükendiyse pozisyon zorla kapanır (TP/SO'dan önce)
+      if(lev>1&&deal.liqPrice>0&&lo<=deal.liqPrice){
+        closeDealAt(deal.liqPrice,date,"LIQ");
+        equity.push({date:date,value:eqVal(price),price:price});continue;
+      }
       var tpPrice=deal.avgCost*(1+S.tpPct/100);
 
       // TP/TTP limit emirdir → mumun HIGH'ı hedefe değince dolar
@@ -1594,10 +1629,12 @@ function backtest(prices, rsiArr){
         if(!lv.filled&&lo<=lv.price&&_soOk(i,lv.price)){
           if(cash<lv.amt)break;
           cash-=lv.amt;
-          deal.orders.push({date:date,price:lv.price,size:lv.amt,qty:lv.amt*(1-makerRate)/lv.price});
-          deal.totalCost+=lv.amt;deal.totalQty+=lv.amt*(1-makerRate)/lv.price;
+          var notionalSO=lv.amt*lev, qtySO=notionalSO*(1-makerRate)/lv.price;
+          deal.orders.push({date:date,price:lv.price,size:lv.amt,qty:qtySO});
+          deal.totalCost+=notionalSO;deal.totalQty+=qtySO;
           deal.avgCost=deal.totalCost/deal.totalQty;
           deal.safetyCount++;lv.filled=true;
+          updateLiqPrice(deal);
         }
       }
     }
@@ -1630,7 +1667,7 @@ function backtest(prices, rsiArr){
       baseProfit:0,why:"OPEN"
     });
     deals.push(openDeal);
-    cash+=deal.totalQty*lp;
+    cash+=deal.totalCost/lev+unrealProfit;
   }
 
   var peak=-Infinity,maxDD=0;
@@ -1644,10 +1681,10 @@ function backtest(prices, rsiArr){
   var firstTs=prices[0].ts||0,lastTs=prices[prices.length-1].ts||0;
   var daysEl=lastTs&&firstTs?(lastTs-firstTs)/86400000:S.days;
 
-  var closedDeals=deals.filter(function(d){return d.why==="TP"||d.why==="TTP"||d.why==="SL";});
+  var closedDeals=deals.filter(function(d){return d.why==="TP"||d.why==="TTP"||d.why==="SL"||d.why==="LIQ";});
   var realizedPnL,unrealizedPnL;
   if(isBase){
-    realizedPnL=accumBase*lastPrice;
+    realizedPnL=accumBase*lastPrice-liqLossQuote;
     unrealizedPnL=openDeal?openDeal.profit:0;
   } else {
     realizedPnL=closedDeals.reduce(function(a,d){return a+d.profit;},0);
@@ -1899,6 +1936,13 @@ function render(res, source, mumCnt, dateFrom, dateTo){
     halfCard("Win Rate",fp(stats.winRate),stats.winRate>=50?"var(--green)":"var(--red)")+
     halfCard("Kayıp Döngü",stats.losses,"var(--red)");
 
+  var liqCount=deals.filter(function(d){return d.why==="LIQ";}).length;
+  if((S.leverage||1)>1||liqCount>0){
+    sg.innerHTML+=
+      halfCard("Kaldıraç",(S.leverage||1)+"x",(S.leverage||1)>1?"var(--red)":"var(--text)")+
+      halfCard("💥 Likidasyon",liqCount,liqCount>0?"var(--red)":"var(--text2)");
+  }
+
   if(!isBase&&S.reinvest&&stats.finalInitAmt!==S.initAmt){
     sg.innerHTML+=fullRow(
       "Reinvest — Son Order Büyüklükleri",
@@ -1933,8 +1977,9 @@ function render(res, source, mumCnt, dateFrom, dateTo){
   var dl=document.getElementById("dealL"); dl.innerHTML="";
   deals.forEach(function(d,i){
     var isOpen=d.why==="OPEN";
+    var isLiq=d.why==="LIQ";
     var pc2=d.profit>=0?"var(--green)":"var(--red)";
-    var bc=isOpen?"rgba(251,191,36,.2)":d.profit>=0?"rgba(0,212,170,.18)":"rgba(255,79,109,.18)";
+    var bc=isOpen?"rgba(251,191,36,.2)":isLiq?"rgba(255,79,109,.4)":d.profit>=0?"rgba(0,212,170,.18)":"rgba(255,79,109,.18)";
     var baseLbl=isBase&&d.baseProfit>0?' <span style="color:var(--accent);font-size:10px;font-weight:700">+'+f(d.baseProfit,5)+' '+coin.sym+'</span>':"";
     dl.innerHTML+=
       '<div class="dc" style="border-color:'+bc+';animation-delay:'+Math.min(i*.02,.3)+'s">'+
@@ -1943,6 +1988,7 @@ function render(res, source, mumCnt, dateFrom, dateTo){
       '<div class="dm">#'+(i+1)+' '+d.startDate+' → '+d.endDate+
         (isOpen?' <span style="color:var(--yellow);font-size:10px">⏳ AÇIK</span>':"")+
         (d.why==="TTP"?' <span style="color:var(--purple);font-size:10px">🎯 TTP</span>':"")+
+        (isLiq?' <span style="color:var(--red);font-size:10px;font-weight:700">💥 LİKİDASYON</span>':"")+
         baseLbl+
       '</div>'+
       '<div class="dsub">Safety: <span style="color:var(--yellow);font-weight:700">'+d.safetyCount+"/"+S.maxSO+'</span>'+
@@ -1993,6 +2039,7 @@ function saveSettings(){
     "Stop Loss       : "+(S.slMode==="sma50"?"50 SMA (gün kapanışı)":S.slMode==="sma200"?"200 SMA (gün kapanışı)":S.slMode==="pct"?"%"+(S.slPct||15)+" Zarar":"Hayır"),
     "Maker Kom.      : %"+S.makerFee,
     "Taker Kom.      : %"+S.takerFee,
+    "Kaldıraç        : "+(S.leverage||1)+"x",
   ];
   var txt=lines.join("\n");
   navigator.clipboard.writeText(txt)
@@ -2020,6 +2067,7 @@ function copyResults(){
     "Max Drawdown : -%"+s.maxDrawdown.toFixed(2),
     "Win Rate     : %"+s.winRate.toFixed(1),
     "Döngüler     : "+s.completedCycles,
+    "Likidasyon   : "+r.res.deals.filter(function(d){return d.why==="LIQ";}).length,
     "",
     "─── Parametreler ───",
     "Sermaye      : $"+S.startCapital,
@@ -2030,6 +2078,7 @@ function copyResults(){
     "Miktar Çarp. : ×"+S.amtMult,
     "Max SO       : "+S.maxSO,
     "TP           : %"+S.tpPct,
+    "Kaldıraç     : "+(S.leverage||1)+"x",
     "Maker Kom.   : %"+S.makerFee+" · Taker: %"+S.takerFee,
   ];
   navigator.clipboard.writeText(lines.join("\n"))
@@ -2407,11 +2456,11 @@ function setOptProfitMode(mode){
    okunur; kombinasyonlar sabit, geniş aralıklarda tamamen serbest taranır. */
 var OPT_PROFILES=[
   {id:"kisa",label:"⚡ Kısa Vade", color:"var(--accent2)",
-    ranges:{maxSO:[2,6],  priceStep:[0.2,2.5], stepMult:[1.0,1.4], amtMult:[1.0,1.4], tpPct:[0.2,2.0]}},
+    ranges:{maxSO:[2,6],  priceStep:[0.2,2.5], stepMult:[1.0,1.4], amtMult:[1.0,1.4], tpPct:[0.2,2.0], leverage:[1,5]}},
   {id:"orta",label:"⚖️ Orta Vade", color:"var(--accent)",
-    ranges:{maxSO:[4,12], priceStep:[1.0,5.0], stepMult:[1.0,1.7], amtMult:[1.0,1.7], tpPct:[0.5,3.5]}},
+    ranges:{maxSO:[4,12], priceStep:[1.0,5.0], stepMult:[1.0,1.7], amtMult:[1.0,1.7], tpPct:[0.5,3.5], leverage:[1,3]}},
   {id:"uzun",label:"🏔️ Uzun Vade", color:"var(--purple)",
-    ranges:{maxSO:[8,20], priceStep:[2.0,10.0],stepMult:[1.0,2.0], amtMult:[1.0,2.5], tpPct:[1.0,6.0]}},
+    ranges:{maxSO:[8,20], priceStep:[2.0,10.0],stepMult:[1.0,2.0], amtMult:[1.0,2.5], tpPct:[1.0,6.0], leverage:[1,2]}},
 ];
 
 function _rnd(min,max,dec){
@@ -2449,6 +2498,7 @@ function _sampleParams(profile,capital){
     maxSO--;
   }
   var ttpPct=S.ttpEnabled?_rnd(0.1,3.0,1):(S.ttpPct||0.5);
+  var leverage=r.leverage?Math.max(1,Math.round(_rnd(r.leverage[0],r.leverage[1]))):1;
 
   /* initAmt + safeAmt: sermayeye sığacak şekilde.
      ÖNEMLİ: sabit $10 taban kaldırıldı — yüksek maxSO + yüksek
@@ -2476,12 +2526,12 @@ function _sampleParams(profile,capital){
   else unitAmt=rawAmt;
 
   /* Sadece sermaye + reinvest/TTP/kâr modu bayrakları Ayarlar'dan;
-     maxSO/adım/çarpan/TP tamamen serbest (yukarıdaki aralıklardan) */
+     maxSO/adım/çarpan/TP/kaldıraç tamamen serbest (yukarıdaki aralıklardan) */
   return{
     startCapital:capital,
     initAmt:unitAmt,safeAmt:unitAmt,
     priceStep:priceStep,stepMult:stepMult,amtMult:amtMult,
-    maxSO:maxSO,tpPct:tpPct,
+    maxSO:maxSO,tpPct:tpPct,leverage:leverage,
     reinvest:!!S.reinvest,reinvestPct:S.reinvestPct||100,
     ttpEnabled:!!S.ttpEnabled,ttpPct:ttpPct,
     cond:"instant",profitMode:S.profitMode||"quote"
@@ -2635,6 +2685,7 @@ function _renderOptProfile(profile,best){
   html+='<div style="color:var(--text3)">SM <span style="color:var(--text);font-weight:700">×'+p.stepMult+'</span></div>';
   html+='<div style="color:var(--text3)">AM <span style="color:var(--text);font-weight:700">×'+p.amtMult+'</span></div>';
   html+='<div style="color:var(--text3)">TP <span style="color:var(--text);font-weight:700">%'+p.tpPct+'</span></div>';
+  html+='<div style="color:var(--text3)">Kaldıraç <span style="color:'+((p.leverage||1)>1?"var(--red)":"var(--text)")+';font-weight:700">'+(p.leverage||1)+'x</span></div>';
   if(p.reinvest)html+='<div style="color:var(--text3)">Reinv <span style="color:var(--accent);font-weight:700">%'+p.reinvestPct+'</span></div>';
   if(p.ttpEnabled)html+='<div style="color:var(--text3)">TTP <span style="color:var(--yellow);font-weight:700">%'+p.ttpPct+'</span></div>';
   if(S.entryMaMode&&S.entryMaMode!=="off"){var _eml=(ENTRY_MA_MODES.find(function(m){return m.v===S.entryMaMode;})||{}).l||"MA";html+='<div style="color:var(--text3)">GirişMA <span style="color:var(--purple);font-weight:700">'+_eml+'</span></div>';}
@@ -2655,7 +2706,7 @@ function applyOptParams(profileId){
   if(!pr||!pr.best)return;
   var p=pr.best.params;
   var keys=["startCapital","initAmt","safeAmt","priceStep","stepMult","amtMult",
-            "maxSO","tpPct","reinvest","reinvestPct","ttpEnabled","ttpPct","cond","profitMode"];
+            "maxSO","tpPct","leverage","reinvest","reinvestPct","ttpEnabled","ttpPct","cond","profitMode"];
   keys.forEach(function(k){if(p[k]!==undefined)S[k]=p[k];});
   saveState();
   /* Rebuild UI steppers */
@@ -2677,7 +2728,7 @@ function applyOptParams(profileId){
 ═══════════════════════════════ */
 var SETTINGS_KEYS=["coin","startCapital","initAmt","safeAmt","maxSO","priceStep",
   "stepMult","amtMult","tpPct","ttpEnabled","ttpPct","reinvest","reinvestPct",
-  "makerFee","takerFee","profitMode","cond","dateFrom","dateTo","entryMaMode","entryMaLen","soMaMode","soMaLen","slMode","slPct"];
+  "makerFee","takerFee","profitMode","cond","dateFrom","dateTo","entryMaMode","entryMaLen","soMaMode","soMaLen","slMode","slPct","leverage"];
 
 function _applySettingsObj(obj){
   var applied=0;
@@ -2721,6 +2772,7 @@ function parseSettingsText(txt){
   if((v=num(/Ad[ıi]?m\s*[ÇC]arpan[^:\n]*:\s*[×x]?\s*([\d.]+)/i))!==undefined)o.stepMult=v;
   if((v=num(/Miktar\s*[ÇC]arpan[^:\n]*:\s*[×x]?\s*([\d.]+)/i))!==undefined)o.amtMult=v;
   if((v=num(/K[âa]r\s*Oran[^:\n]*:\s*%?\s*([\d.]+)/i))!==undefined)o.tpPct=v;
+  if((v=num(/Kald[ıi]?ra[çc][^:\n]*:\s*([\d.]+)\s*x?/i))!==undefined)o.leverage=Math.max(1,Math.round(v));
   var mk=num(/Maker[^:\n]*:\s*%?\s*([\d.]+)/i); if(mk!==undefined)o.makerFee=mk;
   var tk=num(/Taker[^:\n]*:\s*%?\s*([\d.]+)/i); if(tk!==undefined)o.takerFee=tk;
   var kom=num(/Komisyon[^:\n]*:\s*%?\s*([\d.]+)/i); if(kom!==undefined){if(o.makerFee===undefined)o.makerFee=kom;if(o.takerFee===undefined)o.takerFee=kom;}
