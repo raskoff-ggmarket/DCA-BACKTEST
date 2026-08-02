@@ -247,7 +247,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <img src="android-chrome-192x192.png" alt="logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover">
     <div>
       <div class="hdr-t">Backtest</div>
-      <div class="hdr-s">DCA PARAMETRELERİ · <span id="appVer" data-build="51" style="color:var(--accent)">build 51</span></div>
+      <div class="hdr-s">DCA PARAMETRELERİ · <span id="appVer" data-build="50" style="color:var(--accent)">build 50</span></div>
     </div>
   </div>
   <div class="hdr-badge" id="hdrBadge">₿ BTC · 1Y</div>
@@ -263,6 +263,15 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <!-- ══ SETTINGS ══ -->
 <div id="sPanel">
 
+  <div class="card" style="border-color:rgba(0,153,255,.25)">
+    <div class="card-head">🤖 Bot Tipi</div>
+    <div style="display:flex;gap:8px;padding:12px 14px">
+      <button class="mode-btn" id="botTypeDca" style="padding:12px 0" onclick="setBotType('dca')">🌊<br>DCA Bot</button>
+      <button class="mode-btn" id="botTypeGrid" style="padding:12px 0" onclick="setBotType('grid')">🔲<br>Grid Bot</button>
+    </div>
+  </div>
+
+  <div id="dcaOnlyCards">
   <div class="card">
     <div class="card-head">⚡ Parametre Yapıştır</div>
     <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
@@ -438,6 +447,49 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 ⚠ Seans başına 30.000 mum döndürülür (~20 gün). Her çalıştırmada yeni mumlar eklenir, zamanla tam geçmiş birikir.
     </div>
   </div>
+  </div><!-- /dcaOnlyCards -->
+
+  <!-- ══ GRID BOT AYARLARI ══ -->
+  <div id="gridOnlyCards" class="hidden">
+    <div class="card" style="border-color:rgba(0,153,255,.25)">
+      <div class="card-head" style="color:var(--accent2)">🔲 Grid Parametreleri</div>
+      <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.08em;margin-bottom:4px">ALT FİYAT ($)</div>
+            <input type="number" class="date-inp" id="inpGridLower" step="any" oninput="S.gridLower=parseFloat(this.value)||0;saveState();updateGridSummary()"/>
+          </div>
+          <div style="color:var(--text3);font-size:12px;padding-bottom:11px">—</div>
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.08em;margin-bottom:4px">ÜST FİYAT ($)</div>
+            <input type="number" class="date-inp" id="inpGridUpper" step="any" oninput="S.gridUpper=parseFloat(this.value)||0;saveState();updateGridSummary()"/>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:11px;color:var(--text3)">Son fiyata göre ±</span>
+          <input type="number" id="inpGridRangePct" value="20" min="1" max="90" step="1"
+            style="width:60px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 8px;color:var(--text);font-size:13px;text-align:right;font-family:'Space Grotesk',sans-serif"
+            oninput="S.gridRangePct=parseFloat(this.value)||20;saveState()">
+          <span style="font-size:11px;color:var(--text3)">%</span>
+          <button onclick="gridAutoFillRange()" style="margin-left:auto;padding:8px 14px;border-radius:8px;border:1px solid var(--accent2);background:rgba(0,153,255,.12);color:var(--accent2);font-size:12px;font-weight:700;font-family:'Space Grotesk',sans-serif;cursor:pointer">📍 Doldur</button>
+        </div>
+        <div id="gridRangeInfo" class="rs" style="line-height:1.5"></div>
+      </div>
+      <div class="row" id="row-gridCount"><div><div class="rl">Grid Sayısı</div><div class="rs">Fiyat aralığının kaç parçaya bölüneceği</div></div></div>
+      <div class="row" id="row-gridInvestment"><div><div class="rl">Yatırım Tutarı ($)</div><div class="rs">Grid boyunca kullanılacak toplam bakiye</div></div></div>
+      <div class="row">
+        <div><div class="rl">Grid Modu</div><div class="rs">Aritmetik: eşit $ aralık · Geometrik: eşit % aralık</div></div>
+        <div id="gridModeGroup" style="display:flex;gap:6px;flex-shrink:0;margin-left:12px"></div>
+      </div>
+      <div id="gridSummary" class="cap-info" style="display:block;padding:10px 16px;font-size:11px;color:var(--text3);line-height:1.6"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">💸 Komisyon</div>
+      <div class="row" id="row-gridMakerFee2"><div><div class="rl">Maker Komisyonu (%)</div><div class="rs">Grid limit emirleri (alım + satım)</div></div></div>
+      <div class="row" id="row-gridTakerFee2"><div><div class="rl">Taker Komisyonu (%)</div><div class="rs">Başlangıç envanteri market alımı</div></div></div>
+    </div>
+  </div><!-- /gridOnlyCards -->
 
   <div class="card" style="margin-bottom:4px">
     <div class="card-head">💾 Veri Depolama</div>
@@ -484,11 +536,14 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <!-- OPTIMIZER PANEL -->
 <div id="optPanel" class="hidden">
   <div style="padding:14px">
-    <div style="background:rgba(0,153,255,.06);border:1px solid rgba(0,153,255,.25);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--text3);line-height:1.5">
+    <div id="optDcaInfoBanner" style="background:rgba(0,153,255,.06);border:1px solid rgba(0,153,255,.25);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--text3);line-height:1.5">
       ⚙️ Sadece <b>sermaye</b> (ve reinvest/TTP/trend filtresi/stop loss/komisyon/coin/tarih/<b>kaldıraç</b>) Ayarlar sayfasından alınır. <b>maxSO / adım / çarpan / TP tamamen serbest</b> aralıklarda taranır — Ayarlar'daki mevcut değerlere bağlı kalmaz.
     </div>
+    <div id="optGridInfoBanner" class="hidden" style="background:rgba(0,153,255,.06);border:1px solid rgba(0,153,255,.25);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--text3);line-height:1.5">
+      🔲 Sadece <b>yatırım tutarı</b> (ve komisyon/coin/tarih/grid modu) Ayarlar sayfasından alınır. <b>Alt/Üst fiyat aralığı (%) ve grid sayısı tamamen serbest</b> aralıklarda taranır — Ayarlar'daki mevcut değerlere bağlı kalmaz.
+    </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BAŞLANGIÇ SERMAYESİ (Ayarlar'dan)</div>
+      <div id="optCapitalLbl" style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BAŞLANGIÇ SERMAYESİ (Ayarlar'dan)</div>
       <input type="number" id="optCapital" value="1000" min="100" step="100" readonly
         style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text2);font-size:15px;font-weight:700;font-family:'Space Grotesk',sans-serif;opacity:.8">
     </div>
@@ -642,6 +697,10 @@ var DEFAULTS = {
   cond:"instant",
   rsiTP:14, rsiTf:"30m", rsiDir:"lt", rsiThr:30,
   dateFrom:"", dateTo:"",
+  /* Bot seçimi + Grid parametreleri */
+  botType:"dca",
+  gridLower:0, gridUpper:0, gridCount:10, gridInvestment:1000,
+  gridMode:"arith", gridRangePct:20,
 };
 var S = Object.assign({}, DEFAULTS);
 var currentTab='ayarlar';
@@ -679,6 +738,9 @@ var STEPPERS = [
   {k:"takerFee",    step:0.01,min:0, max:5,    dec:3},
   {k:"rsiTP",       step:1,   min:2, max:50,  dec:0},
   {k:"rsiThr",      step:1,   min:1, max:99,  dec:0},
+  {k:"gridCount",     step:1,   min:2, max:200, dec:0},
+  {k:"gridInvestment",step:100, min:10,       dec:0},
+  {k:"gridRangePct",  step:1,   min:1, max:90, dec:0},
 ];
 
 function f(n,d){ d=d===undefined?2:d; return (n||0).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d}); }
@@ -1744,8 +1806,9 @@ async function run(){
 
   try {
     var prices, rsiArr=null, sourceLabel, mumCount;
+    var isGrid=S.botType==="grid";
 
-    if(S.cond==="rsi"){
+    if(!isGrid && S.cond==="rsi"){
       var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
       if(!tf) throw new Error("Geçersiz RSI zaman dilimi.");
       var allCandles=await stGet(S.coin+"_"+tf.okx);
@@ -1765,10 +1828,17 @@ async function run(){
     }
 
     setLoad(90);
-    var result = backtest(prices, rsiArr);
-    var _elapsed=Date.now()-_t0;
-    await new Promise(function(r){setTimeout(r,Math.max(0,400-_elapsed));});
-    render(result, sourceLabel, mumCount, prices[0].date, prices[prices.length-1].date);
+    if(isGrid){
+      var gResult = gridBacktest(prices);
+      var _elapsedG=Date.now()-_t0;
+      await new Promise(function(r){setTimeout(r,Math.max(0,400-_elapsedG));});
+      renderGrid(gResult, sourceLabel, mumCount, prices[0].date, prices[prices.length-1].date);
+    } else {
+      var result = backtest(prices, rsiArr);
+      var _elapsed=Date.now()-_t0;
+      await new Promise(function(r){setTimeout(r,Math.max(0,400-_elapsed));});
+      render(result, sourceLabel, mumCount, prices[0].date, prices[prices.length-1].date);
+    }
     refreshCacheRange();
     playDone();
     goResult();
@@ -1978,9 +2048,26 @@ function render(res, source, mumCnt, dateFrom, dateTo){
   deals.forEach(function(d,i){
     var isOpen=d.why==="OPEN";
     var isLiq=d.why==="LIQ";
+    var isTtp=d.why==="TTP";
+    var ttpLive=isOpen&&S.ttpEnabled&&d.ttpActive; // hâlâ açık ve trailing devrede
     var pc2=d.profit>=0?"var(--green)":"var(--red)";
     var bc=isOpen?"rgba(251,191,36,.2)":isLiq?"rgba(255,79,109,.4)":d.profit>=0?"rgba(0,212,170,.18)":"rgba(255,79,109,.18)";
     var baseLbl=isBase&&d.baseProfit>0?' <span style="color:var(--accent);font-size:10px;font-weight:700">+'+f(d.baseProfit,5)+' '+coin.sym+'</span>':"";
+    var ttpTrigNow=ttpLive?d.ttpPeak*(1-S.ttpPct/100):0;
+    var baseTpPrice=d.avgCost*(1+S.tpPct/100);
+    var tpSubLine;
+    if(isOpen){
+      tpSubLine=ttpLive
+        ? ' · 🎯 Zirve: <span style="color:var(--purple);font-weight:600">'+fu(d.ttpPeak)+'</span>'
+          +' · Tetik: <span style="color:var(--green);font-weight:600">'+fu(ttpTrigNow)+'</span>'
+        : ' · TP: <span style="color:var(--green);font-weight:600">'+fu(baseTpPrice)+'</span>'+(S.ttpEnabled?' <span style="color:var(--text3)">(trailing bekleniyor)</span>':"");
+    } else if(isTtp){
+      var risePct=(d.ttpPeak/baseTpPrice-1)*100;
+      tpSubLine=' · 🎯 Zirve: <span style="color:var(--purple);font-weight:600">'+fu(d.ttpPeak)+'</span>'
+        +(risePct>0.01?' <span style="color:var(--text3)">(TP\'nin +%'+f(risePct,2)+' üstü)</span>':"");
+    } else {
+      tpSubLine="";
+    }
     dl.innerHTML+=
       '<div class="dc" style="border-color:'+bc+';animation-delay:'+Math.min(i*.02,.3)+'s">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
@@ -1993,7 +2080,7 @@ function render(res, source, mumCnt, dateFrom, dateTo){
       '</div>'+
       '<div class="dsub">Safety: <span style="color:var(--yellow);font-weight:700">'+d.safetyCount+"/"+S.maxSO+'</span>'+
         ' · Avg: <span style="color:var(--text);font-weight:600">'+fu(d.avgCost)+'</span>'+
-        (isOpen?' · TP: <span style="color:var(--green);font-weight:600">'+fu(d.avgCost*(1+S.tpPct/100))+'</span>':"")+
+        tpSubLine+
       '</div>'+
       '</div>'+
       '<div style="text-align:right">'+
@@ -2017,6 +2104,25 @@ function goSettings(){setTab("ayarlar");}
 function saveSettings(){
   var coin=COINS.find(function(c){return c.id===S.coin;})||{sym:"BTC"};
   var now=new Date().toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  if(S.botType==="grid"){
+    var glines=[
+      "Grid Bot Ayarları — "+now,
+      "══════════════════════════════════",
+      "Sembol       : "+coin.sym+"/USDT",
+      "Dönem        : "+S.dateFrom+" – "+S.dateTo,
+      "Alt Fiyat    : $"+S.gridLower,
+      "Üst Fiyat    : $"+S.gridUpper,
+      "Grid Sayısı  : "+S.gridCount,
+      "Yatırım      : $"+S.gridInvestment,
+      "Grid Modu    : "+(S.gridMode==="geo"?"Geometrik":"Aritmetik"),
+      "Maker Kom.   : %"+S.makerFee,
+      "Taker Kom.   : %"+S.takerFee,
+    ];
+    navigator.clipboard.writeText(glines.join("\n"))
+      .then(function(){showToast("✓ Panoya kopyalandı");})
+      .catch(function(){showToast("⚠ Kopyalanamadı");});
+    return;
+  }
   var lines=[
     "DCA Backtest Ayarları — "+now,
     "══════════════════════════════════",
@@ -2047,6 +2153,38 @@ function saveSettings(){
     .catch(function(){showToast("⚠ Kopyalanamadı");});
 }
 function copyResults(){
+  if(S.botType==="grid"){
+    if(!_lastGridResult){showToast("⚠ Henüz backtest yapılmadı");return;}
+    var rg=_lastGridResult,sg2=rg.res.stats;
+    var coinG=COINS.find(function(c){return c.id===S.coin;})||{sym:"?"};
+    var nowG=new Date().toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+    var signG=sg2.totalPnL>=0?"+":"";
+    var glines=[
+      "Grid Backtest Sonuçları — "+nowG,
+      "════════════════════════════════════",
+      "Sembol     : "+coinG.sym+"/USDT",
+      "Dönem      : "+rg.dateFrom+" – "+rg.dateTo,
+      "Mum Sayısı : "+rg.mumCnt.toLocaleString(),
+      "",
+      "─── Performans ───",
+      "Toplam PnL   : "+signG+"$"+sg2.totalPnL.toFixed(2)+" ("+signG+sg2.totalPnLPct.toFixed(2)+"%)",
+      "Toplam APR   : %"+sg2.totalAPR.toFixed(2),
+      "Max Drawdown : -%"+sg2.maxDrawdown.toFixed(2),
+      "Win Rate     : %"+sg2.winRate.toFixed(1),
+      "Döngüler     : "+sg2.completedCycles,
+      "",
+      "─── Parametreler ───",
+      "Yatırım      : $"+sg2.investment,
+      "Alt/Üst      : $"+sg2.lower.toFixed(4)+" – $"+sg2.upper.toFixed(4),
+      "Grid Sayısı  : "+sg2.gridLevels,
+      "Grid Modu    : "+(sg2.mode==="geo"?"Geometrik":"Aritmetik"),
+      "Maker/Taker  : %"+S.makerFee+" / %"+S.takerFee,
+    ];
+    navigator.clipboard.writeText(glines.join("\n"))
+      .then(function(){showToast("✓ Panoya kopyalandı");})
+      .catch(function(){showToast("⚠ Kopyalanamadı");});
+    return;
+  }
   if(!_lastResult){showToast("⚠ Henüz backtest yapılmadı");return;}
   var r=_lastResult,s=r.res.stats;
   var coin=COINS.find(function(c){return c.id===S.coin;})||{sym:"?"};
@@ -2110,6 +2248,7 @@ function buildStepper(k){
     val=Math.max(cfg.min,Math.min(cfg.max!==undefined?cfg.max:999999,val));
     val=cfg.dec?parseFloat(val.toFixed(cfg.dec)):Math.round(val);
     S[k]=val; inp.value=val; updateCap(); saveState();
+    if(k==="gridCount"||k==="gridInvestment") updateGridSummary();
   }
   db.onclick=function(){upd(S[k]-cfg.step);}; ib.onclick=function(){upd(S[k]+cfg.step);};
   inp.onchange=function(){upd(inp.value);};
@@ -2181,7 +2320,14 @@ function buildMainChips(){
   cc.value=S.coin;
   if(!cc.value){S.coin=COINS[0].id;cc.value=S.coin;}
 }
-function selCoin(id){S.coin=id;S.dateFrom="";S.dateTo="";updateBadge();buildProfitMode();setOptProfitMode(_optProfitMode);saveState();refreshCacheRange();loadCandleRange();updateFetchBtnState();}
+function selCoin(id){
+  S.coin=id;S.dateFrom="";S.dateTo="";
+  S.gridLower=0;S.gridUpper=0;
+  var _igl=document.getElementById("inpGridLower");if(_igl)_igl.value="";
+  var _igu=document.getElementById("inpGridUpper");if(_igu)_igu.value="";
+  updateBadge();buildProfitMode();setOptProfitMode(_optProfitMode);saveState();refreshCacheRange();loadCandleRange();updateFetchBtnState();
+  if(S.botType==="grid")updateGridSummary();
+}
 function refreshMainChips(){
   document.getElementById("coinC").value=S.coin;
 }
@@ -2230,6 +2376,11 @@ function calcOrderSummary(){
   return {rows:rows};
 }
 function updateCap(){
+  if(S.botType==="grid"){
+    var btnG=document.getElementById("fabBtn");
+    if(btnG){btnG.disabled=false;btnG.textContent="▶ GRID BACKTEST";}
+    return;
+  }
   var t=S.initAmt, a=S.safeAmt;
   for(var i=0;i<S.maxSO;i++){t+=a;a*=S.amtMult;}
   var ok=t<=S.startCapital;
@@ -2581,6 +2732,7 @@ async function loadOptDateRange(){
 }
 
 async function runOptimizer(){
+  if(S.botType==="grid") return runGridOptimizer();
   var btn=document.getElementById("optBtn");
   var statusEl=document.getElementById("optStatus");
   var resultsEl=document.getElementById("optResults");
@@ -2844,19 +2996,461 @@ function setTab(tab){
   document.getElementById("rPanel").classList.toggle("hidden",tab!=="sonuclar");
   var optPanel=document.getElementById("optPanel");
   if(optPanel)optPanel.classList.toggle("hidden",tab!=="opt");
-  if(tab==="opt"){loadOptDateRange();optPullSettings();}
+  if(tab==="opt"){loadOptDateRange();optPullSettings();refreshOptUIForBotType();}
   document.getElementById("fabW").classList.toggle("hidden",tab!=="ayarlar");
   document.getElementById("backBtn").classList.toggle("hidden",tab!=="sonuclar");
   if(tab==="ayarlar"){
     var btn=document.getElementById("fabBtn");
-    btn.disabled=false;btn.textContent="▶ BACKTEST";
+    btn.disabled=false;btn.textContent=S.botType==="grid"?"▶ GRID BACKTEST":"▶ BACKTEST";
     var fb=document.getElementById("fetchBtn");
     if(fb&&!fb.innerHTML.includes("Tarih")){fb.disabled=false;fb.innerHTML="📥 MUM İNDİR";}
     updateCap();
+    refreshBotTypeUI();
   }
   if(tab==="sonuclar") goTab("stats");
 }
 
+
+/* ═══════════════════════════════════════════════════════
+   GRID BOT — Bot seçimi, parametreler, backtest, optimizasyon
+═══════════════════════════════════════════════════════ */
+function setBotType(v){
+  S.botType=v; saveState();
+  refreshBotTypeUI();
+  _hasResult=false;
+  document.getElementById("noResultState").style.display="flex";
+  document.getElementById("resultContent").classList.add("hidden");
+}
+function refreshBotTypeUI(){
+  var isGrid=S.botType==="grid";
+  document.getElementById("botTypeDca").className="mode-btn"+(isGrid?"":" on");
+  document.getElementById("botTypeGrid").className="mode-btn"+(isGrid?" on-g":"");
+  document.getElementById("dcaOnlyCards").classList.toggle("hidden",isGrid);
+  document.getElementById("gridOnlyCards").classList.toggle("hidden",!isGrid);
+  var btn=document.getElementById("fabBtn");
+  if(btn && !btn.disabled) btn.textContent=isGrid?"▶ GRID BACKTEST":"▶ BACKTEST";
+  if(isGrid){
+    buildGridModeChips();
+    if(!S.gridLower && !S.gridUpper) gridAutoFillRange();
+    else updateGridSummary();
+  }
+}
+function buildGridModeChips(){
+  buildChipGroup("gridModeGroup",
+    [{v:"arith",l:"Aritmetik"},{v:"geo",l:"Geometrik"}],
+    function(){return S.gridMode;},
+    function(v){S.gridMode=v;updateGridSummary();},
+    "on-b");
+}
+/* Aynı S anahtarına (makerFee/takerFee) bağlı ama farklı DOM id'li ikinci bir stepper — Grid kartı için */
+function buildFeeStepperClone(rowId,key,inputIdSuffix){
+  var cfg=STEPPERS.find(function(s){return s.k===key;});
+  if(!cfg) return;
+  var row=document.getElementById(rowId);
+  if(!row) return;
+  var wrap=document.createElement("div"); wrap.className="step";
+  var db=document.createElement("button"); db.className="sbtn"; db.textContent="−";
+  var inp=document.createElement("input"); inp.type="number"; inp.className="sinp"; inp.id="inp-"+inputIdSuffix; inp.value=S[key];
+  var ib=document.createElement("button"); ib.className="sbtn"; ib.textContent="+";
+  function upd(v){
+    var val=parseFloat(v)||0;
+    val=Math.max(cfg.min,Math.min(cfg.max!==undefined?cfg.max:999999,val));
+    val=cfg.dec?parseFloat(val.toFixed(cfg.dec)):Math.round(val);
+    S[key]=val; inp.value=val;
+    var mainInp=document.getElementById("inp-"+key); if(mainInp)mainInp.value=val;
+    saveState();
+  }
+  db.onclick=function(){upd(S[key]-cfg.step);}; ib.onclick=function(){upd(S[key]+cfg.step);};
+  inp.onchange=function(){upd(inp.value);};
+  wrap.appendChild(db); wrap.appendChild(inp); wrap.appendChild(ib);
+  row.appendChild(wrap);
+}
+async function gridAutoFillRange(){
+  try{
+    var candles=await stGet(S.coin+"_"+INSTANT_BAR.okx);
+    if(!candles||!candles.length){showToast("⚠ Önce 📥 MUM İNDİR ile veri yükleyin");return;}
+    var last=candles[candles.length-1].price;
+    var pct=(S.gridRangePct||20)/100;
+    S.gridLower=parseFloat((last*(1-pct)).toFixed(8));
+    S.gridUpper=parseFloat((last*(1+pct)).toFixed(8));
+    saveState();
+    document.getElementById("inpGridLower").value=S.gridLower;
+    document.getElementById("inpGridUpper").value=S.gridUpper;
+    var infoEl=document.getElementById("gridRangeInfo");
+    if(infoEl){
+      var coin=COINS.find(function(c){return c.id===S.coin;});
+      infoEl.innerHTML="📌 Son fiyat ("+(coin?coin.sym:"?")+"): <b style='color:var(--text)'>"+fu(last)+"</b> · Aralık ±%"+(S.gridRangePct||20)+" ile dolduruldu.";
+    }
+    updateGridSummary();
+  }catch(e){showToast("⚠ Fiyat alınamadı");}
+}
+function updateGridSummary(){
+  var el=document.getElementById("gridSummary");
+  if(!el) return;
+  if(!S.gridLower||!S.gridUpper||S.gridUpper<=S.gridLower){
+    el.innerHTML="⚠ Geçerli bir alt/üst fiyat aralığı girin.";
+    return;
+  }
+  var n=S.gridCount||10;
+  var stepInfo = S.gridMode==="geo"
+    ? "Adım: %"+(( Math.pow(S.gridUpper/S.gridLower,1/n)-1)*100).toFixed(2)+" (geometrik)"
+    : "Adım: $"+(( (S.gridUpper-S.gridLower)/n )).toFixed(4)+" (aritmetik)";
+  var perGrid=(S.gridInvestment||0)/n;
+  el.innerHTML="🔲 "+n+" grid · "+stepInfo+" · Grid başına ~"+fu(perGrid);
+}
+function _gridLevels(lower,upper,n,mode){
+  var lv=[];
+  if(mode==="geo"){
+    var ratio=Math.pow(upper/lower,1/n);
+    for(var i=0;i<=n;i++) lv.push(lower*Math.pow(ratio,i));
+  } else {
+    var step=(upper-lower)/n;
+    for(var i=0;i<=n;i++) lv.push(lower+step*i);
+  }
+  return lv;
+}
+/* ── Grid Backtest Motoru ──
+   Klasik uzun (long) grid bot: fiyat aralığı N hücreye bölünür.
+   Her hücre [L[k], L[k+1]] arasında bir "alım" veya "satım" emri taşır.
+   Başlangıçta mevcut fiyatın altındaki hücreler ALIM bekler; üstündeki
+   hücreler için gerekli envanter anlık piyasa alımıyla edinilir ve
+   SATIM emri kurulur (3Commas Classic Grid mantığı). */
+function gridBacktest(prices, params){
+  params=params||S;
+  var lower=params.gridLower, upper=params.gridUpper;
+  var n=Math.max(2,Math.round(params.gridCount||10));
+  var investment=params.gridInvestment||0;
+  var mode=params.gridMode||"arith";
+  var makerRate=(params.makerFee!=null?params.makerFee:S.makerFee||0.1)/100;
+  var takerRate=(params.takerFee!=null?params.takerFee:S.takerFee||0.1)/100;
+  if(!(lower>0)||!(upper>lower)||!(investment>0)||!prices.length)
+    throw new Error("Grid parametreleri geçersiz (alt/üst fiyat, yatırım tutarı).");
+
+  var L=_gridLevels(lower,upper,n,mode);
+  var perGridQuote=investment/n;
+  var p0=prices[0].price;
+
+  var qty=new Array(n), state=new Array(n), buyCost=new Array(n);
+  var cash=investment, initialInvBuy=0, completedCycles=0, realizedPnL=0, wins=0;
+  var cycleLog=[];
+
+  for(var k=0;k<n;k++){
+    var buyPrice=L[k], sellPrice=L[k+1];
+    var q=perGridQuote/buyPrice;
+    if(buyPrice<p0){
+      state[k]="BUY"; qty[k]=0; buyCost[k]=0;
+    } else {
+      var cost=q*p0*(1+takerRate);
+      cash-=cost; initialInvBuy+=cost;
+      qty[k]=q; buyCost[k]=cost; state[k]="SELL";
+    }
+  }
+
+  var equity=[];
+  for(var i=0;i<prices.length;i++){
+    var price=prices[i].price, date=prices[i].date;
+    var hi=prices[i].high!=null?prices[i].high:price;
+    var lo=prices[i].low!=null?prices[i].low:price;
+    for(var k=0;k<n;k++){
+      if(state[k]==="BUY" && lo<=L[k]){
+        var q2=perGridQuote/L[k];
+        var cost2=q2*L[k]*(1+makerRate);
+        if(cash<cost2) continue;
+        cash-=cost2; qty[k]=q2; buyCost[k]=cost2; state[k]="SELL";
+      } else if(state[k]==="SELL" && hi>=L[k+1]){
+        var proceeds=qty[k]*L[k+1]*(1-makerRate);
+        var profit=proceeds-buyCost[k];
+        cash+=proceeds; realizedPnL+=profit; completedCycles++;
+        if(profit>0)wins++;
+        cycleLog.push({idx:k,date:date,buyPrice:L[k],sellPrice:L[k+1],profit:profit,profitPct:profit/buyCost[k]*100});
+        qty[k]=0; buyCost[k]=0; state[k]="BUY";
+      }
+    }
+    var holdVal=0;
+    for(var k2=0;k2<n;k2++) if(state[k2]==="SELL") holdVal+=qty[k2]*price;
+    equity.push({date:date,value:cash+holdVal,price:price});
+  }
+
+  var lastPrice=prices[prices.length-1].price;
+  var openQty=0, openCost=0, openCells=0;
+  for(var k3=0;k3<n;k3++){
+    if(state[k3]==="SELL"){openQty+=qty[k3];openCost+=buyCost[k3];openCells++;}
+  }
+  var unrealizedPnL=openCost>0?(openQty*lastPrice-openCost):0;
+  var finalCapital=cash+openQty*lastPrice;
+  var totalPnL=realizedPnL+unrealizedPnL;
+
+  var peak=-Infinity,maxDD=0;
+  for(var i2=0;i2<equity.length;i2++){
+    if(equity[i2].value>peak)peak=equity[i2].value;
+    var dd=peak>0?(peak-equity[i2].value)/peak*100:0;
+    if(dd>maxDD)maxDD=dd;
+  }
+  var firstTs=prices[0].ts||0,lastTs=prices[prices.length-1].ts||0;
+  var daysEl=lastTs&&firstTs?(lastTs-firstTs)/86400000:1;
+  var totalAPR=daysEl>0?(totalPnL/investment)/(daysEl/365)*100:0;
+  var realizedAPR=daysEl>0?(realizedPnL/investment)/(daysEl/365)*100:0;
+
+  return{
+    cycles:cycleLog, equity:equity,
+    stats:{
+      completedCycles:completedCycles,
+      wins:wins, losses:completedCycles-wins,
+      winRate:completedCycles?wins/completedCycles*100:0,
+      realizedPnL:realizedPnL, unrealizedPnL:unrealizedPnL, totalPnL:totalPnL,
+      totalPnLPct:totalPnL/investment*100,
+      realizedAPR:realizedAPR, totalAPR:totalAPR,
+      maxDrawdown:maxDD, finalCapital:finalCapital,
+      lastPrice:lastPrice, firstPrice:prices[0].price,
+      gridLevels:n, openCells:openCells, initialInvBuy:initialInvBuy,
+      lower:lower, upper:upper, mode:mode, investment:investment,
+      isGrid:true
+    }
+  };
+}
+function gridBacktestWithParams(prices,params){
+  try{return gridBacktest(prices,params);}catch(e){return null;}
+}
+
+/* ── Grid Sonuç Ekranı ── */
+var _lastGridResult=null;
+function renderGrid(res, source, mumCnt, dateFrom, dateTo){
+  _lastGridResult={res:res,mumCnt:mumCnt,dateFrom:dateFrom,dateTo:dateTo};
+  if(!_hasResult){
+    _hasResult=true;
+    document.getElementById("noResultState").style.display="none";
+    document.getElementById("resultContent").classList.remove("hidden");
+  }
+  var stats=res.stats;
+  var coin=COINS.find(function(c){return c.id===S.coin;});
+  var pcT=stats.totalPnL>=0?"var(--green)":"var(--red)";
+  var pcR=stats.realizedPnL>=0?"var(--green)":"var(--red)";
+  var pcU=stats.unrealizedPnL>=0?"var(--green)":"var(--red)";
+
+  document.getElementById("hMeta").textContent=coin.sym+"/USDT · "+dateFrom+" – "+dateTo+" · "+mumCnt.toLocaleString()+" mum · Grid";
+  document.getElementById("hPct").textContent=fp(stats.totalPnLPct);
+  document.getElementById("hPct").style.color=pcT;
+  document.getElementById("hUsd").textContent="Toplam PnL: "+(stats.totalPnL>=0?"+":"")+fu(stats.totalPnL);
+  document.getElementById("hUsd").style.color=pcT;
+  document.getElementById("hWR").textContent=fp(stats.winRate);
+  document.getElementById("hWR").style.color=stats.winRate>=50?"var(--green)":"var(--red)";
+  document.getElementById("hDD").textContent=fp(-stats.maxDrawdown);
+  document.getElementById("hCycles").textContent=stats.completedCycles;
+  document.getElementById("hCycles").style.color="var(--accent2)";
+  document.getElementById("srcBar").textContent="📡 "+source+" · "+dateFrom+" – "+dateTo+" · "+mumCnt.toLocaleString()+" mum";
+
+  var sb=document.getElementById("sBdg");
+  sb.style.cssText="margin-top:10px;display:inline-flex;align-items:center;gap:5px;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600;background:rgba(0,153,255,.1);color:var(--accent2);border:1px solid rgba(0,153,255,.25)";
+  sb.textContent="🔲 Grid · "+stats.gridLevels+" seviye · "+(stats.mode==="geo"?"Geometrik":"Aritmetik")+" · $"+f(stats.lower,2)+" – $"+f(stats.upper,2);
+
+  function fullRow(lbl,val,color,sub){
+    return '<div class="sc" style="grid-column:1/-1;border-color:'+color+'33;padding:14px 16px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center">'+
+      '<div class="sl" style="text-transform:none;font-size:12px;letter-spacing:0">'+lbl+'</div>'+
+      '<div><div class="sv" style="color:'+color+';text-align:right">'+val+'</div>'+
+      (sub?'<div style="font-size:11px;color:'+color+';text-align:right;opacity:.7;margin-top:2px">'+sub+'</div>':'')+
+      '</div></div></div>';
+  }
+  function halfCard(lbl,val,color){
+    return '<div class="sc" style="border-color:'+color+'22">'+
+      '<div class="sv" style="color:'+color+'">'+val+'</div>'+
+      '<div class="sl">'+lbl+'</div></div>';
+  }
+  var sg=document.getElementById("statsG"); sg.innerHTML="";
+  sg.innerHTML+=fullRow("Yatırım / Son Sermaye",
+    fu(stats.investment)+" → "+fu(stats.finalCapital),
+    stats.finalCapital>=stats.investment?"var(--green)":"var(--red)");
+  sg.innerHTML+=
+    halfCard("Gerçekleşen PnL",(stats.realizedPnL>=0?"+":"")+fu(stats.realizedPnL),pcR)+
+    halfCard("Açık Pozisyon PnL",(stats.unrealizedPnL>=0?"+":"")+fu(stats.unrealizedPnL),pcU);
+  sg.innerHTML+=
+    halfCard("Son Fiyat",fu(stats.lastPrice),"var(--text)")+
+    halfCard("Max Drawdown",fp(-stats.maxDrawdown),"var(--red)");
+  sg.innerHTML+=fullRow("Gerçekleşen APR / Toplam APR",
+    fp(stats.realizedAPR)+" / "+fp(stats.totalAPR),
+    stats.realizedAPR>=0?"var(--green)":"var(--red)");
+  if(stats.firstPrice&&stats.firstPrice>0){
+    var bhQty=stats.investment/stats.firstPrice;
+    var bhVal=bhQty*stats.lastPrice;
+    var bhPnL=bhVal-stats.investment;
+    var bhPct=bhPnL/stats.investment*100;
+    var gridWins=stats.totalPnLPct>=bhPct;
+    sg.innerHTML+=fullRow("🏆 "+(gridWins?"Grid kazandı":"Al & Tut kazandı"),
+      "Grid "+fp(stats.totalPnLPct)+" vs Al&Tut "+fp(bhPct),
+      gridWins?"var(--accent2)":"var(--yellow)");
+  }
+  sg.innerHTML+=
+    halfCard("Tamamlanan Döngü",stats.completedCycles,"var(--accent2)")+
+    halfCard("Açık Hücre",stats.openCells+"/"+stats.gridLevels,"var(--yellow)");
+  sg.innerHTML+=
+    halfCard("Win Rate",fp(stats.winRate),stats.winRate>=50?"var(--green)":"var(--red)")+
+    halfCard("Başlangıç Envanter Alımı",fu(stats.initialInvBuy),"var(--text2)");
+
+  /* Cycle listesi */
+  var dl=document.getElementById("dealL"); dl.innerHTML="";
+  var cycles=res.cycles.slice().reverse();
+  if(!cycles.length){
+    dl.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">Henüz tamamlanan grid döngüsü yok.</div>';
+  }
+  cycles.forEach(function(c,i){
+    var pc2=c.profit>=0?"var(--green)":"var(--red)";
+    var bc=c.profit>=0?"rgba(0,212,170,.18)":"rgba(255,79,109,.18)";
+    dl.innerHTML+=
+      '<div class="dc" style="border-color:'+bc+';animation-delay:'+Math.min(i*.02,.3)+'s">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+      '<div><div class="dm">#'+(cycles.length-i)+' Hücre '+(c.idx+1)+' · '+c.date+'</div>'+
+      '<div class="dsub">Alım: <span style="color:var(--text);font-weight:600">'+fu(c.buyPrice)+'</span>'+
+      ' → Satım: <span style="color:var(--text);font-weight:600">'+fu(c.sellPrice)+'</span></div></div>'+
+      '<div style="text-align:right">'+
+      '<div class="dpct" style="color:'+pc2+'">'+fp(c.profitPct)+'</div>'+
+      '<div class="dusd" style="color:'+(c.profit>=0?"rgba(0,212,170,.7)":"rgba(255,79,109,.7)")+'">'+(c.profit>=0?"+":"")+fu(c.profit)+'</div>'+
+      '</div></div></div>';
+  });
+}
+
+/* ── Grid Optimizasyon ── */
+var GRID_OPT_PROFILES=[
+  {id:"dar",  label:"🎯 Dar Aralık",  color:"var(--accent2)", ranges:{rangePct:[5,15], gridCount:[5,20]}},
+  {id:"orta", label:"⚖️ Orta Aralık", color:"var(--accent)",  ranges:{rangePct:[12,30],gridCount:[8,40]}},
+  {id:"genis",label:"🌐 Geniş Aralık",color:"var(--purple)",  ranges:{rangePct:[25,60],gridCount:[10,80]}},
+];
+function _sampleGridParams(profile,investment,lastPrice,mode){
+  var r=profile.ranges;
+  var pct=_rnd(r.rangePct[0],r.rangePct[1],1)/100;
+  var count=Math.max(2,Math.round(_rnd(r.gridCount[0],r.gridCount[1])));
+  return{
+    gridLower:parseFloat((lastPrice*(1-pct)).toFixed(8)),
+    gridUpper:parseFloat((lastPrice*(1+pct)).toFixed(8)),
+    gridCount:count, gridInvestment:investment,
+    gridMode:mode||"arith",
+    makerFee:S.makerFee, takerFee:S.takerFee
+  };
+}
+function _optScoreGrid(stats){
+  if(!stats||stats.completedCycles<3)return -Infinity;
+  return stats.totalPnL;
+}
+function _renderGridOptProfile(profile,best){
+  var html='<div style="margin-bottom:12px">';
+  html+='<div style="font-size:12px;font-weight:800;color:'+profile.color+';padding:8px 0 6px;letter-spacing:.04em">'+profile.label+'</div>';
+  if(!best){
+    html+='<div style="font-size:12px;color:var(--text3);padding:6px 0">Geçerli sonuç bulunamadı.</div>';
+    return html+'</div>';
+  }
+  var s=best.stats,p=best.params;
+  var apr=s.totalAPR,dd=s.maxDrawdown,cyc=s.completedCycles;
+  var aprColor=apr>=30?"var(--green)":apr>=10?"var(--yellow)":"var(--red)";
+  var ddColor=dd<20?"var(--green)":dd<40?"var(--yellow)":"var(--red)";
+  var wrColor=s.winRate>=70?"var(--green)":s.winRate>=50?"var(--yellow)":"var(--red)";
+  html+='<div style="background:var(--bg2);border:1px solid '+profile.color+'33;border-radius:10px;padding:12px 14px">';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:10px;text-align:center">';
+  html+='<div><div style="font-size:9px;color:var(--text3);letter-spacing:.04em;margin-bottom:2px">TOPLAM APR</div>'
+      +'<div style="font-size:16px;font-weight:800;color:'+aprColor+'">'+fp(apr)+'</div></div>';
+  html+='<div><div style="font-size:9px;color:var(--text3);letter-spacing:.04em;margin-bottom:2px">MAX DD</div>'
+      +'<div style="font-size:16px;font-weight:800;color:'+ddColor+'">'+fp(-dd)+'</div></div>';
+  html+='<div><div style="font-size:9px;color:var(--text3);letter-spacing:.04em;margin-bottom:2px">WIN RATE</div>'
+      +'<div style="font-size:16px;font-weight:800;color:'+wrColor+'">'+fp(s.winRate)+'</div></div>';
+  html+='</div>';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--text3);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">';
+  html+='<span>'+cyc+' döngü</span>';
+  html+='<span>PNL <span style="color:'+(best.score>=0?"var(--green)":"var(--red)")+';font-weight:700">'+(best.score>=0?"+":"")+fu(best.score)+'</span></span>';
+  html+='</div>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;font-size:11px;margin-bottom:10px">';
+  html+='<div style="color:var(--text3)">Alt <span style="color:var(--text);font-weight:700">'+fu(p.gridLower)+'</span></div>';
+  html+='<div style="color:var(--text3)">Üst <span style="color:var(--text);font-weight:700">'+fu(p.gridUpper)+'</span></div>';
+  html+='<div style="color:var(--text3)">Grid Sayısı <span style="color:var(--text);font-weight:700">'+p.gridCount+'</span></div>';
+  html+='<div style="color:var(--text3)">Yatırım <span style="color:var(--text);font-weight:700">'+fu(p.gridInvestment)+'</span></div>';
+  html+='</div>';
+  html+='<button onclick="applyGridOptParams(\''+profile.id+'\')" '
+    +'style="width:100%;padding:8px;border-radius:8px;border:1px solid '+profile.color+'44;background:'+profile.color+'11;color:'+profile.color+';font-size:12px;font-weight:700;font-family:\'Space Grotesk\',sans-serif;cursor:pointer">'
+    +'Bu Parametreleri Uygula</button>';
+  html+='</div>';
+  return html+'</div>';
+}
+var _optLastGridResults=[];
+function applyGridOptParams(profileId){
+  var pr=_optLastGridResults.find(function(r){return r.profile.id===profileId;});
+  if(!pr||!pr.best)return;
+  var p=pr.best.params;
+  S.gridLower=p.gridLower;S.gridUpper=p.gridUpper;S.gridCount=p.gridCount;S.gridInvestment=p.gridInvestment;
+  saveState();
+  var il=document.getElementById("inpGridLower");if(il)il.value=S.gridLower;
+  var iu=document.getElementById("inpGridUpper");if(iu)iu.value=S.gridUpper;
+  var ic=document.getElementById("inp-gridCount");if(ic)ic.value=S.gridCount;
+  var ii=document.getElementById("inp-gridInvestment");if(ii)ii.value=S.gridInvestment;
+  updateGridSummary();
+  showToast("✓ Grid parametreleri uygulandı — Ayarlar sekmesine geç");
+  setTab("ayarlar");
+}
+async function runGridOptimizer(){
+  var btn=document.getElementById("optBtn");
+  var statusEl=document.getElementById("optStatus");
+  var resultsEl=document.getElementById("optResults");
+  var investment=parseFloat(S.gridInvestment)||1000;
+  if(investment<10){statusEl.textContent="⚠ Minimum 10";return;}
+
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner" style="border-color:rgba(0,212,170,.2);border-top-color:var(--accent);width:13px;height:13px;border-width:2px;vertical-align:middle;margin-right:6px"></span> Taranıyor...';
+  statusEl.textContent="";resultsEl.innerHTML="";setLoad(3);
+
+  try{
+    var prices=await stGet(S.coin+"_"+INSTANT_BAR.okx);
+    if(!prices||prices.length<20)throw new Error("Cache'de veri yok — Ayarlar'da coini seçip bir kez veri indirin.");
+    var dateFrom=document.getElementById("optDateFrom").value;
+    var dateTo=document.getElementById("optDateTo").value;
+    if(dateFrom||dateTo)prices=filterByDateRange(prices,dateFrom,dateTo);
+    if(!prices||prices.length<20)throw new Error("Seçilen tarih aralığında yeterli veri yok.");
+    var lastPrice=prices[prices.length-1].price;
+
+    var SAMPLES=300;
+    var allProfileResults=[];
+    for(var pi=0;pi<GRID_OPT_PROFILES.length;pi++){
+      var profile=GRID_OPT_PROFILES[pi];
+      var best=null;
+      statusEl.textContent="🔍 "+profile.label+" taranıyor… (0/"+SAMPLES+")";
+      setLoad(Math.round(5+pi*28));
+      for(var i=0;i<SAMPLES;i++){
+        var params=_sampleGridParams(profile,investment,lastPrice,S.gridMode);
+        var res=gridBacktestWithParams(prices,params);
+        var score=_optScoreGrid(res?res.stats:null);
+        if(score>-Infinity&&(!best||score>best.score)){
+          best={params:params,stats:res.stats,score:score};
+        }
+        if(i%50===49){
+          statusEl.textContent="🔍 "+profile.label+" taranıyor… ("+(i+1)+"/"+SAMPLES+")";
+          setLoad(Math.round(5+pi*28+(i+1)/SAMPLES*26));
+          await new Promise(function(r){setTimeout(r,0);});
+        }
+      }
+      allProfileResults.push({profile:profile,best:best});
+    }
+    setLoad(88);
+    _optLastGridResults=allProfileResults;
+    resultsEl.innerHTML="";
+    allProfileResults.forEach(function(pr){
+      resultsEl.innerHTML+=_renderGridOptProfile(pr.profile,pr.best);
+    });
+    statusEl.textContent="✅ Tarama tamamlandı · "+SAMPLES+" × "+GRID_OPT_PROFILES.length+" profil · Tarih: "+(prices[0].date||"")+" – "+(prices[prices.length-1].date||"");
+  }catch(e){
+    statusEl.textContent="⚠ "+e.message;
+  }
+  btn.disabled=false;
+  btn.innerHTML="🔍 Grid Tara";
+  setLoad(100);setTimeout(function(){setLoad(0);},700);
+}
+function refreshOptUIForBotType(){
+  var isGrid=S.botType==="grid";
+  var capEl=document.getElementById("optCapital");
+  if(capEl)capEl.value=isGrid?(S.gridInvestment||1000):(S.startCapital||1000);
+  var lblEl=document.getElementById("optCapitalLbl");
+  if(lblEl)lblEl.textContent=isGrid?"YATIRIM TUTARI (Ayarlar'dan)":"BAŞLANGIÇ SERMAYESİ (Ayarlar'dan)";
+  var dcaBanner=document.getElementById("optDcaInfoBanner");
+  var gridBanner=document.getElementById("optGridInfoBanner");
+  if(dcaBanner)dcaBanner.classList.toggle("hidden",isGrid);
+  if(gridBanner)gridBanner.classList.toggle("hidden",!isGrid);
+  var optBtn=document.getElementById("optBtn");
+  if(optBtn)optBtn.innerHTML=isGrid?"🔍 Grid Tara":"🔍 Tara";
+}
 
 /* ═══════════════════════════════
    SPLASH
@@ -2898,6 +3492,16 @@ loadCandleRange();
 updateFetchBtnState();
 /* ── OPFS: IDB boşsa yerel dosyadan otomatik yükle ── */
 opfsRestore();
+
+/* ── Grid Bot UI başlangıç ── */
+buildFeeStepperClone("row-gridMakerFee2","makerFee","gridMakerFee2");
+buildFeeStepperClone("row-gridTakerFee2","takerFee","gridTakerFee2");
+buildGridModeChips();
+var _igl=document.getElementById("inpGridLower"); if(_igl)_igl.value=S.gridLower||"";
+var _igu=document.getElementById("inpGridUpper"); if(_igu)_igu.value=S.gridUpper||"";
+var _igr=document.getElementById("inpGridRangePct"); if(_igr)_igr.value=S.gridRangePct||20;
+updateGridSummary();
+refreshBotTypeUI();
 </script>
 <div id="toast" class="toast" style="opacity:0"></div>
 </body>
