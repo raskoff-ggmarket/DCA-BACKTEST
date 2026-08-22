@@ -1427,17 +1427,25 @@ async function fetchCandlesRun(){
 async function updateFetchBtnState(){
   var btn=document.getElementById("fetchBtn");
   if(!btn)return;
-  var key;
+  var key,barMs;
   if(S.cond==="rsi"){
     var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
-    key=S.coin+"_"+(tf?tf.okx:INSTANT_BAR.okx);
+    var bar=tf?tf.okx:INSTANT_BAR.okx;
+    key=S.coin+"_"+bar;
+    barMs=BAR_MS[bar]||3600000;
   } else {
     key=S.coin+"_"+INSTANT_BAR.okx;
+    barMs=BAR_MS[INSTANT_BAR.okx]||60000;
   }
   var complete=false;
   try{
     var d=await cGet(key);
-    complete=d&&d.length>0&&d[0].ts<=HISTORY_START_TS;
+    /* "Tamam" hem gecmisin (2022'ye kadar) HEM DE en son mumun guncel
+       oldugu anlamina gelmeli — sadece gecmis tamamsa ama son mum
+       gunlerdir cekilmemisse buton kilitli kalip yeni veri alinamiyordu. */
+    var histComplete=d&&d.length>0&&d[0].ts<=HISTORY_START_TS;
+    var isFresh=d&&d.length>0&&(Date.now()-d[d.length-1].ts)<=Math.max(barMs*3,21600000); // en az 6 saat tolerans
+    complete=histComplete&&isFresh;
   }catch(e){}
   if(complete){
     btn.innerHTML="✅ Tarih Tamam";
