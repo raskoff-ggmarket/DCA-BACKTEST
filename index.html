@@ -1527,7 +1527,8 @@ function backtest(prices, rsiArr){
   var liqLossQuote=0;      // base kâr modunda likidasyonla kaybedilen marjin (quote cinsinden)
 
   var dynInitAmt=S.initAmt;
-  var dynSafeAmt=S.safeAmt;
+  var dynSoAmts=[];   // her SO kademesinin kendi dinamik tutari (reinvest artik esit $ dagitiyor, oransal degil)
+  for(var _n0=0;_n0<S.maxSO;_n0++)dynSoAmts.push(S.safeAmt*Math.pow(S.amtMult,_n0));
 
   function updateLiqPrice(d){
     if(lev<=1){d.liqPrice=0;return;}
@@ -1563,20 +1564,20 @@ function backtest(prices, rsiArr){
     return soMaMode==="gt"?c>v:c<v;
   }
 
-  function totalOrderBase(init,safe){
-    var t=init,a=safe;
-    for(var n=0;n<S.maxSO;n++){t+=a*Math.pow(S.amtMult,n);}
-    return t;
-  }
-
   function applyReinvest(profit){
     if(isBase||!S.reinvest||profit<=0) return;
+    /* Kari BO + tum SO kademeleri arasinda ESIT $ olarak boler (oransal
+       degil): 1 BO + maxSO SO = (1+maxSO) dilim, her dilime ayni $ tutar
+       eklenir. Ör. maxSO=4, kar payi $10 ise: $10/5=$2 → BO +$2, 4 SO'nun
+       HER BIRI +$2 (kendi buyuklugune bakilmaksizin). */
     var add=profit*(S.reinvestPct/100);
-    var base=totalOrderBase(dynInitAmt,dynSafeAmt);
-    if(base<=0) return;
-    var ratio=(base+add)/base;
-    dynInitAmt=parseFloat((dynInitAmt*ratio).toFixed(8));
-    dynSafeAmt=parseFloat((dynSafeAmt*ratio).toFixed(8));
+    var slots=1+S.maxSO;
+    if(slots<=0)return;
+    var perSlot=add/slots;
+    dynInitAmt=parseFloat((dynInitAmt+perSlot).toFixed(8));
+    for(var n=0;n<S.maxSO;n++){
+      dynSoAmts[n]=parseFloat((dynSoAmts[n]+perSlot).toFixed(8));
+    }
   }
 
   function closeDealAt(price,date,why){
@@ -1654,7 +1655,7 @@ function backtest(prices, rsiArr){
       for(var n=0;n<S.maxSO;n++){
         cumPct+=stepNow;
         var cumPctF=Math.floor(cumPct*100)/100; // 3Commas 2dp kırpma
-        so.push({price:price*(1-cumPctF/100),amt:dynSafeAmt*Math.pow(S.amtMult,n),filled:false});
+        so.push({price:price*(1-cumPctF/100),amt:dynSoAmts[n],filled:false});
         stepNow*=S.stepMult;
       }
       var notional0=dynInitAmt*lev, qty0=notional0*(1-takerRate)/price;
@@ -1663,7 +1664,7 @@ function backtest(prices, rsiArr){
             totalCost:notional0,totalQty:qty0,
             avgCost:price,safetyCount:0,so:so,
             ttpActive:false,ttpPeak:0,
-            snapshotInitAmt:dynInitAmt,snapshotSafeAmt:dynSafeAmt};
+            snapshotInitAmt:dynInitAmt,snapshotSafeAmt:dynSoAmts[0]};
       updateLiqPrice(deal);
       inDeal=true;
 
@@ -1792,7 +1793,7 @@ function backtest(prices, rsiArr){
       openDealTP:openDeal?openDeal.avgCost*(1+S.tpPct/100):null,
       openDealSafetyCount:openDeal?openDeal.safetyCount:0,
       finalInitAmt:dynInitAmt,
-      finalSafeAmt:dynSafeAmt,
+      finalSafeAmt:dynSoAmts[0],
       accumBase:accumBase,
       isBase:isBase,
       firstPrice:prices[0].price,
