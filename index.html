@@ -2224,6 +2224,13 @@ function copyResults(){
     "Miktar Çarp. : ×"+S.amtMult,
     "Max SO       : "+S.maxSO,
     "TP           : %"+S.tpPct,
+    "Kâr Modu     : "+(S.profitMode==="base"?coin.sym+" (Base)":"Quote (USDT)"),
+    "Reinvest     : "+(S.reinvest?"Evet (%"+S.reinvestPct+")":"Hayır"),
+    "TTP          : "+(S.ttpEnabled?"Evet (%"+S.ttpPct+")":"Hayır"),
+    "Strateji     : "+(S.cond==="rsi"?"RSI("+S.rsiTP+") "+(S.rsiDir==="lt"?"< ":"> ")+S.rsiThr+" · "+S.rsiTf:"Anında (1m)"),
+    "Giriş MA     : "+_maLabel("entry"),
+    "Averaging MA : "+_maLabel("so"),
+    "Stop Loss    : "+(S.slMode==="sma50"?"50 SMA (gün kapanışı)":S.slMode==="sma200"?"200 SMA (gün kapanışı)":S.slMode==="pct"?"%"+(S.slPct||15)+" Zarar":"Hayır"),
     "Kaldıraç     : "+(S.leverage||1)+"x",
     "Maker Kom.   : %"+S.makerFee+" · Taker: %"+S.takerFee,
   ];
