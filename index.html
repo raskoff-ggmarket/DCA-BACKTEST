@@ -399,9 +399,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
     <div id="condRsiPanel" class="hidden">
       <div class="row" id="row-rsiTP"><div><div class="rl">RSI Periyodu</div><div class="rs">RSI hesaplama periyodu (mum sayısı)</div></div></div>
-      <div class="row">
-        <div><div class="rl">Zaman Dilimi</div><div class="rs">RSI'nin hesaplanacağı mum periyodu</div></div>
-        <div id="rsiTfChips" style="display:flex;gap:6px;flex-shrink:0;margin-left:12px"></div>
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+        <div class="rl" style="margin-bottom:2px">Zaman Dilimi</div>
+        <div class="rs" style="margin-bottom:8px">RSI'nin hesaplanacağı mum periyodu</div>
+        <div id="rsiTfChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
       </div>
       <div class="row">
         <div><div class="rl">Yön</div><div class="rs">Eşiğin altına mı üstüne mi geçince gir</div></div>
@@ -595,6 +596,10 @@ var PERS = [
 
 /* RSI zaman dilimleri + OKX bar kodu */
 var RSI_TFS = [
+  {l:"1m", v:"1m",  okx:"1m",  minPerBar:1},
+  {l:"3m", v:"3m",  okx:"3m",  minPerBar:3},
+  {l:"5m", v:"5m",  okx:"5m",  minPerBar:5},
+  {l:"15m",v:"15m", okx:"15m", minPerBar:15},
   {l:"30m",v:"30m", okx:"30m", minPerBar:30},
   {l:"1h", v:"1h",  okx:"1H",  minPerBar:60},
   {l:"4h", v:"4h",  okx:"4H",  minPerBar:240},
@@ -1014,7 +1019,7 @@ function _timedFetch(url){
 
 /* OKX bar kodu → Bybit interval kodu */
 function _barToBybit(bar){
-  return {"1m":"1","30m":"30","1H":"60","4H":"240","1D":"D"}[bar]||"1";
+  return {"1m":"1","3m":"3","5m":"5","15m":"15","30m":"30","1H":"60","4H":"240","1D":"D"}[bar]||"1";
 }
 
 /* afterTs: ms timestamp — bu ts'den daha eski mumları çek ("" = şimdiden başla)
