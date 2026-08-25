@@ -390,11 +390,27 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   <div class="card" style="border-color:rgba(0,153,255,.25);margin-bottom:0">
     <div class="card-head" style="color:var(--accent2)">🚀 Başlatma Koşulu</div>
 
-    <div style="padding:11px 16px;display:flex;align-items:center;gap:8px">
+    <div style="padding:11px 16px 0;display:flex;gap:6px" id="condModeChips"></div>
+
+    <div id="condInstantPanel" style="padding:11px 16px;display:flex;align-items:center;gap:8px">
       <div style="background:rgba(0,212,170,.12);border:1px solid rgba(0,212,170,.3);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:700;color:var(--accent)">1m</div>
-      <div><div class="ct" style="font-size:14px">⚡ Anında</div><div class="cs">Döngü başlayınca hemen gir · 1 dakikalık mumlarla backtest</div></div>
+      <div><div class="ct" style="font-size:14px">⚡ ASAP</div><div class="cs">Döngü başlayınca hemen gir · 1 dakikalık mumlarla backtest</div></div>
     </div>
-    <div style="margin:0 14px 12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:10px;padding:9px 12px;font-size:11px;color:var(--yellow);line-height:1.5">
+
+    <div id="condRsiPanel" class="hidden">
+      <div class="row" id="row-rsiTP"><div><div class="rl">RSI Periyodu</div><div class="rs">RSI hesaplama periyodu (mum sayısı)</div></div></div>
+      <div class="row">
+        <div><div class="rl">Zaman Dilimi</div><div class="rs">RSI'nin hesaplanacağı mum periyodu</div></div>
+        <div id="rsiTfChips" style="display:flex;gap:6px;flex-shrink:0;margin-left:12px"></div>
+      </div>
+      <div class="row">
+        <div><div class="rl">Yön</div><div class="rs">Eşiğin altına mı üstüne mi geçince gir</div></div>
+        <div id="rsiDirChips" style="display:flex;gap:6px;flex-shrink:0;margin-left:12px"></div>
+      </div>
+      <div class="row" id="row-rsiThr"><div><div class="rl">RSI Eşiği</div><div class="rs">Bu değere göre döngü tetiklenir</div></div></div>
+    </div>
+
+    <div style="margin:12px 14px 12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:10px;padding:9px 12px;font-size:11px;color:var(--yellow);line-height:1.5">
 ⚠ Seans başına 30.000 mum döndürülür (~20 gün). Her çalıştırmada yeni mumlar eklenir, zamanla tam geçmiş birikir.
     </div>
   </div>
@@ -1679,7 +1695,7 @@ function render(res, source, mumCnt, dateFrom, dateTo){
   if(S.cond==="instant"){
     var extras=(S.reinvest&&!isBase?" · Reinvest":"")+(S.ttpEnabled?" · TTP "+f(S.ttpPct,2)+"%":"")+modeSfx;
     sb.style.cssText="margin-top:10px;display:inline-flex;align-items:center;gap:5px;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600;background:rgba(0,212,170,.1);color:var(--accent);border:1px solid rgba(0,212,170,.25)";
-    sb.textContent="⚡ Anında · 1m"+extras;
+    sb.textContent="⚡ ASAP · 1m"+extras;
   } else {
     var tf=RSI_TFS.find(function(t){return t.v===S.rsiTf;});
     sb.style.cssText="margin-top:10px;display:inline-flex;align-items:center;gap:5px;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:600;background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.25)";
@@ -1891,7 +1907,7 @@ function saveSettings(){
     "══════════════════════════════════",
     "Sembol          : "+coin.sym+"/USDT",
     "Dönem           : "+S.dateFrom+" – "+S.dateTo,
-    "Strateji        : "+(S.cond==="rsi"?"RSI("+S.rsiTP+") "+(S.rsiDir==="lt"?"< ":"> ")+S.rsiThr+" · "+S.rsiTf:"Anında (1m)"),
+    "Strateji        : "+(S.cond==="rsi"?"RSI("+S.rsiTP+") "+(S.rsiDir==="lt"?"< ":"> ")+S.rsiThr+" · "+S.rsiTf:"ASAP (1m)"),
     "Başlangıç Ser.  : $"+S.startCapital,
     "BO Miktarı      : $"+S.initAmt,
     "SO Miktarı      : $"+S.safeAmt,
@@ -1945,7 +1961,7 @@ function copyResults(){
     "Kâr Modu     : "+(S.profitMode==="base"?coin.sym+" (Base)":"Quote (USDT)"),
     "Reinvest     : "+(S.reinvest?"Evet (%"+S.reinvestPct+")":"Hayır"),
     "TTP          : "+(S.ttpEnabled?"Evet (%"+S.ttpPct+")":"Hayır"),
-    "Strateji     : "+(S.cond==="rsi"?"RSI("+S.rsiTP+") "+(S.rsiDir==="lt"?"< ":"> ")+S.rsiThr+" · "+S.rsiTf:"Anında (1m)"),
+    "Strateji     : "+(S.cond==="rsi"?"RSI("+S.rsiTP+") "+(S.rsiDir==="lt"?"< ":"> ")+S.rsiThr+" · "+S.rsiTf:"ASAP (1m)"),
     "Maker Kom.   : %"+S.makerFee+" · Taker: %"+S.takerFee,
   ];
   navigator.clipboard.writeText(lines.join("\n"))
@@ -2033,6 +2049,64 @@ function buildProfitMode(){
         note.style.color="";
       }
       saveState();
+    };
+    el.appendChild(b);
+  });
+}
+
+/* ── Başlatma Koşulu: ASAP / RSI ── */
+var COND_MODES=[{v:"instant",l:"⚡ ASAP"},{v:"rsi",l:"📉 RSI"}];
+var RSI_DIR_MODES=[{v:"lt",l:"< Eşik"},{v:"gt",l:"> Eşik"}];
+function buildCondChips(){
+  var el=document.getElementById("condModeChips");if(!el)return;
+  el.innerHTML="";
+  COND_MODES.forEach(function(o){
+    var b=document.createElement("button");
+    b.className="chip"+(S.cond===o.v?" on":"");
+    b.style.padding="6px 14px";
+    b.textContent=o.l;
+    b.onclick=function(){setCondMode(o.v);};
+    el.appendChild(b);
+  });
+  _updateCondUI();
+}
+function setCondMode(v){
+  S.cond=v;saveState();
+  buildCondChips();
+  if(v==="rsi"){buildRsiTfChips();buildRsiDirChips();}
+}
+function _updateCondUI(){
+  var isRsi=S.cond==="rsi";
+  var ip=document.getElementById("condInstantPanel");if(ip)ip.classList.toggle("hidden",isRsi);
+  var rp=document.getElementById("condRsiPanel");if(rp)rp.classList.toggle("hidden",!isRsi);
+  if(isRsi){buildRsiTfChips();buildRsiDirChips();}
+}
+function buildRsiTfChips(){
+  var el=document.getElementById("rsiTfChips");if(!el)return;
+  el.innerHTML="";
+  RSI_TFS.forEach(function(o){
+    var b=document.createElement("button");
+    b.className="chip"+(S.rsiTf===o.v?" on":"");
+    b.style.padding="6px 12px";
+    b.textContent=o.l;
+    b.onclick=function(){
+      S.rsiTf=o.v;saveState();
+      el.querySelectorAll(".chip").forEach(function(c,ci){c.className="chip"+(RSI_TFS[ci].v===S.rsiTf?" on":"");});
+    };
+    el.appendChild(b);
+  });
+}
+function buildRsiDirChips(){
+  var el=document.getElementById("rsiDirChips");if(!el)return;
+  el.innerHTML="";
+  RSI_DIR_MODES.forEach(function(o){
+    var b=document.createElement("button");
+    b.className="chip"+(S.rsiDir===o.v?" on":"");
+    b.style.padding="6px 12px";
+    b.textContent=o.l;
+    b.onclick=function(){
+      S.rsiDir=o.v;saveState();
+      el.querySelectorAll(".chip").forEach(function(c,ci){c.className="chip"+(RSI_DIR_MODES[ci].v===S.rsiDir?" on":"");});
     };
     el.appendChild(b);
   });
@@ -2501,7 +2575,7 @@ function applyOptParams(profileId){
 ═══════════════════════════════ */
 var SETTINGS_KEYS=["coin","startCapital","initAmt","safeAmt","maxSO","priceStep",
   "stepMult","amtMult","tpPct","ttpEnabled","ttpPct","reinvest","reinvestPct",
-  "makerFee","takerFee","profitMode","cond","dateFrom","dateTo"];
+  "makerFee","takerFee","profitMode","cond","rsiTP","rsiTf","rsiDir","rsiThr","dateFrom","dateTo"];
 
 function _applySettingsObj(obj){
   var applied=0;
@@ -2524,7 +2598,7 @@ function _applySettingsObj(obj){
   var rc=document.getElementById("chkReinvest");if(rc)rc.checked=!!S.reinvest;
   var tc=document.getElementById("chkTtp");if(tc)tc.checked=!!S.ttpEnabled;
   toggleReinvestSub();toggleTtpSub();
-  buildProfitMode();updateBadge();updateCap();
+  buildProfitMode();buildCondChips();updateBadge();updateCap();
   refreshCacheRange();loadCandleRange();updateFetchBtnState();
   return applied;
 }
@@ -2551,7 +2625,14 @@ function parseSettingsText(txt){
   if(tm){o.ttpEnabled=/evet|yes|true/i.test(tm[1]); if(tm[2]!==undefined)o.ttpPct=parseFloat(tm[2]);}
   var pm=txt.match(/K[âa]r\s*Modu[^:\n]*:\s*([A-Za-z]+)/i);
   if(pm)o.profitMode=/base/i.test(pm[1])?"base":"quote";
-  if(/Strateji[^:\n]*:\s*An[ıi]?nda/i.test(txt))o.cond="instant";
+  if(/Strateji[^:\n]*:\s*(ASAP|An[ıi]?nda)/i.test(txt))o.cond="instant";
+  if(/Strateji[^:\n]*:\s*RSI/i.test(txt)){
+    o.cond="rsi";
+    var rp=txt.match(/RSI\(\s*(\d+)\s*\)/i); if(rp)o.rsiTP=parseInt(rp[1]);
+    var rd=txt.match(/RSI\([^)]*\)\s*([<>])/i); if(rd)o.rsiDir=rd[1]==="<"?"lt":"gt";
+    var rt=txt.match(/[<>]\s*([\d.]+)/); if(rt)o.rsiThr=parseFloat(rt[1]);
+    var rtf=txt.match(/·\s*([0-9]+[a-zA-Z]+)/); if(rtf&&RSI_TFS.some(function(t){return t.v===rtf[1];}))o.rsiTf=rtf[1];
+  }
   var cm=txt.match(/Sembol[^:\n]*:\s*([A-Za-z0-9]+)\s*\//i);
   if(cm){var c=COINS.find(function(x){return x.sym.toLowerCase()===cm[1].toLowerCase();}); if(c)o.coin=c.id;}
   return o;
@@ -2617,10 +2698,10 @@ loadState();
 STEPPERS.forEach(function(cfg){buildStepper(cfg.k);});
 buildMainChips();
 buildProfitMode();
+buildCondChips();
 setOptProfitMode(_optProfitMode);
 setOptSma(_optSma);
 
-S.cond="instant";
 updateBadge();
 updateCap();
 /* Toggle başlangıç durumları */
