@@ -371,6 +371,27 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
     </div>
 
+    <!-- Hacim Filtresi -->
+    <div class="toggle-wrap" style="border-bottom:none">
+      <div class="toggle-info">
+        <div class="toggle-lbl">📊 Hacim Filtresi (Likidite)</div>
+        <div class="toggle-sub">Emir, mumun gerçek hacminin çok üstündeyse dolmasın</div>
+      </div>
+      <label class="toggle" style="margin-left:12px">
+        <input type="checkbox" id="chkVolFilter" onchange="S.volFilter=this.checked;toggleVolFilterSub();saveState()"/>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <!-- Hacim eşiği % -->
+    <div class="toggle-sub-panel hidden" id="volFilterSubPanel">
+      <div class="row" id="row-volFilterPct" style="background:var(--bg3)">
+        <div>
+          <div class="rl">Hacim Eşiği (%)</div>
+          <div class="rs">Emir, mum hacminin bu %'inden büyükse o mumda dolmaz</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Komisyon: Maker / Taker -->
     <div class="row" id="row-makerFee">
       <div>
@@ -618,6 +639,7 @@ var DEFAULTS = {
   priceStep:1.0, stepMult:1.0, amtMult:1.0,
   maxSO:10, tpPct:1.5, leverage:1,
   reinvest:false, reinvestPct:100, ttpEnabled:false, ttpPct:0.5,
+  volFilter:false, volFilterPct:50,
   makerFee:0.1, takerFee:0.1,
   profitMode:"quote",
   cond:"instant",
@@ -654,6 +676,7 @@ var STEPPERS = [
   {k:"leverage",    step:1,   min:1, max:50,  dec:0},
   {k:"ttpPct",      step:0.1, min:0.1,        dec:2},
   {k:"reinvestPct", step:5,   min:1, max:100,  dec:0},
+  {k:"volFilterPct",step:5,   min:1, max:100,  dec:0},
   {k:"makerFee",    step:0.01,min:0, max:5,    dec:3},
   {k:"takerFee",    step:0.01,min:0, max:5,    dec:3},
   {k:"rsiTP",       step:1,   min:2, max:50,  dec:0},
@@ -1515,6 +1538,54 @@ function backtest(prices, rsiArr){
     return bv+cash;
   }
 
+  /* Hacim filtresi: emir tutari (quote), mumun gercek hacim*fiyat degerinin
+     belirlenen %'inden buyukse o mumda dolmasin — dusuk likiditede
+     gerceklesmesi imkansiz buyuklukte doluslari engeller. */
+  function volOk(amtQuote,barVolQuote){
+    if(!S.volFilter||barVolQuote<=0)return true;
+    return amtQuote<=barVolQuote*(S.volFilterPct||50)/100;
+  }
+
+  /* TP/TTP kontrolu — dolarsa true doner. */
+  function checkTP(hi,lo,date,barVolQuote){
+    var tpPrice=deal.avgCost*(1+S.tpPct/100);
+    if(S.ttpEnabled){
+      if(!deal.ttpActive&&hi>=tpPrice){deal.ttpActive=true;deal.ttpPeak=hi;}
+      if(deal.ttpActive){
+        if(hi>deal.ttpPeak)deal.ttpPeak=hi;
+        var ttpTrig=deal.ttpPeak*(1-S.ttpPct/100);
+        if(lo<=ttpTrig&&volOk(deal.totalQty*ttpTrig,barVolQuote)){
+          closeDealAt(ttpTrig,date,"TTP");
+          return true;
+        }
+      }
+      return false;
+    }
+    if(hi>=tpPrice&&volOk(deal.totalQty*tpPrice,barVolQuote)){
+      closeDealAt(tpPrice,date,"TP");   // limit fiyattan dolar
+      return true;
+    }
+    return false;
+  }
+
+  /* Safety order limit emir → mumun LOW'u seviyeye değince, seviye fiyatından dolar */
+  function fillSOs(lo,date,barVolQuote){
+    for(var n=0;n<deal.so.length;n++){
+      var lv=deal.so[n];
+      if(!lv.filled&&lo<=lv.price){
+        if(!volOk(lv.amt,barVolQuote))continue; // bu mumda hacim yetersiz, sirada bekle
+        if(cash<lv.amt)break;
+        cash-=lv.amt;
+        var notionalSO=lv.amt*lev, qtySO=notionalSO*(1-makerRate)/lv.price;
+        deal.orders.push({date:date,price:lv.price,size:lv.amt,qty:qtySO});
+        deal.totalCost+=notionalSO;deal.totalQty+=qtySO;
+        deal.avgCost=deal.totalCost/deal.totalQty;
+        deal.safetyCount++;lv.filled=true;
+        updateLiqPrice(deal);
+      }
+    }
+  }
+
   for(var i=0;i<prices.length;i++){
     var price=prices[i].price, date=prices[i].date;
     var hi=prices[i].high!=null?prices[i].high:price;   // OHLC (yoksa close'a düşer)
@@ -1559,39 +1630,19 @@ function backtest(prices, rsiArr){
         closeDealAt(deal.liqPrice,date,"LIQ");
         equity.push({date:date,value:eqVal(price),price:price});continue;
       }
-      var tpPrice=deal.avgCost*(1+S.tpPct/100);
-
-      // TP/TTP limit emirdir → mumun HIGH'ı hedefe değince dolar
-      if(S.ttpEnabled){
-        if(!deal.ttpActive&&hi>=tpPrice){deal.ttpActive=true;deal.ttpPeak=hi;}
-        if(deal.ttpActive){
-          if(hi>deal.ttpPeak)deal.ttpPeak=hi;
-          var ttpTrig=deal.ttpPeak*(1-S.ttpPct/100);
-          if(lo<=ttpTrig){
-            closeDealAt(ttpTrig,date,"TTP");
-            equity.push({date:date,value:eqVal(price),price:price});continue;
-          }
-        }
+      var barOpen=prices[i].open!=null?prices[i].open:price;
+      var barVolQuote=(prices[i].volume||0)*price;
+      /* Open ile mumun olasi ic-rota yonu: kapanis >= acilis ise "yukselen"
+         mum (once Low'a ugrayip sonra High'a cikmis olabilir), degilse
+         "dusen" mum (once High'a ugrayip sonra Low'a inmis olabilir).
+         Ayni mumda hem TP hem bitisik bir SO tetiklenirse hangisinin
+         gercekte once olmus olabilecegini bu belirler. */
+      if(price>=barOpen){
+        fillSOs(lo,date,barVolQuote);
+        if(checkTP(hi,lo,date,barVolQuote)){equity.push({date:date,value:eqVal(price),price:price});continue;}
       } else {
-        if(hi>=tpPrice){
-          closeDealAt(tpPrice,date,"TP");   // limit fiyattan dolar
-          equity.push({date:date,value:eqVal(price),price:price});continue;
-        }
-      }
-
-      // Safety order limit emir → mumun LOW'u seviyeye değince, seviye fiyatından dolar
-      for(var n=0;n<deal.so.length;n++){
-        var lv=deal.so[n];
-        if(!lv.filled&&lo<=lv.price){
-          if(cash<lv.amt)break;
-          cash-=lv.amt;
-          var notionalSO=lv.amt*lev, qtySO=notionalSO*(1-makerRate)/lv.price;
-          deal.orders.push({date:date,price:lv.price,size:lv.amt,qty:qtySO});
-          deal.totalCost+=notionalSO;deal.totalQty+=qtySO;
-          deal.avgCost=deal.totalCost/deal.totalQty;
-          deal.safetyCount++;lv.filled=true;
-          updateLiqPrice(deal);
-        }
+        if(checkTP(hi,lo,date,barVolQuote)){equity.push({date:date,value:eqVal(price),price:price});continue;}
+        fillSOs(lo,date,barVolQuote);
       }
     }
     equity.push({date:date,value:eqVal(price),price:price});
@@ -1994,6 +2045,7 @@ function saveSettings(){
     "Maker Kom.      : %"+S.makerFee,
     "Taker Kom.      : %"+S.takerFee,
     "Kaldıraç        : "+(S.leverage||1)+"x",
+    "Hacim Filtresi  : "+(S.volFilter?"Evet (%"+(S.volFilterPct||50)+")":"Hayır"),
   ];
   var txt=lines.join("\n");
   navigator.clipboard.writeText(txt)
@@ -2038,6 +2090,7 @@ function copyResults(){
     "Strateji     : "+(S.cond==="rsi"?"RSI("+S.rsiTP+") "+(S.rsiDir==="lt"?"< ":"> ")+S.rsiThr+" · "+S.rsiTf:"ASAP (1m)"),
     "Maker Kom.   : %"+S.makerFee+" · Taker: %"+S.takerFee,
     "Kaldıraç     : "+(S.leverage||1)+"x",
+    "Hacim Filtresi: "+(S.volFilter?"Evet (%"+(S.volFilterPct||50)+")":"Hayır"),
   ];
   navigator.clipboard.writeText(lines.join("\n"))
     .then(function(){showToast("✓ Panoya kopyalandı");})
@@ -2322,6 +2375,9 @@ function toggleReinvestSub(){
 function toggleTtpSub(){
   document.getElementById("ttpSubPanel").classList.toggle("hidden",!S.ttpEnabled);
 }
+function toggleVolFilterSub(){
+  document.getElementById("volFilterSubPanel").classList.toggle("hidden",!S.volFilter);
+}
 /* ═══════════════════════════════
    OPTIMIZER
 ═══════════════════════════════ */
@@ -2459,6 +2515,7 @@ function _sampleParams(profile,capital){
     maxSO:maxSO,tpPct:tpPct,leverage:leverage,
     reinvest:!!S.reinvest,reinvestPct:S.reinvestPct||100,
     ttpEnabled:!!S.ttpEnabled,ttpPct:ttpPct,
+    volFilter:!!S.volFilter,volFilterPct:S.volFilterPct||50,
     cond:"instant",profitMode:S.profitMode||"quote"
   };
 }
@@ -2613,6 +2670,7 @@ function _renderOptProfile(profile,best){
   html+='<div style="color:var(--text3)">Kaldıraç <span style="color:'+((p.leverage||1)>1?"var(--red)":"var(--text)")+';font-weight:700">'+(p.leverage||1)+'x</span></div>';
   if(p.reinvest)html+='<div style="color:var(--text3)">Reinv <span style="color:var(--accent);font-weight:700">%'+p.reinvestPct+'</span></div>';
   if(p.ttpEnabled)html+='<div style="color:var(--text3)">TTP <span style="color:var(--yellow);font-weight:700">%'+p.ttpPct+'</span></div>';
+  if(p.volFilter)html+='<div style="color:var(--text3)">Hacim F. <span style="color:var(--purple);font-weight:700">%'+p.volFilterPct+'</span></div>';
   html+='<div style="color:var(--text3)">Kom. <span style="color:var(--text);font-weight:700">M%'+S.makerFee+' T%'+S.takerFee+'</span></div>';
   html+='</div>';
   html+='<button onclick="applyOptParams(\''+profile.id+'\')" '
@@ -2640,7 +2698,8 @@ function applyOptParams(profileId){
   });
   document.getElementById("chkReinvest").checked=S.reinvest;
   document.getElementById("chkTtp").checked=S.ttpEnabled;
-  toggleReinvestSub();toggleTtpSub();
+  document.getElementById("chkVolFilter").checked=!!S.volFilter;
+  toggleReinvestSub();toggleTtpSub();toggleVolFilterSub();
   updateCap();updateBadge();
   showToast("✓ Parametreler uygulandı — Ayarlar sekmesine geç");
   setTab("ayarlar");
@@ -2652,7 +2711,7 @@ function applyOptParams(profileId){
 ═══════════════════════════════ */
 var SETTINGS_KEYS=["coin","startCapital","initAmt","safeAmt","maxSO","priceStep",
   "stepMult","amtMult","tpPct","ttpEnabled","ttpPct","reinvest","reinvestPct",
-  "makerFee","takerFee","profitMode","cond","rsiTP","rsiTf","rsiDir","rsiThr","dateFrom","dateTo","leverage"];
+  "makerFee","takerFee","profitMode","cond","rsiTP","rsiTf","rsiDir","rsiThr","dateFrom","dateTo","leverage","volFilter","volFilterPct"];
 
 function _applySettingsObj(obj){
   var applied=0;
@@ -2674,7 +2733,8 @@ function _applySettingsObj(obj){
   var cc=document.getElementById("coinC");if(cc)cc.value=S.coin;
   var rc=document.getElementById("chkReinvest");if(rc)rc.checked=!!S.reinvest;
   var tc=document.getElementById("chkTtp");if(tc)tc.checked=!!S.ttpEnabled;
-  toggleReinvestSub();toggleTtpSub();
+  var vc=document.getElementById("chkVolFilter");if(vc)vc.checked=!!S.volFilter;
+  toggleReinvestSub();toggleTtpSub();toggleVolFilterSub();
   buildProfitMode();buildCondChips();updateBadge();updateCap();
   refreshCacheRange();loadCandleRange();updateFetchBtnState();
   return applied;
@@ -2694,6 +2754,8 @@ function parseSettingsText(txt){
   if((v=num(/Miktar\s*[ÇC]arpan[^:\n]*:\s*[×x]?\s*([\d.]+)/i))!==undefined)o.amtMult=v;
   if((v=num(/K[âa]r\s*Oran[^:\n]*:\s*%?\s*([\d.]+)/i))!==undefined)o.tpPct=v;
   if((v=num(/Kald[ıi]?ra[çc][^:\n]*:\s*([\d.]+)\s*x?/i))!==undefined)o.leverage=Math.max(1,Math.round(v));
+  var vf=txt.match(/Hacim\s*Filtre[^:\n]*:\s*([^\n]+)/i);
+  if(vf){o.volFilter=/evet|yes|true/i.test(vf[1]); var vfp=vf[1].match(/([\d.]+)/); if(vfp)o.volFilterPct=parseFloat(vfp[1]);}
   var mk=num(/Maker[^:\n]*:\s*%?\s*([\d.]+)/i); if(mk!==undefined)o.makerFee=mk;
   var tk=num(/Taker[^:\n]*:\s*%?\s*([\d.]+)/i); if(tk!==undefined)o.takerFee=tk;
   var kom=num(/Komisyon[^:\n]*:\s*%?\s*([\d.]+)/i); if(kom!==undefined){if(o.makerFee===undefined)o.makerFee=kom;if(o.takerFee===undefined)o.takerFee=kom;}
@@ -2785,8 +2847,10 @@ updateCap();
 /* Toggle başlangıç durumları */
 document.getElementById("chkReinvest").checked = S.reinvest;
 document.getElementById("chkTtp").checked = S.ttpEnabled;
+document.getElementById("chkVolFilter").checked = !!S.volFilter;
 toggleReinvestSub();
 toggleTtpSub();
+toggleVolFilterSub();
 
 /* ── Kalıcı depolama iste (tarayıcı baskı altında silmez) ── */
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
