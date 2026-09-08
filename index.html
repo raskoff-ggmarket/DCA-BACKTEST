@@ -779,13 +779,15 @@ async function cPutBatched(key,candles,onProgress){
 }
 function parseRawCandles(raw){
   return raw.map(function(k){
-    var c=parseFloat(k[4]);                          // close (OKX/Bybit: 0=ts,1=o,2=h,3=l,4=c)
+    var c=parseFloat(k[4]);                          // close (OKX/Bybit: 0=ts,1=o,2=h,3=l,4=c,5=vol)
+    var op=k[1]!=null?parseFloat(k[1]):c;
     var hi=k[2]!=null?parseFloat(k[2]):c;
     var lo=k[3]!=null?parseFloat(k[3]):c;
-    if(isNaN(hi))hi=c; if(isNaN(lo))lo=c;
+    var vol=k[5]!=null?parseFloat(k[5]):0;
+    if(isNaN(op))op=c; if(isNaN(hi))hi=c; if(isNaN(lo))lo=c; if(isNaN(vol))vol=0;
     return {
       ts:parseInt(k[0]),
-      price:c, high:hi, low:lo,
+      open:op, price:c, high:hi, low:lo, volume:vol,
       date:new Date(parseInt(k[0])).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"}),
       time:new Date(parseInt(k[0])).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}),
     };
@@ -826,7 +828,12 @@ function clearCache(){
 async function opfsPut(key,candles){
   if(!navigator.storage||!navigator.storage.getDirectory)return;
   try{
-    var compact=candles.map(function(c){return (c.high!=null&&c.low!=null)?[c.ts,c.price,c.high,c.low]:[c.ts,c.price];});
+    /* [ts, open, high, low, close, volume] — tam OHLCV */
+    var compact=candles.map(function(c){
+      return (c.high!=null&&c.low!=null)
+        ?[c.ts,(c.open!=null?c.open:c.price),c.high,c.low,c.price,c.volume||0]
+        :[c.ts,c.price];
+    });
     var root=await navigator.storage.getDirectory();
     var fh=await root.getFileHandle(key+".json",{create:true});
     var w=await fh.createWritable();
@@ -844,7 +851,15 @@ async function opfsGet(key){
     var text=await file.text();
     var raw=JSON.parse(text);
     return raw.map(function(d){
-      if(Array.isArray(d)){var ts=d[0],cl=d[1];var hh=d.length>=4?d[2]:cl,ll=d.length>=4?d[3]:cl;return {ts:ts,price:cl,high:hh,low:ll,date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};}
+      if(Array.isArray(d)){
+        var ts=d[0];
+        if(d.length>=6){
+          // [ts, open, high, low, close, volume]
+          return {ts:ts,open:d[1],high:d[2],low:d[3],price:d[4],volume:d[5]||0,date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
+        }
+        var cl=d[1];var hh=d.length>=4?d[2]:cl,ll=d.length>=4?d[3]:cl;
+        return {ts:ts,open:cl,price:cl,high:hh,low:ll,volume:0,date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
+      }
       return d;
     });
   }catch(e){return null;}
@@ -903,8 +918,10 @@ async function exportCandles(){
   var cur=[],curBytes=2;                 // "[" + "]"
   for(var i=0;i<data.length;i++){
     var _d=data[i];
-    // [ts, close, high, low] — OHLC varsa ekle (yoksa sadece ts,close)
-    var e=(_d.high!=null&&_d.low!=null)?[_d.ts,_d.price,_d.high,_d.low]:[_d.ts,_d.price];
+    // [ts, open, high, low, close, volume] — tam OHLCV (yoksa sadece ts,close)
+    var e=(_d.high!=null&&_d.low!=null)
+      ?[_d.ts,(_d.open!=null?_d.open:_d.price),_d.high,_d.low,_d.price,_d.volume||0]
+      :[_d.ts,_d.price];
     var sLen=JSON.stringify(e).length+1; // +1 virgül
     if(curBytes+sLen>MAX&&cur.length){
       parts.push(cur);cur=[];curBytes=2;
@@ -941,7 +958,8 @@ async function importCandles(input){
       var header=lines[0].toLowerCase().split(",").map(function(h){return h.trim().replace(/"/g,"");});
       var dateIdx=header.indexOf("date"),tsIdx=header.indexOf("timestamp");
       var closeIdx=header.indexOf("close"),adjIdx=header.indexOf("adj close");
-      var highIdx=header.indexOf("high"),lowIdx=header.indexOf("low");
+      var openIdx=header.indexOf("open"),highIdx=header.indexOf("high"),lowIdx=header.indexOf("low");
+      var volIdx=header.indexOf("volume");
       if(closeIdx===-1&&adjIdx===-1){showToast("⚠ CSV'de 'close' sütunu bulunamadı");if(infoEl)infoEl.textContent="";input.value="";return;}
       var priceCol=closeIdx!==-1?closeIdx:adjIdx;
       var timeCol=dateIdx!==-1?dateIdx:tsIdx;
@@ -956,10 +974,12 @@ async function importCandles(input){
         } else { ts=0; }
         if(!ts||isNaN(ts))continue;
         var cl=parseFloat(cols[priceCol]);
+        var oo=(openIdx!==-1&&cols[openIdx])?parseFloat(cols[openIdx]):cl;
         var hh=(highIdx!==-1&&cols[highIdx])?parseFloat(cols[highIdx]):cl;
         var ll=(lowIdx!==-1&&cols[lowIdx])?parseFloat(cols[lowIdx]):cl;
-        if(isNaN(hh))hh=cl; if(isNaN(ll))ll=cl;
-        candles.push({ts:ts,price:cl,high:hh,low:ll,
+        var vv=(volIdx!==-1&&cols[volIdx])?parseFloat(cols[volIdx]):0;
+        if(isNaN(oo))oo=cl; if(isNaN(hh))hh=cl; if(isNaN(ll))ll=cl; if(isNaN(vv))vv=0;
+        candles.push({ts:ts,open:oo,price:cl,high:hh,low:ll,volume:vv,
           date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"}),
           time:new Date(ts).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})});
       }
@@ -969,12 +989,17 @@ async function importCandles(input){
       if(!Array.isArray(raw)||!raw.length){showToast("⚠ Geçersiz dosya");if(infoEl)infoEl.textContent="";input.value="";return;}
       candles=raw.map(function(d){
         if(Array.isArray(d)){
-          var ts=d[0], cl=d[1];
-          // [ts,close] veya [ts,close,high,low]
+          var ts=d[0];
+          if(d.length>=6){
+            // [ts, open, high, low, close, volume]
+            return {ts:ts,open:d[1],high:d[2],low:d[3],price:d[4],volume:d[5]||0,date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
+          }
+          var cl=d[1];
+          // [ts,close] veya [ts,close,high,low] (eski format)
           var hh=d.length>=4?d[2]:cl, ll=d.length>=4?d[3]:cl;
-          return {ts:ts,price:cl,high:hh,low:ll,date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
+          return {ts:ts,open:cl,price:cl,high:hh,low:ll,volume:0,date:new Date(ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
         }
-        return {ts:d.ts,price:d.price,high:d.high!=null?d.high:d.price,low:d.low!=null?d.low:d.price,date:d.date||new Date(d.ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
+        return {ts:d.ts,open:d.open!=null?d.open:d.price,price:d.price,high:d.high!=null?d.high:d.price,low:d.low!=null?d.low:d.price,volume:d.volume||0,date:d.date||new Date(d.ts).toLocaleDateString("tr-TR",{day:"2-digit",month:"2-digit",year:"2-digit"})};
       });
     }
     candles=candles.filter(function(c){return c.ts>=HISTORY_START_TS;}).sort(function(a,b){return a.ts-b.ts;});
